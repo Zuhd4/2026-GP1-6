@@ -5,7 +5,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
-
+//this is a comment to test hot reload
 android {
     namespace = "com.lexia.app"
     compileSdk = flutter.compileSdkVersion
