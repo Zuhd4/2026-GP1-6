@@ -1,4 +1,4 @@
-package com.example.lexia
+package com.lexia.app
 
 import io.flutter.embedding.android.FlutterActivity
 
