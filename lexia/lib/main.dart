@@ -1,6 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import 'wrapper.dart'; // Import the new wrapper
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +15,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'Lexia',
       theme: ThemeData(
-        // EXACT BACKGROUND COLOR FROM SCREENSHOT
         scaffoldBackgroundColor: const Color(0xFFF7F9FF),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
@@ -31,7 +31,8 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      // CHANGE THIS: Point home to Wrapper
+      home: const Wrapper(), 
     );
   }
 }

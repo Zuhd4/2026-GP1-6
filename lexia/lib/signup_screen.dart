@@ -1,8 +1,46 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'main_wrapper.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  Future<void> createUserWithEmailAndPassword() async {
+    try {
+      final UserCredential = FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainWrapper()),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? "Error creating account")),
+      );
+    }
+    print(UserCredential);
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +52,7 @@ class SignUpScreen extends StatelessWidget {
             children: [
               Image.asset('assets/Lexia.png', width: 120),
               const SizedBox(height: 30),
+
               Container(
                 width: 340,
                 padding: const EdgeInsets.all(32),
@@ -41,11 +80,27 @@ class SignUpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    _buildField("Your Name", "John Doe"),
+                    _buildField(
+                      "Your Name",
+                      "John Doe",
+                      controller: nameController,
+                    ),
                     const SizedBox(height: 12),
-                    _buildField("Email", "parent@example.com"),
+
+                    _buildField(
+                      "Email",
+                      "parent@example.com",
+                      controller: emailController,
+                    ),
                     const SizedBox(height: 12),
-                    _buildField("Password", "........", isObscure: true),
+
+                    _buildField(
+                      "Password",
+                      "........",
+                      isObscure: true,
+                      controller: passwordController,
+                    ),
+
                     const SizedBox(height: 32),
 
                     SizedBox(
@@ -60,12 +115,9 @@ class SignUpScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        onPressed: () => Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MainWrapper(),
-                          ),
-                        ),
+                        onPressed: () async {
+                          await createUserWithEmailAndPassword();
+                        },
                         child: const Text(
                           "Create Account",
                           style: TextStyle(
@@ -75,6 +127,7 @@ class SignUpScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text(
@@ -92,7 +145,12 @@ class SignUpScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildField(String label, String hint, {bool isObscure = false}) {
+  Widget _buildField(
+    String label,
+    String hint, {
+    bool isObscure = false,
+    required TextEditingController controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -102,6 +160,7 @@ class SignUpScreen extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         TextField(
+          controller: controller,
           obscureText: isObscure,
           decoration: InputDecoration(
             hintText: hint,
