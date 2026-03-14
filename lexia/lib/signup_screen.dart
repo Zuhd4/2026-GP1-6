@@ -1,109 +1,12 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'main_wrapper.dart';
 
-class SignUpScreen extends StatefulWidget {
+class SignUpScreen extends StatelessWidget {
   const SignUpScreen({super.key});
-
-  @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
-}
-
-class _SignUpScreenState extends State<SignUpScreen> {
-<<<<<<< HEAD
-  // 1. Controllers to capture the data from your UI
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _pinController = TextEditingController(); // Added PIN controller
-
-  bool _isLoading = false;
-
-  // 2. Sign Up Logic
-  Future<void> _handleSignUp() async {
-    setState(() => _isLoading = true);
-
-    try {
-      // Create user in Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
-
-      // Save additional data (Name & PIN) to Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
-            'uid': userCredential.user!.uid,
-            'name': _nameController.text.trim(),
-            'email': _emailController.text.trim(),
-            'pin': _pinController.text.trim(), // Save the PIN
-            'createdAt': DateTime.now(),
-          });
-
-      // Navigate to MainWrapper on success
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainWrapper()),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? "An error occurred")));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-=======
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
-  Future<void> createUserWithEmailAndPassword() async {
-    try {
-      final UserCredential = FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: emailController.text.trim(),
-            password: passwordController.text.trim(),
-          );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainWrapper()),
-      );
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Error creating account")),
-      );
-    }
-    print(UserCredential);
->>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
-  }
-
-  @override
-  void dispose() {
-<<<<<<< HEAD
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _pinController.dispose();
-=======
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
->>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Keep your layout exactly the same
       body: Center(
         child: SingleChildScrollView(
           child: Column(
@@ -111,7 +14,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             children: [
               Image.asset('assets/Lexia.png', width: 120),
               const SizedBox(height: 30),
-
               Container(
                 width: 340,
                 padding: const EdgeInsets.all(32),
@@ -139,51 +41,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 24),
 
-<<<<<<< HEAD
-                    // Linked to Controllers
-                    _buildField("Your Name", "John Doe", _nameController),
+                    _buildField("Your Name", "John Doe"),
                     const SizedBox(height: 12),
-                    _buildField(
-                      "Email",
-                      "parent@example.com",
-                      _emailController,
-                    ),
+                    _buildField("Email", "parent@example.com"),
                     const SizedBox(height: 12),
-                    _buildField(
-                      "Password",
-                      "........",
-                      _passwordController,
-                      isObscure: true,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildField(
-                      "Parental PIN",
-                      "1234",
-                      _pinController,
-                      isObscure: true,
-=======
-                    _buildField(
-                      "Your Name",
-                      "John Doe",
-                      controller: nameController,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildField(
-                      "Email",
-                      "parent@example.com",
-                      controller: emailController,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildField(
-                      "Password",
-                      "........",
-                      isObscure: true,
-                      controller: passwordController,
->>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
-                    ),
-
+                    _buildField("Password", "........", isObscure: true),
                     const SizedBox(height: 32),
 
                     SizedBox(
@@ -198,24 +60,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-<<<<<<< HEAD
-                        // Call the Sign Up logic here
-                        onPressed: _isLoading ? null : _handleSignUp,
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                "Create Account",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-=======
-                        onPressed: () async {
-                          await createUserWithEmailAndPassword();
-                        },
+                        onPressed: () => Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MainWrapper(),
+                          ),
+                        ),
                         child: const Text(
                           "Create Account",
                           style: TextStyle(
@@ -223,10 +73,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
->>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
                       ),
                     ),
-
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text(
@@ -244,21 +92,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-<<<<<<< HEAD
-  // Updated helper to accept a controller
-  Widget _buildField(
-    String label,
-    String hint,
-    TextEditingController controller, {
-    bool isObscure = false,
-=======
-  Widget _buildField(
-    String label,
-    String hint, {
-    bool isObscure = false,
-    required TextEditingController controller,
->>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
-  }) {
+  Widget _buildField(String label, String hint, {bool isObscure = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -268,11 +102,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         const SizedBox(height: 6),
         TextField(
-<<<<<<< HEAD
-          controller: controller, // Linked the controller here
-=======
-          controller: controller,
->>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
           obscureText: isObscure,
           decoration: InputDecoration(
             hintText: hint,

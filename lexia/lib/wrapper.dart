@@ -9,7 +9,7 @@ class Wrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     // For Sprint 1: We set this to 'false' so it always shows the Login Screen.
     // In Sprint 2: This will be: final user = Provider.of<User?>(context);
-    bool isLoggedIn = false; 
+    bool isLoggedIn = false;
 
     if (isLoggedIn) {
       return const MainWrapper();
