@@ -1,14 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Added Firebase Auth
 import 'signup_screen.dart';
 import 'main_wrapper.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  // 1. Controllers and State
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  // 2. Sign In Logic
+  Future<void> _handleLogin() async {
+    // Basic validation
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Firebase Sign In
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Navigate to MainWrapper on success
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainWrapper()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      // Handle Firebase Errors (e.g., wrong password, user not found)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message ?? "Authentication failed")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Clean up controllers to save memory
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Background is handled by main.dart theme
       body: Center(
         child: SingleChildScrollView(
           child: Column(
@@ -52,15 +108,20 @@ class LoginScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 30),
 
-                    // Email Field
-                    _buildTextField(label: "Email", hint: "parent@example.com"),
+                    // Email Field - Now linked to Controller
+                    _buildTextField(
+                      label: "Email",
+                      hint: "parent@example.com",
+                      controller: _emailController,
+                    ),
                     const SizedBox(height: 16),
 
-                    // Password Field
+                    // Password Field - Now linked to Controller
                     _buildTextField(
                       label: "Password",
                       hint: "........",
                       isObscure: true,
+                      controller: _passwordController,
                     ),
                     const SizedBox(height: 32),
 
@@ -77,19 +138,24 @@ class LoginScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        onPressed: () => Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MainWrapper(),
-                          ),
-                        ),
-                        child: const Text(
-                          "Sign In",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // Changed to call Firebase Login
+                        onPressed: _isLoading ? null : _handleLogin,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "Sign In",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -130,10 +196,11 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  // Helper function to keep code clean since we aren't using separate widget files
+  // Helper function - Updated to accept a controller
   Widget _buildTextField({
     required String label,
     required String hint,
+    required TextEditingController controller,
     bool isObscure = false,
   }) {
     return Column(
@@ -149,6 +216,7 @@ class LoginScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
+          controller: controller, // Linked controller
           obscureText: isObscure,
           decoration: InputDecoration(
             hintText: hint,
