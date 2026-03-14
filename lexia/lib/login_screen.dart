@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import 'package:firebase_auth/firebase_auth.dart'; // Added Firebase Auth
 import 'signup_screen.dart';
 import 'main_wrapper.dart';
+=======
+import 'package:firebase_auth/firebase_auth.dart';
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,11 +15,16 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+<<<<<<< HEAD
   // 1. Controllers and State
+=======
+  // 2. Define your controllers and variables here
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+<<<<<<< HEAD
   // 2. Sign In Logic
   Future<void> _handleLogin() async {
     // Basic validation
@@ -30,10 +39,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // Firebase Sign In
+=======
+  // Logic for logging in
+  Future<void> _login() async {
+    setState(() => _isLoading = true); // Start spinner
+    try {
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+<<<<<<< HEAD
 
       // Navigate to MainWrapper on success
       if (mounted) {
@@ -51,12 +67,26 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+=======
+      // Navigate to home or dashboard on success
+    } on FirebaseAuthException catch (e) {
+      // Show error snackbar
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? "Login Failed")));
+    } finally {
+      setState(() => _isLoading = false); // Stop spinner
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
     }
   }
 
   @override
   void dispose() {
+<<<<<<< HEAD
     // Clean up controllers to save memory
+=======
+    // Clean up controllers when the widget is removed
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -65,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+<<<<<<< HEAD
       body: Center(
         child: SingleChildScrollView(
           child: Column(
@@ -191,10 +222,31 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+=======
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            const SizedBox(height: 20),
+            _isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(onPressed: _login, child: const Text("Login")),
+          ],
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
         ),
       ),
     );
   }
+<<<<<<< HEAD
 
   // Helper function - Updated to accept a controller
   Widget _buildTextField({
@@ -235,4 +287,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
     );
   }
+=======
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
 }

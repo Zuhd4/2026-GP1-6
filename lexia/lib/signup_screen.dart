@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +12,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+<<<<<<< HEAD
   // 1. Controllers to capture the data from your UI
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -57,14 +59,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+=======
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  Future<void> createUserWithEmailAndPassword() async {
+    try {
+      final UserCredential = FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainWrapper()),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? "Error creating account")),
+      );
+    }
+    print(UserCredential);
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
   }
 
   @override
   void dispose() {
+<<<<<<< HEAD
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _pinController.dispose();
+=======
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
     super.dispose();
   }
 
@@ -79,6 +111,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             children: [
               Image.asset('assets/Lexia.png', width: 120),
               const SizedBox(height: 30),
+
               Container(
                 width: 340,
                 padding: const EdgeInsets.all(32),
@@ -106,6 +139,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 24),
 
+<<<<<<< HEAD
                     // Linked to Controllers
                     _buildField("Your Name", "John Doe", _nameController),
                     const SizedBox(height: 12),
@@ -127,6 +161,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       "1234",
                       _pinController,
                       isObscure: true,
+=======
+                    _buildField(
+                      "Your Name",
+                      "John Doe",
+                      controller: nameController,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildField(
+                      "Email",
+                      "parent@example.com",
+                      controller: emailController,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildField(
+                      "Password",
+                      "........",
+                      isObscure: true,
+                      controller: passwordController,
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
                     ),
 
                     const SizedBox(height: 32),
@@ -143,6 +198,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
+<<<<<<< HEAD
                         // Call the Sign Up logic here
                         onPressed: _isLoading ? null : _handleSignUp,
                         child: _isLoading
@@ -156,8 +212,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+=======
+                        onPressed: () async {
+                          await createUserWithEmailAndPassword();
+                        },
+                        child: const Text(
+                          "Create Account",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
                       ),
                     ),
+
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text(
@@ -175,12 +244,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+<<<<<<< HEAD
   // Updated helper to accept a controller
   Widget _buildField(
     String label,
     String hint,
     TextEditingController controller, {
     bool isObscure = false,
+=======
+  Widget _buildField(
+    String label,
+    String hint, {
+    bool isObscure = false,
+    required TextEditingController controller,
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +268,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         const SizedBox(height: 6),
         TextField(
+<<<<<<< HEAD
           controller: controller, // Linked the controller here
+=======
+          controller: controller,
+>>>>>>> 7823348e8f631a8ac80871ffc64674fa9b8b314c
           obscureText: isObscure,
           decoration: InputDecoration(
             hintText: hint,

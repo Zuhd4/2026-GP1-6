@@ -12,7 +12,6 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
   final List<Widget> _pages = [const DashboardPage(), const ScannerPage()];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
