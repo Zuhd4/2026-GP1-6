@@ -1,20 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
 import 'main_wrapper.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty)
+      return;
+
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainWrapper()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message ?? "Login failed")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Background is handled by main.dart theme
       body: Center(
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1. Centered Logo
               Image.asset('assets/Lexia.png', width: 140),
               const SizedBox(height: 10),
               const Text(
@@ -22,8 +65,6 @@ class LoginScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.black45, fontSize: 13),
               ),
               const SizedBox(height: 30),
-
-              // 2. The Styled Card
               Container(
                 width: 340,
                 padding: const EdgeInsets.all(32),
@@ -51,20 +92,19 @@ class LoginScreen extends StatelessWidget {
                       style: TextStyle(color: Colors.black45, fontSize: 14),
                     ),
                     const SizedBox(height: 30),
-
-                    // Email Field
-                    _buildTextField(label: "Email", hint: "parent@example.com"),
+                    _buildTextField(
+                      label: "Email",
+                      hint: "parent@example.com",
+                      controller: _emailController,
+                    ),
                     const SizedBox(height: 16),
-
-                    // Password Field
                     _buildTextField(
                       label: "Password",
                       hint: "........",
                       isObscure: true,
+                      controller: _passwordController,
                     ),
                     const SizedBox(height: 32),
-
-                    // Sign In Button
                     SizedBox(
                       width: double.infinity,
                       height: 55,
@@ -72,29 +112,25 @@ class LoginScreen extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFAC61FF),
                           foregroundColor: Colors.white,
-                          elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        onPressed: () => Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MainWrapper(),
-                          ),
-                        ),
-                        child: const Text(
-                          "Sign In",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        onPressed: _isLoading ? null : _handleLogin,
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text(
+                                "Sign In",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Sign Up Link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -130,10 +166,10 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  // Helper function to keep code clean since we aren't using separate widget files
   Widget _buildTextField({
     required String label,
     required String hint,
+    required TextEditingController controller,
     bool isObscure = false,
   }) {
     return Column(
@@ -149,6 +185,7 @@ class LoginScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           obscureText: isObscure,
           decoration: InputDecoration(
             hintText: hint,
