@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_page.dart';
 import 'scanner_page.dart';
 import 'profile_page.dart';
-import 'profile_selection.dart'; // Ensure this is imported
+import 'profile_selection.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -20,11 +20,9 @@ class _MainWrapperState extends State<MainWrapper> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // The original exit icon in the header
         leading: IconButton(
           icon: const Icon(Icons.exit_to_app_rounded, color: Colors.black45),
           onPressed: () {
-            // Navigator to return to profile selection and clear history
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(

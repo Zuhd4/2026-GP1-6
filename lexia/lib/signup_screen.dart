@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'login_screen.dart';
-import 'main_wrapper.dart';
+import 'profile_selection.dart'; // Added the import for your profile selection page
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,7 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
-  // الأخطاء لكل حقل
+  // Error lists for each field
   final List<String> _nameErrors = [];
   final List<String> _emailErrors = [];
   final List<String> _passwordErrors = [];
@@ -35,59 +34,65 @@ class _SignUpScreenState extends State<SignUpScreen> {
     String confirmPassword = _confirmPasswordController.text.trim();
     String pin = _pinController.text.trim();
 
-    // إعادة تهيئة القوائم
+    // Re-initialize lists
     _nameErrors.clear();
     _emailErrors.clear();
     _passwordErrors.clear();
     _confirmPasswordErrors.clear();
     _pinErrors.clear();
 
-    // التحقق من الاسم
+    // Name Validation
     if (name.isEmpty) _nameErrors.add("Name is required");
     if (name.length > 12) _nameErrors.add("Name must be at most 12 characters");
 
-    // التحقق من البريد
+    // Email Validation
     if (email.isEmpty) _emailErrors.add("Email is required");
     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
       _emailErrors.add("Enter a valid email");
     }
 
-    // التحقق من كلمة المرور
+    // Password Validation
     if (password.isEmpty) _passwordErrors.add("Password is required");
     if (password.length < 8) _passwordErrors.add("At least 8 characters");
-    if (!RegExp(r'[A-Z]').hasMatch(password))
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
       _passwordErrors.add("At least one uppercase letter");
-    if (!RegExp(r'[a-z]').hasMatch(password))
+    }
+    if (!RegExp(r'[a-z]').hasMatch(password)) {
       _passwordErrors.add("At least one lowercase letter");
+    }
 
-    // التحقق من تأكيد كلمة المرور
-    if (confirmPassword.isEmpty)
+    // Confirm Password Validation
+    if (confirmPassword.isEmpty) {
       _confirmPasswordErrors.add("Confirm your password");
-    if (password != confirmPassword)
+    }
+    if (password != confirmPassword) {
       _confirmPasswordErrors.add("Passwords do not match");
+    }
 
-    // التحقق من PIN
-    if (!RegExp(r'^\d{4}$').hasMatch(pin))
+    // PIN Validation
+    if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
       _pinErrors.add("PIN must be exactly 4 digits");
+    }
 
     setState(() {});
 
-    // إذا فيه أي أخطاء أوقف
+    // Stop if there are any errors
     if (_nameErrors.isNotEmpty ||
         _emailErrors.isNotEmpty ||
         _passwordErrors.isNotEmpty ||
         _confirmPasswordErrors.isNotEmpty ||
-        _pinErrors.isNotEmpty)
+        _pinErrors.isNotEmpty) {
       return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      // إنشاء المستخدم في Firebase Auth
+      // Create User in Firebase Auth
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      // حفظ البيانات الإضافية في Firestore
+      // Save additional data in Firestore including the default Parent Avatar
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -96,6 +101,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             'name': name,
             'email': email,
             'pin': pin,
+            // Added default parent avatar URL
+            'avatarUrl':
+                "https://api.dicebear.com/9.x/fun-emoji/png?seed=parent&backgroundColor=b6e3f4,c0aede,d1d4f9",
             'createdAt': FieldValue.serverTimestamp(),
           });
 
@@ -110,9 +118,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
 
-      Navigator.pushReplacement(
+      // REDIRECTION TO PROFILE SELECTION PAGE
+      // We use pushAndRemoveUntil so they cannot go back to the signup form
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MainWrapper()),
+        MaterialPageRoute(builder: (_) => const ProfileSelectionPage()),
+        (route) => false,
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
