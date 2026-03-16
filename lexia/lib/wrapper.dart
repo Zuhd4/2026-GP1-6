@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:lexia/profile_selection.dart';
 import 'login_screen.dart';
 import 'main_wrapper.dart';
 
@@ -12,11 +13,10 @@ class Wrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // If snapshot has data, a user is logged in
         if (snapshot.hasData) {
-          return const MainWrapper();
+          // Changed from MainWrapper to ProfileSelectionPage
+          return const ProfileSelectionPage();
         } else {
-          // Otherwise, show Login
           return const LoginScreen();
         }
       },

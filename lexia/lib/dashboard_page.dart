@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'add_child_popup.dart'; // Import your popup file
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -6,7 +7,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -15,10 +16,10 @@ class DashboardPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF5B86FD), // The blue-purple header color
+              color: Color(0xFF5B86FD),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 30),
           // THE CENTRAL WHITE CARD
           Container(
             width: double.infinity,
@@ -34,7 +35,6 @@ class DashboardPage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon Container
                 Container(
                   height: 100,
                   width: 100,
@@ -72,12 +72,19 @@ class DashboardPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                // Lighter Purple Button
                 SizedBox(
                   width: 220,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Triggers the slide-up popup
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const AddChildPopup(),
+                      );
+                    },
                     icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
                     label: const Text(
                       "Add Child Account",

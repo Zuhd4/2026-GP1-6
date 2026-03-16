@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_page.dart';
 import 'scanner_page.dart';
 import 'profile_page.dart';
+import 'profile_selection.dart'; // Ensure this is imported
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -12,15 +13,29 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
   final List<Widget> _pages = [const DashboardPage(), const ScannerPage()];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const Icon(
-          Icons.logout_rounded,
-          color: Colors.black45,
-        ), // Visual only
+        backgroundColor: Colors.white,
+        elevation: 0,
+        // The original exit icon in the header
+        leading: IconButton(
+          icon: const Icon(Icons.exit_to_app_rounded, color: Colors.black45),
+          onPressed: () {
+            // Navigator to return to profile selection and clear history
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfileSelectionPage(),
+              ),
+              (route) => false,
+            );
+          },
+        ),
         title: Image.asset('assets/Lexia.png', height: 30),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.person_outline_rounded, color: Colors.black),
