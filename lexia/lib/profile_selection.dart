@@ -81,103 +81,118 @@ class ProfileSelectionPage extends StatelessWidget {
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
 
     return Scaffold(
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .snapshots(),
-        builder: (context, userSnap) {
-          // GUARD: Check if data is loading or document doesn't exist
-          if (userSnap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // 1. LOGO POSITIONED AT TOP CENTER
+            Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Image.asset('assets/Lexia.png', width: 90), // Slightly bigger for center display
+              ),
+            ),
 
-          if (!userSnap.hasData || !userSnap.data!.exists) {
-            return const Center(
-              child: Text("User data not found. Please log in again."),
-            );
-          }
+            // 2. MAIN CONTENT STREAM
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .snapshots(),
+              builder: (context, userSnap) {
+                if (userSnap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          final userData = userSnap.data!.data() as Map<String, dynamic>;
+                if (!userSnap.hasData || !userSnap.data!.exists) {
+                  return const Center(
+                    child: Text("User data not found. Please log in again."),
+                  );
+                }
 
-          return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(uid)
-                .collection('children')
-                .snapshots(),
-            builder: (context, childSnap) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/Lexia.png', width: 60),
-                    const SizedBox(height: 40),
-                    const Text(
-                      "Who's learning\ntoday?",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFAC61FF),
-                      ),
-                    ),
-                    const SizedBox(height: 50),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // PARENT PROFILE
-                        _buildProfileItem(
-                          name: userData['name'] ?? "Parent",
-                          label: "Parent 🔒",
-                          imageUrl:
-                              userData['avatarUrl'] ??
-                              "https://api.dicebear.com/9.x/fun-emoji/png?seed=parent",
-                          onTap: () => _showPinDialog(
-                            context,
-                            (userData['pin'] ?? "0000").toString(),
+                final userData = userSnap.data!.data() as Map<String, dynamic>;
+
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .collection('children')
+                      .snapshots(),
+                  builder: (context, childSnap) {
+                    return Center(
+                      // 3. PROFILES AND TEXT CENTERED VERTICALLY
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min, // Keeps the column wrapped tightly around its children
+                        children: [
+                          const Text(
+                            "Who's learning\ntoday?",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFAC61FF),
+                            ),
                           ),
-                        ),
-
-                        // CHILD PROFILE (If exists in subcollection)
-                        if (childSnap.hasData &&
-                            childSnap.data!.docs.isNotEmpty) ...[
-                          const SizedBox(width: 30),
-                          Builder(
-                            builder: (context) {
-                              final childData =
-                                  childSnap.data!.docs.first.data()
-                                      as Map<String, dynamic>;
-                              return _buildProfileItem(
-                                name: childData['name'] ?? "Child",
-                                label: "Child",
+                          const SizedBox(height: 50),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // PARENT PROFILE
+                              _buildProfileItem(
+                                name: userData['name'] ?? "Parent",
+                                label: "Parent 🔒",
                                 imageUrl:
-                                    childData['avatarUrl'] ??
-                                    "https://api.dicebear.com/9.x/fun-emoji/png?seed=child",
-                                onTap: () => Navigator.push(
+                                    userData['avatarUrl'] ??
+                                    "https://api.dicebear.com/9.x/fun-emoji/png?seed=parent",
+                                onTap: () => _showPinDialog(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const ChildHomePage(),
-                                  ),
+                                  (userData['pin'] ?? "0000").toString(),
                                 ),
-                              );
-                            },
+                              ),
+
+                              // CHILD PROFILE (If exists in subcollection)
+                              if (childSnap.hasData &&
+                                  childSnap.data!.docs.isNotEmpty) ...[
+                                const SizedBox(width: 30),
+                                Builder(
+                                  builder: (context) {
+                                    final childData =
+                                        childSnap.data!.docs.first.data()
+                                            as Map<String, dynamic>;
+                                    return _buildProfileItem(
+                                      name: childData['name'] ?? "Child",
+                                      label: "Child",
+                                      imageUrl:
+                                          childData['avatarUrl'] ??
+                                          "https://api.dicebear.com/9.x/fun-emoji/png?seed=child",
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const ChildHomePage(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
                           ),
+                          const SizedBox(height: 40),
+                          if (childSnap.hasData && childSnap.data!.docs.isEmpty)
+                            const Text(
+                              "No child profiles yet. Go to Parent Profile to add one.",
+                              style: TextStyle(color: Colors.black45, fontSize: 14),
+                            ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 40),
-                    if (childSnap.hasData && childSnap.data!.docs.isEmpty)
-                      const Text(
-                        "No child profiles yet. Go to Parent Profile to add one.",
-                        style: TextStyle(color: Colors.black45, fontSize: 14),
                       ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
