@@ -54,8 +54,8 @@ class _MainWrapperState extends State<MainWrapper> {
             label: "Dashboard",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.camera_alt_outlined),
-            label: "Scanner",
+            icon: Icon(Icons.menu_book_outlined),
+            label: "Books",
           ),
         ],
       ),
