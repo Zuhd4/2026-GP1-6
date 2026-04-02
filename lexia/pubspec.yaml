@@ -13,7 +13,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
 # In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # In Windows, build-name is used as the major, minor, and patch parts
-# of the product and file versions while build-number is used as the build suffix.
+# of the product and file versions while build-number is used as the bottom suffix.
 version: 1.0.0+1
 
 environment:
@@ -29,9 +29,18 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+
+# Make sure google_fonts is NOT indented under 'sdk: flutter'
+  google_fonts: ^6.2.1
+
+
+  # Standard Icons
   cupertino_icons: ^1.0.8
+
+  # Responsive Framework (Added)
+  flutter_screenutil: ^5.9.3
+
+  # Firebase Services
   firebase_core: ^4.5.0
   firebase_auth: ^6.2.0
   cloud_firestore: ^6.1.3
@@ -63,6 +72,8 @@ flutter:
   assets:
     - assets/Lexia.png
     - assets/icon.png
+    - assets/charcter.png
+    - assets/charchter2.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

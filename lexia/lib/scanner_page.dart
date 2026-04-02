@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ScannerPage extends StatelessWidget {
   const ScannerPage({super.key});
@@ -15,43 +16,48 @@ class ScannerPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(20.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: 54.r,
+                height: 54.r,
                 decoration: BoxDecoration(
-                  color: softYellow.withOpacity(0.35),
+                  color: softYellow.withOpacity(0.3),
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
-                  child: Text("🚀", style: TextStyle(fontSize: 34)),
+                child: Center(
+                  child: Text('🚀', style: TextStyle(fontSize: 26.sp)),
                 ),
               ),
-              const SizedBox(height: 18),
-              const Text(
+              SizedBox(height: 14.h),
+              Text(
                 'Coming Soon!',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.w900,
                   color: textDark,
-                  letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 10),
-              const Text(
+              SizedBox(height: 8.h),
+              Text(
                 'This feature will be available soon!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54, height: 1.5),
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 20.h),
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: 44.h,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
@@ -59,12 +65,15 @@ class ScannerPage extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                   ),
-                  child: const Text(
-                    "Got it!",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  child: Text(
+                    'Got it!',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13.sp,
+                    ),
                   ),
                 ),
               ),
@@ -75,28 +84,23 @@ class ScannerPage extends StatelessWidget {
     );
   }
 
-  Widget _actionButton({
-    required BuildContext context,
-    required String text,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _actionButton(BuildContext context, String text, IconData icon) {
     return SizedBox(
-      height: 56,
+      height: 46.h,
       child: ElevatedButton.icon(
         onPressed: () => _showComingSoon(context),
-        icon: Icon(icon, size: 20),
+        icon: Icon(icon, size: 18.r),
         label: Text(
           text,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.sp),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF3F4F8),
+          backgroundColor: softGrey,
           foregroundColor: textDark,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-            side: const BorderSide(color: Color(0xFFD4CDE8), width: 1.5),
+            borderRadius: BorderRadius.circular(12.r),
+            side: BorderSide(color: softPurple.withOpacity(0.3), width: 1),
           ),
         ),
       ),
@@ -105,27 +109,27 @@ class ScannerPage extends StatelessWidget {
 
   Widget _stepItem(String emoji, String text, Color dotColor) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 32.r,
+            height: 32.r,
             decoration: BoxDecoration(
-              color: dotColor.withOpacity(0.22),
-              borderRadius: BorderRadius.circular(10),
+              color: dotColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 18)),
+              child: Text(emoji, style: TextStyle(fontSize: 16.sp)),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 10.w),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 color: textDark,
-                fontSize: 14,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -137,226 +141,162 @@ class ScannerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double topPad = MediaQuery.of(context).padding.top + 76;
-    final double bottomPad = MediaQuery.of(context).padding.bottom + 80;
-
     return Scaffold(
-      body: ScrollConfiguration(
-        behavior: const _NoStretchBehavior(),
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(20, topPad, 20, bottomPad),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Books",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: textDark,
-                  letterSpacing: -0.5,
-                ),
+      backgroundColor: const Color.fromARGB(255, 249, 247, 248),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        // Increased bottom padding to 160.h to ensure clear space above the nav bar
+        padding: EdgeInsets.fromLTRB(22.w, 120.h, 22.w, 160.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Books',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w900,
+                color: textDark,
               ),
-              const SizedBox(height: 4),
-              const Text(
-                "Scan or upload any text image",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black45,
-                  fontWeight: FontWeight.w500,
-                ),
+            ),
+            Text(
+              'Scan or upload any text image',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: Colors.black45,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(32),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryBlue.withOpacity(0.08),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: softPurple.withOpacity(0.40),
-                    width: 1.8,
+            ),
+            SizedBox(height: 16.h),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 10.r,
+                    offset: Offset(0, 4.h),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFF3EBFF), Color(0xFFE8F4FF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(32),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 86,
-                                height: 86,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFEDF5),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFFD4CDE8),
-                                    width: 3,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFD4CDE8,
-                                      ).withOpacity(0.6),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.document_scanner_rounded,
-                                  color: Color(0xFF6A5ACD),
-                                  size: 38,
-                                ),
-                              ),
-                              Positioned(
-                                top: -4,
-                                right: -4,
-                                child: Container(
-                                  width: 26,
-                                  height: 26,
-                                  decoration: const BoxDecoration(
-                                    color: softYellow,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      "✨",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 18),
-                          const Expanded(
-                            child: Text(
-                              'Scan or upload\nan image',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: textDark,
-                                height: 1.3,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: softGrey,
-                              borderRadius: BorderRadius.circular(22),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
-                                  children: [
-                                    Text("🗺️", style: TextStyle(fontSize: 16)),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "How it works",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15,
-                                        color: textDark,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                _stepItem(
-                                  "📸",
-                                  "Scan text from a book",
-                                  softPeach,
-                                ),
-                                _stepItem(
-                                  "🖼️",
-                                  "Upload an image",
-                                  primaryBlue,
-                                ),
-                                _stepItem(
-                                  "🔤",
-                                  "Convert to readable text",
-                                  primaryGreen,
-                                ),
-                                _stepItem("📤", "Send or download", softYellow),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _actionButton(
-                                  context: context,
-                                  text: "Scan",
-                                  icon: Icons.document_scanner_rounded,
-                                  color: primaryGreen,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _actionButton(
-                                  context: context,
-                                  text: "Upload",
-                                  icon: Icons.cloud_upload_rounded,
-                                  color: primaryBlue,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                ],
+                border: Border.all(color: softPurple.withOpacity(0.2)),
               ),
-            ],
-          ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 24.h,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF8F5FF), Color(0xFFF2F8FF)],
+                      ),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20.r),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64.r,
+                          height: 64.r,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: softPurple.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.document_scanner_rounded,
+                            color: const Color(0xFF6A5ACD),
+                            size: 30.r,
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: Text(
+                            'Scan or upload\nan image',
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w900,
+                              color: textDark,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(16.w),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(14.w),
+                          decoration: BoxDecoration(
+                            color: softGrey,
+                            borderRadius: BorderRadius.circular(16.r),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '🗺️ How it works',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13.sp,
+                                  color: textDark,
+                                ),
+                              ),
+                              SizedBox(height: 12.h),
+                              _stepItem(
+                                '📸',
+                                'Scan text from a book',
+                                softPeach,
+                              ),
+                              _stepItem('🖼️', 'Upload an image', primaryBlue),
+                              _stepItem(
+                                '🔤',
+                                'Convert to readable text',
+                                primaryGreen,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _actionButton(
+                                context,
+                                'Scan',
+                                Icons.camera_alt_rounded,
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: _actionButton(
+                                context,
+                                'Upload',
+                                Icons.file_upload_outlined,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Extra bottom spacer for smooth scrolling
+            SizedBox(height: 20.h),
+          ],
         ),
       ),
     );
-  }
-}
-
-class _NoStretchBehavior extends ScrollBehavior {
-  const _NoStretchBehavior();
-  @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) {
-    return child;
   }
 }
