@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 class ScannerPage extends StatelessWidget {
   const ScannerPage({super.key});
 
-  // ── Lexia Brand Palette ────────────────────────────────────────────────────
-  static const Color pageBg = Color(0xFFFDF8F4);
   static const Color primaryBlue = Color(0xFF5B96CA);
   static const Color primaryGreen = Color(0xFF59A685);
   static const Color softPeach = Color(0xFFF1B4AF);
@@ -17,9 +15,7 @@ class ScannerPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
@@ -85,45 +81,22 @@ class ScannerPage extends StatelessWidget {
     required IconData icon,
     required Color color,
   }) {
-    return Container(
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFEDF5),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: const Color(0xFFD4CDE8),
-          width: 1.5,
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: () => _showComingSoon(context),
+        icon: Icon(icon, size: 20),
+        label: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD4CDE8).withOpacity(0.6),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(30),
-        child: InkWell(
-          onTap: () => _showComingSoon(context),
-          borderRadius: BorderRadius.circular(30),
-          splashColor: const Color(0xFF6A5ACD).withOpacity(0.18),
-          highlightColor: const Color(0xFF6A5ACD).withOpacity(0.12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: textDark, size: 26),
-              const SizedBox(width: 10),
-              Text(
-                text,
-                style: const TextStyle(
-                  color: textDark,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 19,
-                ),
-              ),
-            ],
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFF3F4F8),
+          foregroundColor: textDark,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+            side: const BorderSide(color: Color(0xFFD4CDE8), width: 1.5),
           ),
         ),
       ),
@@ -136,14 +109,14 @@ class ScannerPage extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: dotColor.withOpacity(0.22),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 16)),
+              child: Text(emoji, style: const TextStyle(fontSize: 18)),
             ),
           ),
           const SizedBox(width: 12),
@@ -164,15 +137,18 @@ class ScannerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double topPad = MediaQuery.of(context).padding.top + 76;
+    final double bottomPad = MediaQuery.of(context).padding.bottom + 80;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+      body: ScrollConfiguration(
+        behavior: const _NoStretchBehavior(),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(20, topPad, 20, bottomPad),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Plain title ─────────────────────────────────────────────────
               const Text(
                 "Books",
                 style: TextStyle(
@@ -191,10 +167,7 @@ class ScannerPage extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // ── Main card ───────────────────────────────────────────────────
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -214,9 +187,8 @@ class ScannerPage extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // ── Gradient top section ──────────────────────────────────
                     Container(
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Color(0xFFF3EBFF), Color(0xFFE8F4FF)],
@@ -244,7 +216,9 @@ class ScannerPage extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFD4CDE8).withOpacity(0.6),
+                                      color: const Color(
+                                        0xFFD4CDE8,
+                                      ).withOpacity(0.6),
                                       blurRadius: 14,
                                       offset: const Offset(0, 6),
                                     ),
@@ -267,8 +241,10 @@ class ScannerPage extends StatelessWidget {
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Center(
-                                    child: Text("✨",
-                                        style: TextStyle(fontSize: 12)),
+                                    child: Text(
+                                      "✨",
+                                      style: TextStyle(fontSize: 12),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -279,7 +255,7 @@ class ScannerPage extends StatelessWidget {
                             child: Text(
                               'Scan or upload\nan image',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 22,
                                 fontWeight: FontWeight.w900,
                                 color: textDark,
                                 height: 1.3,
@@ -290,13 +266,10 @@ class ScannerPage extends StatelessWidget {
                         ],
                       ),
                     ),
-
-                    // ── Body ─────────────────────────────────────────────────
                     Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          // How it works
                           Container(
                             padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
@@ -308,8 +281,7 @@ class ScannerPage extends StatelessWidget {
                               children: [
                                 const Row(
                                   children: [
-                                    Text("🗺️",
-                                        style: TextStyle(fontSize: 16)),
+                                    Text("🗺️", style: TextStyle(fontSize: 16)),
                                     SizedBox(width: 8),
                                     Text(
                                       "How it works",
@@ -322,18 +294,26 @@ class ScannerPage extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: 16),
-                                _stepItem("📸", "Scan text", softPeach),
-                                _stepItem("🖼️", "Upload image", primaryBlue),
-                                _stepItem("🔤", "Convert text", primaryGreen),
                                 _stepItem(
-                                    "📤", "Send or download", softYellow),
+                                  "📸",
+                                  "Scan text from a book",
+                                  softPeach,
+                                ),
+                                _stepItem(
+                                  "🖼️",
+                                  "Upload an image",
+                                  primaryBlue,
+                                ),
+                                _stepItem(
+                                  "🔤",
+                                  "Convert to readable text",
+                                  primaryGreen,
+                                ),
+                                _stepItem("📤", "Send or download", softYellow),
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 20),
-
-                          // Action buttons
                           Row(
                             children: [
                               Expanded(
@@ -366,5 +346,17 @@ class ScannerPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _NoStretchBehavior extends ScrollBehavior {
+  const _NoStretchBehavior();
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }

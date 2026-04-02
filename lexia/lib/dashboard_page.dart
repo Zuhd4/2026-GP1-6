@@ -3,603 +3,716 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_child_popup.dart';
 
-// ── Lexia Brand Palette ──────────────────────────────────────────────────────
-class LexiaColors {
-  static const Color bg = Color(0xFFFDF8F4);          // warm parchment
-  static const Color blue = Color(0xFF5B96CA);         // L – sky blue
-  static const Color peach = Color(0xFFF1B4AF);        // E – soft peach
-  static const Color green = Color(0xFF59A685);        // X – mint green
-  static const Color yellow = Color(0xFFFCDA81);       // I – sunshine yellow
-  static const Color purple = Color(0xFFD8BDD9);       // A – lavender
-  static const Color pink = Color(0xFFFF5695);         // cheek accent
-  static const Color dark = Color(0xFF2D3142);
-  static const Color cardBg = Color(0xFFFFFFFF);
-  static const Color softGrey = Color(0xFFF3F4F8);
-}
-
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+    final double topPad = MediaQuery.of(context).padding.top + 82;
+    final double bottomPad = MediaQuery.of(context).padding.bottom + 110;
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('children')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    if (uid.isEmpty) {
+      return const Scaffold(body: Center(child: Text("User not logged in")));
+    }
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      builder: (context, userSnapshot) {
+        if (userSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            backgroundColor: LexiaColors.bg,
-            body: Center(
-              child: CircularProgressIndicator(color: LexiaColors.blue),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final bool hasChild =
-            snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+        final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
+        final String parentName = userData?['name'] ?? 'Parent';
 
-        final String parentName =
-            (FirebaseAuth.instance.currentUser?.displayName?.trim().isNotEmpty ??
-                    false)
-                ? FirebaseAuth.instance.currentUser!.displayName!.trim()
-                : 'Parent';
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('children')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-        if (hasChild) {
-          final childrenDocs = snapshot.data!.docs;
+            final bool hasChild =
+                snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
-          return Container(
-            color: LexiaColors.bg,
-            child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Header ──────────────────────────────────────────────
-                    _DashboardHeader(parentName: parentName),
-                    const SizedBox(height: 24),
+            final List<String> childNames = hasChild
+                ? snapshot.data!.docs
+                      .map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return (data['name'] as String? ?? '').trim();
+                      })
+                      .where((name) => name.isNotEmpty)
+                      .toList()
+                : [];
 
-                    // ── Child cards ─────────────────────────────────────────
-                    ...childrenDocs.map((doc) {
-                      final childData =
-                          doc.data() as Map<String, dynamic>? ?? {};
-                      final String childName =
-                          (childData['name'] ??
-                                  childData['childName'] ??
-                                  'Child Name')
-                              .toString();
-                      final String childImage =
-                          (childData['imageUrl'] ?? childData['photoUrl'] ?? '')
-                              .toString();
+            String childrenText;
+            if (childNames.isEmpty) {
+              childrenText = "✨ Track your children's learning journey";
+            } else if (childNames.length == 1) {
+              childrenText = "✨ Track ${childNames.first}'s learning journey";
+            } else if (childNames.length == 2) {
+              childrenText =
+                  "✨ Track ${childNames[0]} and ${childNames[1]}'s learning journey";
+            } else {
+              childrenText =
+                  "✨ Track ${childNames.sublist(0, childNames.length - 1).join(', ')} and ${childNames.last}'s learning journey";
+            }
 
-                      final List<Map<String, dynamic>> games = [
-                        {
-                          'title': 'Letter Scramble',
-                          'status': 'Not started',
-                          'score': '0/3',
-                          'icon': Icons.extension_rounded,
-                          'color': LexiaColors.peach,
-                          'emoji': '🧩',
-                        },
-                        {
-                          'title': 'Word Matching',
-                          'status': 'Not started',
-                          'score': '0/3',
-                          'icon': Icons.auto_awesome_motion_rounded,
-                          'color': LexiaColors.blue,
-                          'emoji': '✨',
-                        },
-                        {
-                          'title': 'Listen and Spell',
-                          'status': 'Not started',
-                          'score': '0/3',
-                          'icon': Icons.volume_up_rounded,
-                          'color': LexiaColors.green,
-                          'emoji': '🎧',
-                        },
-                        {
-                          'title': 'Story',
-                          'status': 'Not started',
-                          'score': '0/3',
-                          'icon': Icons.menu_book_rounded,
-                          'color': LexiaColors.yellow,
-                          'emoji': '📖',
-                        },
-                      ];
-
-                      const double progress = 0.0;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: _ChildDashboardCard(
-                          childName: childName,
-                          childImage: childImage,
-                          progress: progress,
-                          games: games,
+            return Scaffold(
+              body: ScrollConfiguration(
+                behavior: const _NoStretchBehavior(),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(20, topPad, 20, bottomPad),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Hello $parentName",
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF2D3142),
                         ),
-                      );
-                    }),
-                  ],
+                      ),
+                      Text(
+                        childrenText,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      if (hasChild)
+                        ...snapshot.data!.docs.map(
+                          (doc) => Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: _ChildDashboardCard(doc: doc),
+                          ),
+                        )
+                      else
+                        const _EmptyStateCard(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        }
-
-        // ── Empty state ──────────────────────────────────────────────────────
-        return Container(
-          color: LexiaColors.bg,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0, vertical: 20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _EmptyStateCard(),
-                ],
-              ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 }
 
-// ── Dashboard Header ──────────────────────────────────────────────────────────
-class _DashboardHeader extends StatelessWidget {
-  final String parentName;
-  const _DashboardHeader({required this.parentName});
+class _ChildDashboardCard extends StatefulWidget {
+  final QueryDocumentSnapshot doc;
+
+  const _ChildDashboardCard({required this.doc});
+
+  @override
+  State<_ChildDashboardCard> createState() => _ChildDashboardCardState();
+}
+
+class _ChildDashboardCardState extends State<_ChildDashboardCard> {
+  late int displayedLevel;
+  late int actualLevel;
+
+  final Map<int, List<Map<String, dynamic>>> levelGames = {
+    1: [
+      {
+        'title': 'Letter Scramble',
+        'emoji': '🧩',
+        'color': const Color(0xFFF1B4AF),
+        'score': '1/3',
+        'status': 'In Progress',
+      },
+      {
+        'title': 'Word Matching',
+        'emoji': '✨',
+        'color': const Color(0xFF5B96CA),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Listen and Spell',
+        'emoji': '🎧',
+        'color': const Color(0xFF59A685),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+    ],
+    2: [
+      {
+        'title': 'Letter Scramble',
+        'emoji': '🧩',
+        'color': const Color(0xFFF1B4AF),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Word Matching',
+        'emoji': '✨',
+        'color': const Color(0xFF5B96CA),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Listen and Spell',
+        'emoji': '🎧',
+        'color': const Color(0xFF59A685),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+    ],
+    3: [
+      {
+        'title': 'Letter Scramble',
+        'emoji': '🧩',
+        'color': const Color(0xFFF1B4AF),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Word Matching',
+        'emoji': '✨',
+        'color': const Color(0xFF5B96CA),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Listen and Spell',
+        'emoji': '🎧',
+        'color': const Color(0xFF59A685),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+    ],
+    4: [
+      {
+        'title': 'Letter Scramble',
+        'emoji': '🧩',
+        'color': const Color(0xFFF1B4AF),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Word Matching',
+        'emoji': '✨',
+        'color': const Color(0xFF5B96CA),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Listen and Spell',
+        'emoji': '🎧',
+        'color': const Color(0xFF59A685),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+    ],
+    5: [
+      {
+        'title': 'Letter Scramble',
+        'emoji': '🧩',
+        'color': const Color(0xFFF1B4AF),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Word Matching',
+        'emoji': '✨',
+        'color': const Color(0xFF5B96CA),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Listen and Spell',
+        'emoji': '🎧',
+        'color': const Color(0xFF59A685),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+    ],
+    6: [
+      {
+        'title': 'Letter Scramble',
+        'emoji': '🧩',
+        'color': const Color(0xFFF1B4AF),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Word Matching',
+        'emoji': '✨',
+        'color': const Color(0xFF5B96CA),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+      {
+        'title': 'Listen and Spell',
+        'emoji': '🎧',
+        'color': const Color(0xFF59A685),
+        'score': '0/3',
+        'status': 'Not started',
+      },
+    ],
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.doc.data() as Map<String, dynamic>;
+    actualLevel = ((data['level'] as num?)?.toInt() ?? 1).clamp(1, 6);
+    displayedLevel = actualLevel;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChildDashboardCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final data = widget.doc.data() as Map<String, dynamic>;
+    final newActualLevel = ((data['level'] as num?)?.toInt() ?? 1).clamp(1, 6);
+
+    if (newActualLevel != actualLevel) {
+      actualLevel = newActualLevel;
+      displayedLevel = actualLevel;
+    }
+  }
+
+  void nextLevel() {
+    if (displayedLevel < 6) {
+      setState(() {
+        displayedLevel++;
+      });
+    }
+  }
+
+  void previousLevel() {
+    if (displayedLevel > 1) {
+      setState(() {
+        displayedLevel--;
+      });
+    }
+  }
+
+  double calculateLevelProgress(List<Map<String, dynamic>> games) {
+    int earned = 0;
+    int total = 0;
+
+    for (final game in games) {
+      final score = game['score'] as String;
+      final parts = score.split('/');
+      if (parts.length == 2) {
+        earned += int.tryParse(parts[0]) ?? 0;
+        total += int.tryParse(parts[1]) ?? 0;
+      }
+    }
+
+    if (total == 0) return 0;
+    return earned / total;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final data = widget.doc.data() as Map<String, dynamic>;
+    final String childName = data['name'] ?? 'Sarah';
+    final List<Map<String, dynamic>> currentGames =
+        levelGames[displayedLevel] ?? levelGames[1]!;
+    final double levelProgress = calculateLevelProgress(currentGames);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF5B96CA), Color(0xFF7BB3D8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: LexiaColors.blue.withOpacity(0.30),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Decorative bubbles + text
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
               children: [
-                Row(
+                const CircleAvatar(
+                  radius: 35,
+                  backgroundColor: Color(0xFFF3EBFF),
+                  child: Icon(
+                    Icons.person_rounded,
+                    size: 40,
+                    color: Color(0xFF6A5ACD),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Hello, $parentName!",
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
+                    const Text(
+                      "CHILD PROFILE",
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.black38,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Text("👋", style: TextStyle(fontSize: 24)),
+                    Text(
+                      childName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8E4F8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        "🏅 Level $actualLevel/6",
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6A5ACD),
+                        ),
+                      ),
+                    ),
                   ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  "Track your children's learning journey ✨",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w500,
-                  ),
                 ),
               ],
             ),
           ),
 
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _LevelSection(
+              currentLevel: displayedLevel,
+              progress: levelProgress,
+              onPrevious: previousLevel,
+              onNext: nextLevel,
+              canGoLeft: displayedLevel > 1,
+              canGoRight: displayedLevel < 6,
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                _GameCard(
+                  title: currentGames[0]['title'] as String,
+                  emoji: currentGames[0]['emoji'] as String,
+                  color: currentGames[0]['color'] as Color,
+                  score: currentGames[0]['score'] as String,
+                  status: currentGames[0]['status'] as String,
+                ),
+                const SizedBox(height: 10),
+                _GameCard(
+                  title: currentGames[1]['title'] as String,
+                  emoji: currentGames[1]['emoji'] as String,
+                  color: currentGames[1]['color'] as Color,
+                  score: currentGames[1]['score'] as String,
+                  status: currentGames[1]['status'] as String,
+                ),
+                const SizedBox(height: 10),
+                _GameCard(
+                  title: currentGames[2]['title'] as String,
+                  emoji: currentGames[2]['emoji'] as String,
+                  color: currentGames[2]['color'] as Color,
+                  score: currentGames[2]['score'] as String,
+                  status: currentGames[2]['status'] as String,
+                ),
+              ],
+            ),
+          ),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Stories",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  "2/6",
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const _StoryGrid(),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 }
 
-class _LetterBubble extends StatelessWidget {
-  final String letter;
-  final Color color;
-  const _LetterBubble(this.letter, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          letter,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: LexiaColors.dark,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Child Dashboard Card ──────────────────────────────────────────────────────
-class _ChildDashboardCard extends StatelessWidget {
-  final String childName;
-  final String childImage;
+class _LevelSection extends StatelessWidget {
+  final int currentLevel;
   final double progress;
-  final List<Map<String, dynamic>> games;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final bool canGoLeft;
+  final bool canGoRight;
 
-  const _ChildDashboardCard({
-    required this.childName,
-    required this.childImage,
+  const _LevelSection({
+    required this.currentLevel,
     required this.progress,
-    required this.games,
+    required this.onPrevious,
+    required this.onNext,
+    required this.canGoLeft,
+    required this.canGoRight,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: LexiaColors.cardBg,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: LexiaColors.blue.withOpacity(0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-        border: Border.all(
-          color: LexiaColors.purple.withOpacity(0.35),
-          width: 1.8,
-        ),
-      ),
-      child: Column(
-        children: [
-          // ── Coloured top banner ───────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF3EBFF), Color(0xFFE8F4FF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
+    return Column(
+      children: [
+        Row(
+          children: [
+            const Text(
+              "🏅 Level",
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                color: Color(0xFF2D3142),
               ),
             ),
-            child: Row(
+            const Spacer(),
+            IconButton(
+              onPressed: canGoLeft ? onPrevious : null,
+              icon: const Icon(Icons.chevron_left_rounded),
+              splashRadius: 20,
+              color: canGoLeft ? const Color(0xFF6A5ACD) : Colors.black26,
+            ),
+            Text(
+              "$currentLevel/6",
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: Color(0xFF2D3142),
+              ),
+            ),
+            IconButton(
+              onPressed: canGoRight ? onNext : null,
+              icon: const Icon(Icons.chevron_right_rounded),
+              splashRadius: 20,
+              color: canGoRight ? const Color(0xFF6A5ACD) : Colors.black26,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: const Color(0xFFF3F4F8),
+            color: const Color(0xFF6A5ACD),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StoryGrid extends StatelessWidget {
+  const _StoryGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> stories = [
+      {
+        'name': 'Butterfly Garden',
+        'emoji': '🦋',
+        'color': const Color(0xFFE8F5E9),
+        'done': true,
+      },
+      {
+        'name': 'Sky Adventure',
+        'emoji': '✈️',
+        'color': const Color(0xFFE3F2FD),
+        'done': true,
+      },
+      {
+        'name': 'Magic Stars',
+        'emoji': '✨',
+        'color': const Color(0xFFF3E5F5),
+        'done': false,
+      },
+      {
+        'name': 'Moonlight Dream',
+        'emoji': '🌙',
+        'color': const Color(0xFFE1F5FE),
+        'done': false,
+      },
+      {
+        'name': 'Dragon Friend',
+        'emoji': '🐉',
+        'color': const Color(0xFFF1F8E9),
+        'done': false,
+      },
+      {
+        'name': 'Ocean Friends',
+        'emoji': '🐠',
+        'color': const Color(0xFFE0F7FA),
+        'done': false,
+      },
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: stories.length,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 18,
+        childAspectRatio: 0.78,
+      ),
+      itemBuilder: (context, index) {
+        return _StoryTile(
+          name: stories[index]['name'] as String,
+          emoji: stories[index]['emoji'] as String,
+          color: stories[index]['color'] as Color,
+          done: stories[index]['done'] as bool,
+        );
+      },
+    );
+  }
+}
+
+class _StoryTile extends StatelessWidget {
+  final String name;
+  final String emoji;
+  final Color color;
+  final bool done;
+
+  const _StoryTile({
+    required this.name,
+    required this.emoji,
+    required this.color,
+    required this.done,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Stack(
               children: [
-                // Avatar
-                Stack(
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
+                Center(
+                  child: Text(emoji, style: const TextStyle(fontSize: 34)),
+                ),
+                if (done)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
                         shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [LexiaColors.peach, LexiaColors.purple],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: LexiaColors.pink.withOpacity(0.20),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(3),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            image: childImage.isNotEmpty
-                                ? DecorationImage(
-                                    image: NetworkImage(childImage),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          ),
-                          child: childImage.isEmpty
-                              ? const Icon(
-                                  Icons.person_rounded,
-                                  size: 36,
-                                  color: LexiaColors.blue,
-                                )
-                              : null,
-                        ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: Color(0xFF59A685),
+                        size: 18,
                       ),
                     ),
-                    // Star badge
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: const BoxDecoration(
-                          color: LexiaColors.yellow,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child:
-                              Text("⭐", style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Child Profile",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        childName,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: LexiaColors.dark,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Level chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: LexiaColors.purple,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          "🏅  Level 0",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: LexiaColors.dark,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
-                ),
               ],
             ),
           ),
-
-          // ── Progress section ──────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
-            child: _ProgressSection(progress: progress),
-          ),
-
-          // ── Game cards ────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-            child: Column(
-              children: games
-                  .map(
-                    (game) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _GameCard(
-                        title: game['title'],
-                        status: game['status'],
-                        score: game['score'],
-                        icon: game['icon'],
-                        emoji: game['emoji'],
-                        accentColor: game['color'],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Progress Section ──────────────────────────────────────────────────────────
-class _ProgressSection extends StatelessWidget {
-  final double progress;
-  const _ProgressSection({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: LexiaColors.softGrey,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Text("🚀 ", style: TextStyle(fontSize: 16)),
-                  Text(
-                    "Overall Progress",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: LexiaColors.dark,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: LexiaColors.blue.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  "0%",
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: LexiaColors.blue,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Segmented rainbow progress bar (4 game segments)
-          Row(
-            children: [
-              _ProgressSegment(LexiaColors.peach, progress, isFirst: true),
-              const SizedBox(width: 4),
-              _ProgressSegment(LexiaColors.blue, progress),
-              const SizedBox(width: 4),
-              _ProgressSegment(LexiaColors.green, progress),
-              const SizedBox(width: 4),
-              _ProgressSegment(LexiaColors.yellow, progress, isLast: true),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProgressSegment extends StatelessWidget {
-  final Color color;
-  final double progress;
-  final bool isFirst;
-  final bool isLast;
-  const _ProgressSegment(this.color, this.progress,
-      {this.isFirst = false, this.isLast = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: ClipRRect(
-        borderRadius: BorderRadius.horizontal(
-          left: isFirst ? const Radius.circular(30) : Radius.zero,
-          right: isLast ? const Radius.circular(30) : Radius.zero,
         ),
-        child: LinearProgressIndicator(
-          value: progress,
-          minHeight: 14,
-          backgroundColor: Colors.white,
-          valueColor: AlwaysStoppedAnimation<Color>(color),
+        const SizedBox(height: 6),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D3142),
+          ),
+          maxLines: 2,
         ),
-      ),
+      ],
     );
   }
 }
 
-// ── Game Card ─────────────────────────────────────────────────────────────────
 class _GameCard extends StatelessWidget {
   final String title;
-  final String status;
-  final String score;
-  final IconData icon;
   final String emoji;
-  final Color accentColor;
+  final String score;
+  final String status;
+  final Color color;
 
   const _GameCard({
     required this.title,
-    required this.status,
-    required this.score,
-    required this.icon,
     required this.emoji,
-    required this.accentColor,
+    required this.color,
+    required this.score,
+    required this.status,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.14),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: accentColor.withOpacity(0.30),
+          color: Colors.black.withValues(alpha: 0.05),
           width: 1.5,
         ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Icon bubble
           Container(
-            width: 58,
-            height: 58,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(18),
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 22)),
-              ],
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 20)),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,44 +720,30 @@ class _GameCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: LexiaColors.dark,
-                    letterSpacing: -0.2,
+                    fontSize: 15,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _Chip(
-                      label: status,
-                      bg: accentColor.withOpacity(0.18),
-                      textColor: LexiaColors.dark,
-                    ),
-                    _Chip(
-                      label: "⭐ $score",
-                      bg: LexiaColors.yellow.withOpacity(0.25),
-                      textColor: LexiaColors.dark,
-                    ),
-                  ],
+                Text(
+                  status,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black38,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ),
-          // Arrow hint
           Container(
-            width: 32,
-            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.12),
-              shape: BoxShape.circle,
+              color: const Color(0xFFFCDA81).withValues(alpha: 0.20),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: accentColor.withOpacity(0.80),
+            child: Text(
+              score,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -653,184 +752,92 @@ class _GameCard extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  final String label;
-  final Color bg;
-  final Color textColor;
-  const _Chip(
-      {required this.label, required this.bg, required this.textColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: textColor,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Empty State Card ──────────────────────────────────────────────────────────
 class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard();
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: LexiaColors.blue.withOpacity(0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-        border: Border.all(
-          color: LexiaColors.purple.withOpacity(0.35),
-          width: 1.8,
+    return Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Stacked letter bubbles decoration
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _BigLetterBubble("L", LexiaColors.blue),
-              const SizedBox(width: 8),
-              _BigLetterBubble("E", LexiaColors.peach),
-              const SizedBox(width: 8),
-              _BigLetterBubble("X", LexiaColors.green),
-              const SizedBox(width: 8),
-              _BigLetterBubble("I", LexiaColors.yellow),
-              const SizedBox(width: 8),
-              _BigLetterBubble("A", LexiaColors.purple),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Container(
-            height: 90,
-            width: 90,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [LexiaColors.blue, LexiaColors.purple],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+        child: Column(
+          children: [
+            const Icon(
+              Icons.child_care_rounded,
+              size: 48,
+              color: Color(0xFF6A5ACD),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Add a child to get started",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF2D3142),
               ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: LexiaColors.blue.withOpacity(0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
             ),
-            child: const Icon(
-              Icons.person_add_alt_1_rounded,
-              size: 42,
-              color: Colors.white,
+            const SizedBox(height: 8),
+            const Text(
+              "Create your child profile to track progress and activities.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black45,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            "No Child Account Yet",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: LexiaColors.dark,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            "Add a child to start tracking their progress and sending them books.",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.black54,
-              fontSize: 15,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: 230,
-            height: 52,
-            child: ElevatedButton.icon(
+            const SizedBox(height: 16),
+            ElevatedButton(
               onPressed: () {
-                showModalBottomSheet(
+                showDialog(
                   context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => const AddChildPopup(),
+                  builder: (_) => const AddChildPopup(),
                 );
               },
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-              label: const Text(
-                "Add Child Account",
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15),
-              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: LexiaColors.green,
+                backgroundColor: const Color(0xFF6A5ACD),
                 foregroundColor: Colors.white,
-                elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
                 ),
               ),
+              child: const Text(
+                "Add Child",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _BigLetterBubble extends StatelessWidget {
-  final String letter;
-  final Color color;
-  const _BigLetterBubble(this.letter, this.color);
+class _NoStretchBehavior extends ScrollBehavior {
+  const _NoStretchBehavior();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.35),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          letter,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }

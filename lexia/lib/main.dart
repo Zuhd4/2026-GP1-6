@@ -1,6 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'wrapper.dart'; // Import the new wrapper
+import 'wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,21 +17,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Lexia',
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF7F9FF),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
-          selectedItemColor: Color(0xFFAC61FF),
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
-        ),
+        scaffoldBackgroundColor: const Color.fromARGB(255, 249, 247, 248),
         useMaterial3: true,
       ),
-      // CHANGE THIS: Point home to Wrapper
+
       home: const Wrapper(),
     );
   }
