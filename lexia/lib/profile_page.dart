@@ -19,6 +19,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
+  // --- DELETE CHILD PROFILE ---
   Future<void> _deleteChild(String childDocId) async {
     if (currentUser == null) return;
     try {
@@ -42,6 +43,40 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // --- DELETE ENTIRE ACCOUNT LOGIC ---
+  Future<void> _deleteAccount() async {
+    if (currentUser == null) return;
+    try {
+      // 1. Delete user data from Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .delete();
+
+      // 2. Delete the Auth account credentials
+      await currentUser!.delete();
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const OnboardingPage()),
+          (route) => false,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login' && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Security: Please re-login to delete account"),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error deleting account: $e");
+    }
+  }
+
+  // --- DIALOGS ---
   void _showDeleteConfirmation(String childName, String childDocId) {
     showDialog(
       context: context,
@@ -81,6 +116,54 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showDeleteAccountConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        title: Text(
+          "Delete Account?",
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 18.sp,
+            color: textDark,
+          ),
+        ),
+        content: Text(
+          "All your data and child profiles will be permanently removed. This action cannot be undone.",
+          style: TextStyle(fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Keep Account",
+              style: TextStyle(
+                color: Colors.black45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteAccount();
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(
+                color: Color(0xFFD32F2F),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String uid = currentUser?.uid ?? "";
@@ -95,12 +178,10 @@ class _ProfilePageState extends State<ProfilePage> {
         builder: (context, userSnap) {
           if (userSnap.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-
           final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            // Increased bottom padding to 140.h to match Dashboard/Scanner style
             padding: EdgeInsets.fromLTRB(22.w, 80.h, 22.w, 140.h),
             child: Column(
               children: [
@@ -217,12 +298,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       .collection('children')
                       .snapshots(),
                   builder: (context, childSnap) {
-                    if (!childSnap.hasData || childSnap.data!.docs.isEmpty) {
+                    if (!childSnap.hasData || childSnap.data!.docs.isEmpty)
                       return _addChildButton();
-                    }
                     final childDoc = childSnap.data!.docs.first;
                     final childData = childDoc.data() as Map<String, dynamic>;
-
                     return _childCard(
                       childData['name'],
                       childData['avatarUrl'],
@@ -233,21 +312,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 SizedBox(height: 60.h),
 
-                // --- SIGN OUT ---
+                // --- DELETE ACCOUNT BUTTON (SOLID RED) ---
                 ElevatedButton.icon(
-                  onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
-                    if (mounted)
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
-                        ),
-                      );
-                  },
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                  onPressed: _showDeleteAccountConfirmation,
+                  icon: const Icon(
+                    Icons.delete_forever_rounded,
+                    color: Colors.white,
+                  ),
                   label: Text(
-                    "Sign Out",
+                    "Delete Account",
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 14.sp,
@@ -263,7 +336,48 @@ class _ProfilePageState extends State<ProfilePage> {
                     elevation: 0,
                   ),
                 ),
-                // Extra spacer for smooth scrolling
+
+                SizedBox(height: 12.h),
+
+                // --- SIGN OUT BUTTON (WHITE WITH RED BORDER) ---
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    if (mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const OnboardingPage(),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFD32F2F),
+                  ),
+                  label: Text(
+                    "Sign Out",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFD32F2F),
+                    minimumSize: Size(double.infinity, 50.h),
+                    side: const BorderSide(
+                      color: Color(0xFFD32F2F),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
                 SizedBox(height: 20.h),
               ],
             ),
@@ -273,6 +387,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // --- HELPER WIDGETS ---
   Widget _infoTile(IconData icon, String title, String value) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
