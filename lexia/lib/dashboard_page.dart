@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'add_child_popup.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -10,8 +11,6 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    // Increased horizontal and vertical padding for a spacious "Scanner" look
     final double horizontalPad = 22.w;
     final double topPad = 120.h;
     final double bottomPad = 140.h;
@@ -77,7 +76,7 @@ class DashboardPage extends StatelessWidget {
                     Text(
                       'Hello $parentName',
                       style: TextStyle(
-                        fontSize: 20.sp, // Matched to "Books" header size
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFF2D3142),
                       ),
@@ -90,13 +89,25 @@ class DashboardPage extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 16.h),
+
+                    SizedBox(height: 20.h),
+
+                    // --- REFINED LOGIN REQUEST CARD ---
+                    _buildPendingRequestCard(context),
+
+                    SizedBox(height: 24.h),
+
+                    // --- CHILDREN LIST WITH SPACING ---
                     if (hasChild)
-                      ...snapshot.data!.docs.map(
-                        (doc) => Padding(
-                          padding: EdgeInsets.only(bottom: 14.h),
-                          child: _ChildDashboardCard(doc: doc),
-                        ),
+                      Column(
+                        children: snapshot.data!.docs.map((doc) {
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: 24.h,
+                            ), // Spacing between each child
+                            child: _ChildDashboardCard(doc: doc),
+                          );
+                        }).toList(),
                       )
                     else
                       const _EmptyStateCard(),
@@ -107,6 +118,124 @@ class DashboardPage extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildPendingRequestCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.w), // Increased padding for more "air"
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(color: const Color(0xFF6A5ACD).withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              // Prominent Icon Container
+              Container(
+                width: 46.r,
+                height: 46.r,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3EBFF),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                child: Icon(
+                  Icons.vpn_key_rounded,
+                  color: const Color(0xFF6A5ACD),
+                  size: 24.r,
+                ),
+              ),
+              SizedBox(width: 14.w),
+              // Text Section
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Login Request",
+                      style: TextStyle(
+                        fontSize: 15.sp, // Slightly larger title
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF2D3142),
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      "A child is waiting for your approval",
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.black45,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20.h), // Generous space before buttons
+          // Horizontal Action Row
+          Row(
+            children: [
+              // Disapprove - Now a subtle outlined style
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {},
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    side: BorderSide(color: Colors.redAccent.withOpacity(0.2)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  ),
+                  child: Text(
+                    "Disapprove",
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              // Approve - Primary Action
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6A5ACD),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  ),
+                  child: Text(
+                    "Approve",
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -131,10 +260,29 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     displayedLevel = actualLevel;
   }
 
+  Widget _avatarWidget(String? path, {double size = 48}) {
+    final String src = (path == null || path.isEmpty)
+        ? 'assets/lexiaAv.png'
+        : path;
+    if (src.startsWith('http')) {
+      return Image.network(src, width: size, height: size, fit: BoxFit.cover);
+    } else if (src.endsWith('.svg')) {
+      return SvgPicture.asset(
+        src,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+    } else {
+      return Image.asset(src, width: size, height: size, fit: BoxFit.cover);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.doc.data() as Map<String, dynamic>;
-    final String childName = data['name'] ?? 'Sarah';
+    final String childName = data['name'] ?? 'Child';
+    final String? avatarUrl = data['avatarUrl'];
     double levelProgress = (displayedLevel > actualLevel) ? 0.0 : 0.4;
 
     return Container(
@@ -153,20 +301,11 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
       ),
       child: Column(
         children: [
-          // Profile Section
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 24.r,
-                  backgroundColor: const Color(0xFFF3EBFF),
-                  child: Icon(
-                    Icons.person_rounded,
-                    size: 26.r,
-                    color: const Color(0xFF6A5ACD),
-                  ),
-                ),
+                _avatarWidget(avatarUrl, size: 48.r),
                 SizedBox(width: 10.w),
                 Expanded(
                   child: Column(
@@ -213,12 +352,10 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
               ],
             ),
           ),
-
-          // Navigation & Fat Progress Bar
+          // Level progress and navigation
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 14.w),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -238,21 +375,13 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                             () => displayedLevel > 1 ? displayedLevel-- : null,
                           ),
                           icon: Icon(Icons.chevron_left_rounded, size: 20.r),
-                          color: (displayedLevel > 1)
-                              ? const Color(0xFF6A5ACD)
-                              : Colors.black26,
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.zero,
                         ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w),
-                          child: Text(
-                            '$displayedLevel',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 11.sp,
-                              color: const Color(0xFF6A5ACD),
-                            ),
+                        Text(
+                          '$displayedLevel',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11.sp,
+                            color: const Color(0xFF6A5ACD),
                           ),
                         ),
                         IconButton(
@@ -260,22 +389,16 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                             () => displayedLevel < 6 ? displayedLevel++ : null,
                           ),
                           icon: Icon(Icons.chevron_right_rounded, size: 20.r),
-                          color: (displayedLevel < 6)
-                              ? const Color(0xFF6A5ACD)
-                              : Colors.black26,
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.zero,
                         ),
                       ],
                     ),
                   ],
                 ),
-                SizedBox(height: 8.h),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12.r),
                   child: LinearProgressIndicator(
                     value: levelProgress,
-                    minHeight: 12.h, // Fat Bar
+                    minHeight: 12.h,
                     backgroundColor: const Color(0xFFF3F4F8),
                     color: const Color(0xFF6A5ACD),
                   ),
@@ -283,8 +406,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
               ],
             ),
           ),
-
-          // 3 Games
+          // Games list
           Padding(
             padding: EdgeInsets.all(14.w),
             child: Column(
@@ -321,8 +443,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
               ],
             ),
           ),
-
-          // Stories Section
+          // Stories section
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
             child: Row(
@@ -349,111 +470,6 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
           ),
           const _StoryGrid(),
           SizedBox(height: 16.h),
-        ],
-      ),
-    );
-  }
-}
-
-class _StoryGrid extends StatelessWidget {
-  const _StoryGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    // Stories list with 'done' status for the checkmark overlay
-    final List<Map<String, dynamic>> stories = [
-      {
-        'name': 'Butterfly',
-        'emoji': '🦋',
-        'color': Color(0xFFE8F5E9),
-        'done': true,
-      },
-      {'name': 'Sky', 'emoji': '✈️', 'color': Color(0xFFE3F2FD), 'done': true},
-      {
-        'name': 'Stars',
-        'emoji': '✨',
-        'color': Color(0xFFF3E5F5),
-        'done': false,
-      },
-      {
-        'name': 'Moonlight',
-        'emoji': '🌙',
-        'color': Color(0xFFE1F5FE),
-        'done': false,
-      },
-      {
-        'name': 'Dragon',
-        'emoji': '🐉',
-        'color': Color(0xFFF1F8E9),
-        'done': false,
-      },
-      {
-        'name': 'Ocean',
-        'emoji': '🐠',
-        'color': Color(0xFFE0F7FA),
-        'done': false,
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 6,
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10.w,
-        mainAxisSpacing: 10.h,
-        childAspectRatio: 0.85,
-      ),
-      itemBuilder: (context, index) => Column(
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: stories[index]['color'],
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Center(
-                    child: Text(
-                      stories[index]['emoji'],
-                      style: TextStyle(fontSize: 22.sp),
-                    ),
-                  ),
-                ),
-                if (stories[index]['done'])
-                  Positioned(
-                    top: 6.r,
-                    right: 6.r,
-                    child: Container(
-                      padding: EdgeInsets.all(2.r),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.check_circle,
-                        color: const Color(0xFF59A685),
-                        size: 16.r,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          SizedBox(height: 6.h),
-          Text(
-            stories[index]['name'],
-            style: TextStyle(
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2D3142),
-            ),
-            maxLines: 1,
-          ),
         ],
       ),
     );
@@ -505,8 +521,6 @@ class _GameCard extends StatelessWidget {
                     fontSize: 10.sp,
                     color: const Color(0xFF2D3142),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   status,
@@ -533,9 +547,107 @@ class _GameCard extends StatelessWidget {
   }
 }
 
+class _StoryGrid extends StatelessWidget {
+  const _StoryGrid();
+  @override
+  Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> stories = [
+      {
+        'name': 'Butterfly',
+        'emoji': '🦋',
+        'color': const Color(0xFFE8F5E9),
+        'done': true,
+      },
+      {
+        'name': 'Sky',
+        'emoji': '✈️',
+        'color': const Color(0xFFE3F2FD),
+        'done': true,
+      },
+      {
+        'name': 'Stars',
+        'emoji': '✨',
+        'color': const Color(0xFFF3E5F5),
+        'done': false,
+      },
+      {
+        'name': 'Moonlight',
+        'emoji': '🌙',
+        'color': const Color(0xFFE1F5FE),
+        'done': false,
+      },
+      {
+        'name': 'Dragon',
+        'emoji': '🐉',
+        'color': const Color(0xFFF1F8E9),
+        'done': false,
+      },
+      {
+        'name': 'Ocean',
+        'emoji': '🐠',
+        'color': const Color(0xFFE0F7FA),
+        'done': false,
+      },
+    ];
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 6,
+      padding: EdgeInsets.symmetric(horizontal: 14.w),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10.w,
+        mainAxisSpacing: 10.h,
+        childAspectRatio: 0.85,
+      ),
+      itemBuilder: (context, index) => Column(
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: stories[index]['color'],
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Center(
+                    child: Text(
+                      stories[index]['emoji'],
+                      style: TextStyle(fontSize: 22.sp),
+                    ),
+                  ),
+                ),
+                if (stories[index]['done'])
+                  Positioned(
+                    top: 6.r,
+                    right: 6.r,
+                    child: Icon(
+                      Icons.check_circle,
+                      color: const Color(0xFF59A685),
+                      size: 16.r,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            stories[index]['name'],
+            style: TextStyle(
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF2D3142),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyStateCard extends StatelessWidget {
   const _EmptyStateCard();
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -570,7 +682,6 @@ class _EmptyStateCard extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6A5ACD),
               foregroundColor: Colors.white,
-              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.r),
               ),

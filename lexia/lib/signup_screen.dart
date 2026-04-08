@@ -53,6 +53,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             'name': _nameController.text.trim(),
             'email': _emailController.text.trim(),
             'pin': _pinController.text.trim(),
+            // THIS PART SAVES THE CORRECT LOCAL PATH
+            'avatarUrl': 'assets/lexiaAv.png',
             'createdAt': FieldValue.serverTimestamp(),
           });
 

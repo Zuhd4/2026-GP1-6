@@ -44,6 +44,7 @@ dependencies:
   firebase_core: ^4.5.0
   firebase_auth: ^6.2.0
   cloud_firestore: ^6.1.3
+  flutter_svg: ^2.2.4
 
 dev_dependencies:
   flutter_test:
@@ -74,6 +75,25 @@ flutter:
     - assets/icon.png
     - assets/charcter.png
     - assets/charchter2.png
+    - assets/avatars/alien.svg
+    - assets/avatars/astro.svg
+    - assets/avatars/bear.svg
+    - assets/avatars/cat.svg
+    - assets/avatars/penguin.svg
+    - assets/avatars/bunny.svg
+    - assets/avatars/lion.svg
+    - assets/avatars/fox.svg
+    - assets/avatars/monkey.svg
+    - assets/avatars/panda.svg
+    - assets/avatars/dino.svg
+    - assets/avatars/monster.svg
+    - assets/avatars/owl.svg
+    - assets/avatars/robot.svg
+    - assets/avatars/witch.svg
+    - assets/lexiaAv.png
+
+
+
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

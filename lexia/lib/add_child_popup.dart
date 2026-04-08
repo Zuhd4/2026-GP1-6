@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AddChildPopup extends StatefulWidget {
   const AddChildPopup({super.key});
@@ -12,24 +13,45 @@ class AddChildPopup extends StatefulWidget {
 
 class _AddChildPopupState extends State<AddChildPopup> {
   final _nameController = TextEditingController();
-  String _selectedAvatar =
-      "https://api.dicebear.com/9.x/fun-emoji/png?seed=happy1&backgroundColor=b6e3f4";
+
+  // FIXED: Initial default choice matches your file structure
+  String _selectedAvatar = 'assets/lexiaAv.png';
 
   final List<String> avatars = [
-    "https://api.dicebear.com/9.x/fun-emoji/png?seed=happy1&backgroundColor=b6e3f4",
-    "https://api.dicebear.com/9.x/fun-emoji/png?seed=child2&backgroundColor=ffd5dc",
-    "https://api.dicebear.com/9.x/fun-emoji/png?seed=child3&backgroundColor=ffdf7f",
-    "https://api.dicebear.com/9.x/fun-emoji/png?seed=child4&backgroundColor=71cf62",
-    "https://api.dicebear.com/9.x/fun-emoji/png?seed=child5&backgroundColor=f7c2f0",
-    "https://api.dicebear.com/9.x/fun-emoji/png?seed=child6&backgroundColor=c0aede",
+    'assets/lexiaAv.png',
+    'assets/avatars/fox.svg',
+    'assets/avatars/bunny.svg',
+    'assets/avatars/bear.svg',
+    'assets/avatars/penguin.svg',
+    'assets/avatars/cat.svg',
+    'assets/avatars/lion.svg',
+    'assets/avatars/owl.svg',
+    'assets/avatars/panda.svg',
+    'assets/avatars/dino.svg',
+    'assets/avatars/monkey.svg',
+    'assets/avatars/witch.svg',
+    'assets/avatars/alien.svg',
+    'assets/avatars/robot.svg',
+    'assets/avatars/monster.svg',
+    'assets/avatars/astro.svg',
   ];
+
+  Widget _avatarWidget(String path) {
+    if (path.endsWith('.svg')) {
+      return SvgPicture.asset(path, width: 50.r, height: 50.r);
+    }
+    return Image.asset(path, width: 50.r, height: 50.r, fit: BoxFit.cover);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
-      child: SingleChildScrollView(
+      child: Container(
         padding: EdgeInsets.all(20.w),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -42,11 +64,8 @@ class _AddChildPopupState extends State<AddChildPopup> {
               ),
             ),
             SizedBox(height: 16.h),
-
-            // Name Field
             TextField(
               controller: _nameController,
-              onChanged: (val) => setState(() {}),
               decoration: InputDecoration(
                 hintText: "Child's Name",
                 filled: true,
@@ -62,89 +81,84 @@ class _AddChildPopupState extends State<AddChildPopup> {
               ),
             ),
             SizedBox(height: 20.h),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 10.w,
+                  mainAxisSpacing: 10.h,
+                ),
+                itemCount: avatars.length,
+                itemBuilder: (context, index) {
+                  final path = avatars[index];
+                  final bool isSelected = _selectedAvatar == path;
 
-            // Avatar Grid
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Pick an Avatar",
-                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w900),
-              ),
-            ),
-            SizedBox(height: 10.h),
-            Wrap(
-              spacing: 10.w,
-              runSpacing: 10.h,
-              children: avatars
-                  .map(
-                    (url) => GestureDetector(
-                      onTap: () => setState(() => _selectedAvatar = url),
-                      child: Container(
-                        width: 50.r,
-                        height: 50.r,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(
-                            color: _selectedAvatar == url
-                                ? const Color(0xFF6A5ACD)
-                                : Colors.transparent,
-                            width: 3,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(9.r),
-                          child: Image.network(url),
+                  return GestureDetector(
+                    onTap: () {
+                      // FIXED: This setState ensures the app remembers which one you clicked
+                      setState(() {
+                        _selectedAvatar = path;
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF6A5ACD)
+                              : Colors.transparent,
+                          width: 3,
                         ),
                       ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(9.r),
+                        child: _avatarWidget(path),
+                      ),
                     ),
-                  )
-                  .toList(),
+                  );
+                },
+              ),
             ),
-
             SizedBox(height: 24.h),
-
-            // Create Button
-            SizedBox(
-              width: double.infinity,
-              height: 48.h,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6A5ACD),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  elevation: 0,
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6A5ACD),
+                minimumSize: Size(double.infinity, 48.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                onPressed: () async {
-                  if (_nameController.text.trim().isEmpty) return;
-                  String uid = FirebaseAuth.instance.currentUser!.uid;
+              ),
+              onPressed: () async {
+                if (_nameController.text.trim().isEmpty) return;
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  // The selected avatar path is now correctly stored in _selectedAvatar
                   await FirebaseFirestore.instance
                       .collection('users')
-                      .doc(uid)
+                      .doc(user.uid)
                       .collection('children')
                       .add({
-                        'name': _nameController.text,
+                        'name': _nameController.text.trim(),
                         'avatarUrl': _selectedAvatar,
-                        'level': 1, // Default starting level
+                        'level': 1,
                         'createdAt': FieldValue.serverTimestamp(),
                       });
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  "Create Account",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14.sp,
-                  ),
+                  if (mounted) Navigator.pop(context);
+                }
+              },
+              child: const Text(
+                "Create Account",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
+              child: const Text(
                 "Cancel",
-                style: TextStyle(color: Colors.black38, fontSize: 12.sp),
+                style: TextStyle(color: Colors.black38),
               ),
             ),
           ],
