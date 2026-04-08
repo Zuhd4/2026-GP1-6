@@ -254,8 +254,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       _accountDetailTile(
                         Icons.lock_outline_rounded,
                         "Parental PIN",
-                        userData['pin']?.toString() ??
-                            "Not Set", // Displays PIN from Firestore [cite: 2026-04-06]
+                        userData['pin']?.toString() ?? "Not Set",
                         isAction: false,
                         onTap: null,
                       ),
@@ -291,7 +290,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SizedBox(height: 35.h),
 
-                // 3. ACCOUNT ACTIONS (Dark Mode setting removed permanently [cite: 2025-10-20])
+                // 3. ACCOUNT ACTIONS
                 _sectionHeader("Account Actions"),
                 _actionButton(
                   "Sign Out",
@@ -530,7 +529,13 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Text("Delete $name?"),
+        content: Text(
+          "Are you sure you want to remove this profile? All progress will be lost.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -538,13 +543,19 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(currentUser!.uid)
-                  .collection('children')
-                  .doc(id)
-                  .delete();
+              try {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('children')
+                    .doc(id)
+                    .delete();
+                if (mounted) Navigator.pop(context);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Error deleting child: $e")),
+                );
+              }
             },
             child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
@@ -557,14 +568,50 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: const Text("Delete Account?"),
+        content: const Text(
+          "This will permanently delete your account and all family data. You may need to log in again recently for this to work.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancel"),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              try {
+                // Delete user data from Firestore
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .delete();
+
+                // Delete the user from Firebase Auth
+                await currentUser!.delete();
+
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OnboardingPage()),
+                    (r) => false,
+                  );
+                }
+              } catch (e) {
+                // Usually fails if user hasn't logged in recently (Security requirement)
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Security: Please re-login before deleting your account.",
+                    ),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                Navigator.pop(context);
+              }
+            },
             child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
