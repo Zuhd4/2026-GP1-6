@@ -15,73 +15,90 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
+
+  String? generalError;
+  String? successMessage;
 
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
   static const Color skyBlue = Color(0xFFD4EFFF);
 
-  // --- FORGOT PASSWORD LOGIC ---
-  Future<void> _handleForgotPassword() async {
-    final email = _emailController.text.trim();
-
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter your email address first"),
-          backgroundColor: Colors.orangeAccent,
-        ),
-      );
-      return;
-    }
-
-    try {
-      // Firebase sends a reset link to the email provided
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Password reset link sent to $email"),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? "Error sending reset link")),
-        );
-      }
-    }
-  }
-
-  // --- LOGIN LOGIC ---
+  // ================= LOGIN =================
   Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty)
+    setState(() {
+      generalError = null;
+      successMessage = null;
+    });
+
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      setState(() {
+        generalError = "Please fill all fields";
+      });
       return;
+    }
+
     setState(() => _isLoading = true);
+
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
       if (!mounted) return;
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const ProfileSelectionPage()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message ?? "Login failed")));
-      }
+      setState(() {
+        if (e.code == 'user-not-found') {
+          generalError = "Account not found";
+        } else if (e.code == 'wrong-password') {
+          generalError = "Incorrect password";
+        } else {
+          generalError = "Login failed";
+        }
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ================= FORGOT PASSWORD =================
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+
+    setState(() {
+      generalError = null;
+      successMessage = null;
+    });
+
+    if (email.isEmpty) {
+      setState(() {
+        generalError = "Enter your email first";
+      });
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      setState(() {
+        successMessage = "Reset link sent to your email";
+      });
+    } catch (e) {
+      setState(() {
+        generalError = "Something went wrong";
+      });
+    }
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -92,9 +109,9 @@ class _LoginScreenState extends State<LoginScreen> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            // 1. WHITE CARD SECTION
+            // ===== WHITE CARD =====
             Container(
-              height: screenHeight * 0.65, // Adjusted to fit the extra button
+              height: screenHeight * 0.65,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -116,6 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(height: 40.h),
                     Image.asset('assets/Lexia.png', width: 170.w),
                     SizedBox(height: 12.h),
+
                     Text(
                       "Welcome Back",
                       style: GoogleFonts.montserrat(
@@ -124,18 +142,71 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: textDark,
                       ),
                     ),
+
                     SizedBox(height: 25.h),
 
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 45.w),
                       child: Column(
                         children: [
+                          // 🔴 ERROR
+                          if (generalError != null)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 10.h),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                    size: 16.sp,
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Expanded(
+                                    child: Text(
+                                      generalError!,
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // ✅ SUCCESS
+                          if (successMessage != null)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 10.h),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green,
+                                    size: 16.sp,
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Expanded(
+                                    child: Text(
+                                      successMessage!,
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           _buildField(
                             "Email",
                             "parent@example.com",
                             _emailController,
                           ),
-                          SizedBox(height: 12.h),
+
+                          SizedBox(height: 10.h),
+
                           _buildField(
                             "Password",
                             "........",
@@ -143,15 +214,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             isObscure: true,
                           ),
 
-                          // --- FORGOT PASSWORD BUTTON ---
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: _handleForgotPassword,
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                               child: Text(
                                 "Forgot Password?",
@@ -164,41 +232,30 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
 
-                          SizedBox(height: 30.h),
+                          SizedBox(height: 25.h),
 
-                          // --- SIGN IN BUTTON ---
                           SizedBox(
                             width: double.infinity,
                             height: 40.h,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryPurple,
-                                elevation: 0,
+                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                               ),
                               onPressed: _isLoading ? null : _handleLogin,
                               child: _isLoading
-                                  ? SizedBox(
-                                      height: 18.h,
-                                      width: 18.h,
-                                      child: const CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
+                                  ? const CircularProgressIndicator(
+                                      color: Colors.white,
                                     )
-                                  : Text(
-                                      "Sign In",
-                                      style: GoogleFonts.montserrat(
-                                        fontSize: 10.sp,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
+                                  : const Text("Sign In"),
                             ),
                           ),
+
                           SizedBox(height: 15.h),
+
                           GestureDetector(
                             onTap: () => Navigator.pushReplacement(
                               context,
@@ -222,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // 2. BLUE BOTTOM DECORATION
+            // ===== BOTTOM =====
             SizedBox(
               height: screenHeight * 0.35,
               child: Stack(
@@ -275,47 +332,43 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // ================= FIELD =================
   Widget _buildField(
     String label,
     String hint,
     TextEditingController controller, {
     bool isObscure = false,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.montserrat(
-            fontSize: 8.5.sp,
-            color: textDark.withOpacity(0.7),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        SizedBox(height: 5.h),
-        SizedBox(
-          height: 36.h,
-          child: TextField(
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label),
+          SizedBox(height: 4.h),
+          TextField(
             controller: controller,
             obscureText: isObscure,
-            style: TextStyle(fontSize: 11.sp),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(fontSize: 10.sp, color: Colors.black12),
               filled: true,
-              fillColor: const Color(0xFFF8F9FB),
+              fillColor: Colors.grey.shade50,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 14.w,
-                vertical: 0,
+                vertical: 12.h,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide.none,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: primaryPurple),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
