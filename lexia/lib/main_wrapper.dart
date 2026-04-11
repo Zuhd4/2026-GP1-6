@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dashboard_page.dart';
 import 'scanner_page.dart';
 import 'profile_page.dart';
@@ -12,7 +11,6 @@ import 'my_book_page.dart';
 class MainWrapper extends StatefulWidget {
   final bool isChildMode;
   const MainWrapper({super.key, this.isChildMode = false});
-
   @override
   State<MainWrapper> createState() => _MainWrapperState();
 }
@@ -35,6 +33,8 @@ class _MainWrapperState extends State<MainWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final sw = mq.size.width;
     final List<Widget> currentPages = widget.isChildMode
         ? _childPages
         : _parentPages;
@@ -46,35 +46,36 @@ class _MainWrapperState extends State<MainWrapper> {
       body: Stack(
         children: [
           Positioned.fill(child: currentPages[_selectedIndex]),
-          _buildHeader(),
+          _buildHeader(sw, mq),
         ],
       ),
-      bottomNavigationBar: _buildFooter(),
+      bottomNavigationBar: _buildFooter(sw, mq),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(double sw, MediaQueryData mq) {
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 12.h),
+          // Symmetric horizontal padding: 5.5% each side
+          padding: EdgeInsets.symmetric(horizontal: sw * 0.055, vertical: 10),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(40.r),
+            borderRadius: BorderRadius.circular(40),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
-                height: 60.h,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: const Color.fromRGBO(
+                  color: const Color.fromARGB(
+                    255,
+                    240,
                     230,
-                    217,
-                    249,
-                    1,
+                    255,
                   ).withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(40.r),
+                  borderRadius: BorderRadius.circular(40),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.6),
                     width: 1.5,
@@ -82,25 +83,26 @@ class _MainWrapperState extends State<MainWrapper> {
                 ),
                 child: Row(
                   children: [
-                    SizedBox(width: 8.w),
+                    const SizedBox(width: 4),
                     IconButton(
                       icon: Icon(
                         widget.isChildMode
                             ? Icons.arrow_back_ios_new_rounded
                             : Icons.logout_rounded,
                         color: textDark.withOpacity(0.6),
-                        size: 22.r,
+                        size: 20,
                       ),
                       onPressed: () => Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const ProfileSelectionPage(),
                         ),
-                        (route) => false,
+                        (r) => false,
                       ),
                     ),
                     const Spacer(),
-                    Image.asset('assets/Lexia.png', height: 28.h),
+                    // Logo always centred via Spacer symmetry
+                    Image.asset('assets/Lexia.png', height: 26),
                     const Spacer(),
                     if (!widget.isChildMode)
                       IconButton(
@@ -116,8 +118,8 @@ class _MainWrapperState extends State<MainWrapper> {
                         ),
                       )
                     else
-                      SizedBox(width: 48.w),
-                    SizedBox(width: 8.w),
+                      const SizedBox(width: 48),
+                    const SizedBox(width: 4),
                   ],
                 ),
               ),
@@ -128,19 +130,19 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(double sw, MediaQueryData mq) {
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(22.w, 0, 22.w, 16.h),
+        padding: EdgeInsets.fromLTRB(sw * 0.055, 0, sw * 0.055, 14),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(35.r),
+          borderRadius: BorderRadius.circular(35),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
-              height: 72.h,
+              height: 64,
               decoration: BoxDecoration(
                 color: const Color.fromRGBO(230, 217, 249, 1).withOpacity(0.4),
-                borderRadius: BorderRadius.circular(35.r),
+                borderRadius: BorderRadius.circular(35),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.6),
                   width: 1.5,
@@ -150,7 +152,7 @@ class _MainWrapperState extends State<MainWrapper> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 currentIndex: _selectedIndex,
-                onTap: (index) => setState(() => _selectedIndex = index),
+                onTap: (i) => setState(() => _selectedIndex = i),
                 selectedItemColor: primaryPurple,
                 unselectedItemColor: textDark.withOpacity(0.4),
                 type: BottomNavigationBarType.fixed,

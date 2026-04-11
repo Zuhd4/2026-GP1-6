@@ -1,28 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'signup_screen.dart';
-import 'profile_selection.dart';
-import 'forgot_password_screen.dart';
 import 'responsive_helper.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  String? emailError;
-  String? passwordError;
-  String? generalError;
 
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  String? emailError;
+  String? generalError;
+  String? successMessage;
 
   static const Color primary = Color(0xFF6A5ACD);
   static const Color primaryLight = Color(0xFFF3EEFF);
@@ -30,33 +24,37 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color softBlue = Color(0xFFEFF7FF);
   static const Color softPink = Color(0xFFFFF5F8);
   static const Color softCard = Colors.white;
+
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _sendResetEmail() async {
     if (_isLoading) return;
 
-    final email = _emailController.text.trim();
-    final pass = _passwordController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
+
+    final emailRegex = RegExp(
+      r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+    );
 
     bool isValid = true;
 
     setState(() {
       emailError = null;
-      passwordError = null;
       generalError = null;
+      successMessage = null;
 
       if (email.isEmpty) {
         emailError = "Email is required";
         isValid = false;
-      }
-
-      if (pass.isEmpty) {
-        passwordError = "Password is required";
+      } else if (!emailRegex.hasMatch(email) ||
+          email.contains("..") ||
+          email.startsWith(".") ||
+          email.endsWith(".")) {
+        emailError = "Invalid email";
         isValid = false;
       }
     });
@@ -68,43 +66,24 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: pass,
-      );
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       if (!mounted) return;
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const ProfileSelectionPage()),
-        (_) => false,
-      );
-    } on FirebaseAuthException catch (e) {
       setState(() {
-        switch (e.code) {
-          case 'invalid-email':
-            emailError = "Invalid email";
-            break;
-          case 'user-not-found':
-            emailError = "No account found";
-            break;
-          case 'wrong-password':
-            passwordError = "Incorrect password";
-            break;
-          case 'invalid-credential':
-            generalError = "Invalid email or password";
-            break;
-          case 'network-request-failed':
-            generalError = "Network error. Please try again";
-            break;
-          default:
-            generalError = "Login failed";
-        }
+        successMessage = "Reset link sent";
+        emailError = null;
+        generalError = null;
       });
+
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (!mounted) return;
+      Navigator.pop(context);
     } catch (_) {
       setState(() {
-        generalError = "Login failed";
+        generalError = "Could not send reset link";
+        successMessage = null;
       });
     } finally {
       if (mounted) {
@@ -113,12 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  InputDecoration _input(
-    String hint,
-    IconData icon, {
-    Widget? suffixIcon,
-    String? errorText,
-  }) {
+  InputDecoration _input(String hint, IconData icon, {String? errorText}) {
     return InputDecoration(
       labelText: hint,
       floatingLabelBehavior: FloatingLabelBehavior.auto,
@@ -128,7 +102,6 @@ class _LoginScreenState extends State<LoginScreen> {
         fontWeight: FontWeight.w500,
       ),
       prefixIcon: Icon(icon, color: primary, size: R.icon(17)),
-      suffixIcon: suffixIcon,
       filled: true,
       fillColor: const Color(0xFFF8F8FC),
       border: OutlineInputBorder(
@@ -229,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     SizedBox(height: R.space(10)),
                     Text(
-                      "Welcome back",
+                      "Forgot password?",
                       style: GoogleFonts.montserrat(
                         fontSize: R.text(18),
                         fontWeight: FontWeight.w700,
@@ -238,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     SizedBox(height: R.space(6)),
                     Text(
-                      "Log in to continue!",
+                      "Enter your email to reset it.",
                       style: GoogleFonts.montserrat(
                         fontSize: R.text(11),
                         fontWeight: FontWeight.w500,
@@ -250,73 +223,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
+                      textInputAction: TextInputAction.done,
                       style: GoogleFonts.montserrat(fontSize: R.text(11)),
                       decoration: _input(
                         "Enter your email",
                         Icons.email_outlined,
                         errorText: emailError,
                       ),
-                    ),
-                    SizedBox(height: R.space(13)),
-
-                    SizedBox(height: R.space(7)),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      style: GoogleFonts.montserrat(fontSize: R.text(11)),
-                      decoration: _input(
-                        "Enter your password",
-                        Icons.lock_outline_rounded,
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            size: R.icon(17),
-                            color: Colors.black38,
-                          ),
-                        ),
-                        errorText: passwordError,
-                      ),
-                      onSubmitted: (_) => _login(),
-                    ),
-                    SizedBox(height: R.space(6)),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ForgotPasswordScreen(),
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: R.space(6),
-                            vertical: R.space(4),
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          "Forgot Password?",
-                          style: GoogleFonts.montserrat(
-                            fontSize: R.text(10.3),
-                            fontWeight: FontWeight.w700,
-                            color: primary,
-                          ),
-                        ),
-                      ),
+                      onSubmitted: (_) => _sendResetEmail(),
                     ),
                     if (generalError != null) ...[
-                      SizedBox(height: R.space(4)),
+                      SizedBox(height: R.space(8)),
                       Text(
                         generalError!,
                         style: GoogleFonts.montserrat(
@@ -326,12 +243,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ],
+                    if (successMessage != null) ...[
+                      SizedBox(height: R.space(8)),
+                      Text(
+                        successMessage!,
+                        style: GoogleFonts.montserrat(
+                          color: Colors.green,
+                          fontSize: R.text(10),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                     SizedBox(height: R.space(14)),
                     SizedBox(
                       width: double.infinity,
                       height: R.buttonH(47),
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
+                        onPressed: _isLoading ? null : _sendResetEmail,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primary,
                           elevation: 0,
@@ -349,7 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               )
                             : Text(
-                                "Log In",
+                                "Send Reset Link",
                                 style: GoogleFonts.montserrat(
                                   fontSize: R.text(12),
                                   fontWeight: FontWeight.w700,
@@ -363,31 +291,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               SizedBox(height: R.space(18)),
               Center(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    Text(
-                      "Don’t have an account? ",
-                      style: GoogleFonts.montserrat(
-                        fontSize: R.text(10.5),
-                        color: Colors.black54,
-                      ),
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Text(
+                    "Back to Login",
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(10.5),
+                      fontWeight: FontWeight.w700,
+                      color: primary,
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                      ),
-                      child: Text(
-                        "Sign Up",
-                        style: GoogleFonts.montserrat(
-                          fontSize: R.text(10.5),
-                          fontWeight: FontWeight.w700,
-                          color: primary,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
