@@ -112,7 +112,7 @@ class ProfileSelectionPage extends StatelessWidget {
                     color: textDark,
                   ),
                   decoration: InputDecoration(
-                    labelText: "Enter PIN:",
+                    labelText: "Enter PIN",
                     floatingLabelBehavior: FloatingLabelBehavior.auto,
                     hintStyle: GoogleFonts.montserrat(
                       fontSize: R.text(14),

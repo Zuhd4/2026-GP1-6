@@ -186,6 +186,7 @@ class _AddChildPageState extends State<AddChildPage> {
                     style: GoogleFonts.montserrat(
                       fontWeight: FontWeight.w600,
                       fontSize: 14.sp,
+                      color: Colors.white,
                     ),
                   ),
                 ),
