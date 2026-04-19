@@ -19,7 +19,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String? successMessage;
 
   static const Color primary = Color(0xFF6A5ACD);
-  static const Color primaryLight = Color(0xFFF3EEFF);
   static const Color textDark = Color(0xFF2D3142);
   static const Color softBlue = Color(0xFFEFF7FF);
   static const Color softPink = Color(0xFFFFF5F8);
@@ -36,6 +35,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     final email = _emailController.text.trim().toLowerCase();
 
+    // Basic regex for email validation
     final emailRegex = RegExp(
       r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
     );
@@ -71,18 +71,34 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (!mounted) return;
 
       setState(() {
-        successMessage = "Reset link sent";
+        successMessage = "Reset link sent to your email";
         emailError = null;
         generalError = null;
       });
 
-      await Future.delayed(const Duration(seconds: 1));
+      // Wait a moment so the user can see the success message before closing
+      await Future.delayed(const Duration(seconds: 2));
 
       if (!mounted) return;
       Navigator.pop(context);
-    } catch (_) {
+      
+    } on FirebaseAuthException catch (e) {
       setState(() {
-        generalError = "Could not send reset link";
+        // Specific handling for unregistered accounts
+        if (e.code == 'user-not-found') {
+          generalError = "This email is not registered";
+        } else if (e.code == 'invalid-email') {
+          generalError = "Invalid email format";
+        } else if (e.code == 'network-request-failed') {
+          generalError = "Network error. Please check your connection";
+        } else {
+          generalError = "Could not send reset link. Please try again";
+        }
+        successMessage = null;
+      });
+    } catch (e) {
+      setState(() {
+        generalError = "An unexpected error occurred. Please try again";
         successMessage = null;
       });
     } finally {
@@ -171,9 +187,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   fit: BoxFit.contain,
                 ),
               ),
-              SizedBox(height: R.space(16)),
-
-              SizedBox(height: R.space(24)),
+              SizedBox(height: R.space(40)),
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.all(R.space(18)),
@@ -189,11 +203,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       color: const Color(0xFF6A5ACD).withOpacity(0.05),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.035),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -219,7 +228,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                     SizedBox(height: R.space(25)),
-
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -232,29 +240,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       onSubmitted: (_) => _sendResetEmail(),
                     ),
+                    
+                    // Error and Success messages
                     if (generalError != null) ...[
-                      SizedBox(height: R.space(8)),
+                      SizedBox(height: R.space(10)),
                       Text(
                         generalError!,
                         style: GoogleFonts.montserrat(
                           color: Colors.red,
                           fontSize: R.text(10),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                     if (successMessage != null) ...[
-                      SizedBox(height: R.space(8)),
+                      SizedBox(height: R.space(10)),
                       Text(
                         successMessage!,
                         style: GoogleFonts.montserrat(
                           color: Colors.green,
                           fontSize: R.text(10),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
-                    SizedBox(height: R.space(14)),
+                    
+                    SizedBox(height: R.space(20)),
                     SizedBox(
                       width: double.infinity,
                       height: R.buttonH(47),
@@ -289,7 +300,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: R.space(18)),
+              SizedBox(height: R.space(24)),
               Center(
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
