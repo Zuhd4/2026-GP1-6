@@ -36,7 +36,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     if (letters.length <= 1) return letters;
 
     final original = word;
-    List<String> shuffled = List<String>.from(letters);
+    final shuffled = List<String>.from(letters);
 
     int attempts = 0;
     do {
@@ -54,9 +54,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
     QuerySnapshot<Map<String, dynamic>> snapshot = await _firestore
         .collection(collectionName)
-        .where('is_safe', isEqualTo: true)
-        .where('is_educational', isEqualTo: true)
-        .where('is_representable', isEqualTo: true)
         .where('level', isEqualTo: widget.level)
         .orderBy('shuffle_key')
         .startAt([randomValue])
@@ -66,9 +63,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     if (snapshot.docs.isEmpty) {
       snapshot = await _firestore
           .collection(collectionName)
-          .where('is_safe', isEqualTo: true)
-          .where('is_educational', isEqualTo: true)
-          .where('is_representable', isEqualTo: true)
           .where('level', isEqualTo: widget.level)
           .orderBy('shuffle_key')
           .limit(1)
