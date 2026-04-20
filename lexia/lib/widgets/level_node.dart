@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
+import '../letter_scramble_page.dart';
 
 class LevelNode extends StatefulWidget {
   final int level;
@@ -30,7 +31,6 @@ class _LevelNodeState extends State<LevelNode>
   @override
   void initState() {
     super.initState();
-    // Creates a continuous breathing/pulse effect for the active level
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -41,6 +41,20 @@ class _LevelNodeState extends State<LevelNode>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _handleTap() {
+    bool isLocked = widget.status == "locked";
+    if (isLocked) return;
+
+    if (widget.level == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LetterScramblePage(level: 1),
+        ),
+      );
+    }
   }
 
   @override
@@ -54,60 +68,56 @@ class _LevelNodeState extends State<LevelNode>
       top: widget.position.dy,
       child: FractionalTranslation(
         translation: const Offset(-0.5, -0.5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // The translucent "Current" badge from the photo
-            if (isCurrent) _buildCurrentBadge(),
-
-            // Stars appear above completed levels
-            if (isCompleted) _buildStars(),
-
-            // The main circle with pulse animation
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Container(
-                  width: 75.w,
-                  height: 75.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isLocked ? Colors.grey[300] : widget.color,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        // Pulse logic: glow expands and fades based on animation controller
-                        color: isCurrent
-                            ? Colors.yellow.withOpacity(
-                                0.2 + (_controller.value * 0.4),
-                              )
-                            : Colors.black12,
-                        blurRadius: isCurrent
-                            ? 12 + (_controller.value * 12)
-                            : 10,
-                        spreadRadius: isCurrent
-                            ? 6 + (_controller.value * 6)
-                            : 0,
-                      ),
-                    ],
-                  ),
-                  child: Center(child: _buildInsideIcon(isLocked, isCompleted)),
-                );
-              },
-            ),
-
-            SizedBox(height: 8.h),
-
-            // Level Title
-            Text(
-              widget.title,
-              style: GoogleFonts.fredoka(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.bold,
-                color: isLocked ? Colors.grey : const Color(0xFF2D3142),
+        child: GestureDetector(
+          onTap: _handleTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isCurrent) _buildCurrentBadge(),
+              if (isCompleted) _buildStars(),
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Container(
+                    width: 75.w,
+                    height: 75.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isLocked ? Colors.grey[300] : widget.color,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isCurrent
+                              ? Colors.yellow.withOpacity(
+                                  0.2 + (_controller.value * 0.4),
+                                )
+                              : Colors.black12,
+                          blurRadius: isCurrent
+                              ? 12 + (_controller.value * 12)
+                              : 10,
+                          spreadRadius: isCurrent
+                              ? 6 + (_controller.value * 6)
+                              : 0,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: _buildInsideIcon(isLocked, isCompleted),
+                    ),
+                  );
+                },
               ),
-            ),
-          ],
+              SizedBox(height: 8.h),
+              Text(
+                widget.title,
+                style: GoogleFonts.fredoka(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                  color: isLocked ? Colors.grey : const Color(0xFF2D3142),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
