@@ -7,6 +7,7 @@ import 'profile_selection.dart';
 import 'games_page.dart';
 import 'reading_page.dart';
 import 'my_book_page.dart';
+import 'word_page.dart';
 
 class MainWrapper extends StatefulWidget {
   final bool isChildMode;
@@ -21,6 +22,7 @@ class _MainWrapperState extends State<MainWrapper> {
   final List<Widget> _parentPages = [
     const DashboardPage(),
     const ScannerPage(),
+     const WordPage(),
   ];
   final List<Widget> _childPages = [
     const GamesPage(),
@@ -180,6 +182,10 @@ class _MainWrapperState extends State<MainWrapper> {
                           icon: Icon(Icons.menu_book_rounded),
                           label: 'Books',
                         ),
+                        BottomNavigationBarItem(
+  icon: Icon(Icons.manage_search_rounded),
+  label: 'Difficulty',
+),
                       ],
               ),
             ),
