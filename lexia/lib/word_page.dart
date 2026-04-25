@@ -150,7 +150,7 @@ class _WordPageState extends State<WordPage>
               const SizedBox(height: 120),
 
               const Text(
-                "Word Difficulty",
+                "Word Analyzer",
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,

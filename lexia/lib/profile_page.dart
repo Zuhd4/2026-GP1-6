@@ -125,7 +125,7 @@ class _ProfilePageState extends State<ProfilePage> {
             borderRadius: BorderRadius.circular(24.r),
           ),
           title: Text(
-            "Change Password",
+            "Password",
             style: GoogleFonts.montserrat(
               fontWeight: FontWeight.w600,
               color: textDark,
