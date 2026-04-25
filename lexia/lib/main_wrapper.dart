@@ -22,7 +22,7 @@ class _MainWrapperState extends State<MainWrapper> {
   final List<Widget> _parentPages = [
     const DashboardPage(),
     const ScannerPage(),
-     const WordPage(),
+    const WordPage(),
   ];
   final List<Widget> _childPages = [
     const GamesPage(),
@@ -183,9 +183,9 @@ class _MainWrapperState extends State<MainWrapper> {
                           label: 'Books',
                         ),
                         BottomNavigationBarItem(
-  icon: Icon(Icons.manage_search_rounded),
-  label: 'Difficulty',
-),
+                          icon: Icon(Icons.manage_search_rounded),
+                          label: 'Analyzer',
+                        ),
                       ],
               ),
             ),
