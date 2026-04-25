@@ -16,6 +16,8 @@ class _WordPageState extends State<WordPage>
   String difficulty = "";
   int score = 0;
   List<Map<String, dynamic>> rules = [];
+  bool isLoading = false;
+  String? errorMessage;
 
   late AnimationController _controllerAnim;
   late Animation<double> _fadeAnim;
@@ -27,39 +29,58 @@ class _WordPageState extends State<WordPage>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _fadeAnim =
-        CurvedAnimation(parent: _controllerAnim, curve: Curves.easeIn);
+    _fadeAnim = CurvedAnimation(parent: _controllerAnim, curve: Curves.easeIn);
   }
 
   Future<void> analyzeWord() async {
     String word = _controller.text.trim();
     if (word.isEmpty) return;
 
-    final url = Uri.parse("http://10.0.2.2:10000/analyze");
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"word": word}),
-    );
+    try {
+      final url = Uri.parse("https://analyzer-u8yc.onrender.com/analyze");
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"word": word}),
+      );
 
-      difficulty = data["difficulty"];
-      score = data["total_score"];
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-      rules = (data["rules"] as List).map((r) {
-        return {
-          "name": r["rule"],
-          "applied": r["triggered"],
-          "desc": r["desc"],
-          "detail": r["detail"],
-        };
-      }).toList();
+        setState(() {
+          difficulty = data["difficulty"] ?? "";
+          score = data["total_score"] ?? 0;
 
-      _controllerAnim.forward(from: 0);
-      setState(() {});
+          rules = ((data["rules"] ?? []) as List).map((r) {
+            return {
+              "name": r["rule"],
+              "applied": r["triggered"],
+              "desc": r["desc"],
+              "detail": r["detail"],
+            };
+          }).toList();
+
+          isLoading = false;
+        });
+
+        _controllerAnim.forward(from: 0);
+      } else {
+        setState(() {
+          isLoading = false;
+          errorMessage = "Server error: ${response.statusCode}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "Connection error. Please try again.";
+      });
     }
   }
 
@@ -126,19 +147,14 @@ class _WordPageState extends State<WordPage>
   Widget build(BuildContext context) {
     final sw = MediaQuery.of(context).size.width;
 
-    final appliedRules =
-        rules.where((r) => r["applied"] == true).toList();
-    final notAppliedRules =
-        rules.where((r) => r["applied"] == false).toList();
+    final appliedRules = rules.where((r) => r["applied"] == true).toList();
+    final notAppliedRules = rules.where((r) => r["applied"] == false).toList();
 
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFF4F0FF),
-              Color(0xFFEDE7F6),
-            ],
+            colors: [Color(0xFFF4F0FF), Color(0xFFEDE7F6)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -151,10 +167,7 @@ class _WordPageState extends State<WordPage>
 
               const Text(
                 "Word Analyzer",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 20),
@@ -165,7 +178,7 @@ class _WordPageState extends State<WordPage>
                   borderRadius: BorderRadius.circular(20),
                   color: Colors.white,
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 8)
+                    BoxShadow(color: Colors.black12, blurRadius: 8),
                   ],
                 ),
                 child: TextField(
@@ -183,7 +196,7 @@ class _WordPageState extends State<WordPage>
 
               // ✨ Button
               GestureDetector(
-                onTap: analyzeWord,
+                onTap: isLoading ? null : analyzeWord,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: double.infinity,
@@ -191,26 +204,48 @@ class _WordPageState extends State<WordPage>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(15),
                     gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF9C8CFF),
-                        Color(0xFF6A5ACD),
-                      ],
+                      colors: [Color(0xFF9C8CFF), Color(0xFF6A5ACD)],
                     ),
                   ),
-                  child: const Center(
-                    child: Text(
-                      "Analyze",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  child: Center(
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            "Analyze",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ),
 
               const SizedBox(height: 30),
+
+              if (errorMessage != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                const SizedBox(height: 15),
+              ],
 
               // 📊 Result with animation
               Expanded(
@@ -224,8 +259,7 @@ class _WordPageState extends State<WordPage>
                             borderRadius: BorderRadius.circular(25),
                             color: Colors.white,
                             boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black12, blurRadius: 12)
+                              BoxShadow(color: Colors.black12, blurRadius: 12),
                             ],
                           ),
                           child: Column(
@@ -239,16 +273,18 @@ class _WordPageState extends State<WordPage>
                                   const Text("Difficulty"),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 6),
+                                      horizontal: 14,
+                                      vertical: 6,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: getColor(),
-                                      borderRadius:
-                                          BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       difficulty,
                                       style: const TextStyle(
-                                          color: Colors.white),
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -259,16 +295,16 @@ class _WordPageState extends State<WordPage>
                               Text(
                                 "Score: $score",
                                 style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
 
                               const SizedBox(height: 20),
 
                               const Text(
                                 "Analysis",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
 
                               const SizedBox(height: 10),
@@ -280,14 +316,16 @@ class _WordPageState extends State<WordPage>
                                       const Text("✔️ Applied Rules"),
                                       const SizedBox(height: 8),
                                       ...appliedRules.map(
-                                          (r) => buildRuleItem(r, true)),
+                                        (r) => buildRuleItem(r, true),
+                                      ),
                                       const SizedBox(height: 15),
                                     ],
                                     if (notAppliedRules.isNotEmpty) ...[
                                       const Text("❌ Not Applied Rules"),
                                       const SizedBox(height: 8),
                                       ...notAppliedRules.map(
-                                          (r) => buildRuleItem(r, false)),
+                                        (r) => buildRuleItem(r, false),
+                                      ),
                                     ],
                                   ],
                                 ),
