@@ -54,6 +54,8 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
     QuerySnapshot<Map<String, dynamic>> snapshot = await _firestore
         .collection(collectionName)
+        .where('status', isEqualTo: 'done')
+        .where('validation_status', isEqualTo: 'done')
         .where('is_safe', isEqualTo: true)
         .where('is_educational', isEqualTo: true)
         .where('is_representable', isEqualTo: true)
@@ -66,6 +68,8 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     if (snapshot.docs.isEmpty) {
       snapshot = await _firestore
           .collection(collectionName)
+          .where('status', isEqualTo: 'done')
+          .where('validation_status', isEqualTo: 'done')
           .where('is_safe', isEqualTo: true)
           .where('is_educational', isEqualTo: true)
           .where('is_representable', isEqualTo: true)
