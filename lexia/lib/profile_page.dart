@@ -42,8 +42,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _avatarImage(String? path, {double size = 50, double radius = 12}) {
-    final String src =
-        (path == null || path.isEmpty) ? 'assets/lexiaAv.png' : path;
+    final String src = (path == null || path.isEmpty)
+        ? 'assets/lexiaAv.png'
+        : path;
     return Container(
       width: size,
       height: size,
@@ -104,7 +105,9 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Text(message, style: GoogleFonts.montserrat(fontSize: 13.sp)),
         backgroundColor: const Color(0xFF59A685),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       ),
     );
   }
@@ -115,7 +118,9 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Text(message, style: GoogleFonts.montserrat(fontSize: 13.sp)),
         backgroundColor: Colors.redAccent,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       ),
     );
   }
@@ -125,7 +130,9 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.r),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -136,8 +143,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: Color(0xFFE8F5E9),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_rounded,
-                  color: const Color(0xFF59A685), size: 36.r),
+              child: Icon(
+                Icons.check_rounded,
+                color: const Color(0xFF59A685),
+                size: 36.r,
+              ),
             ),
             SizedBox(height: 16.h),
             Text(
@@ -153,7 +163,9 @@ class _ProfilePageState extends State<ProfilePage> {
               message,
               textAlign: TextAlign.center,
               style: GoogleFonts.montserrat(
-                  fontSize: 12.sp, color: Colors.black45),
+                fontSize: 12.sp,
+                color: Colors.black45,
+              ),
             ),
             SizedBox(height: 24.h),
             SizedBox(
@@ -163,14 +175,17 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryPurple,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r)),
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
                   elevation: 0,
                 ),
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   "Done",
                   style: GoogleFonts.montserrat(
-                      color: Colors.white, fontWeight: FontWeight.w600),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -199,11 +214,15 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24.r)),
+            borderRadius: BorderRadius.circular(24.r),
+          ),
           title: Text(
             "Change Password",
             style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w600, color: textDark, fontSize: 18.sp),
+              fontWeight: FontWeight.w600,
+              color: textDark,
+              fontSize: 18.sp,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -225,19 +244,30 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-              _buildDialogField("New Password", newPassController,
-                  isObscure: true, error: newError),
               _buildDialogField(
-                  "Confirm New Password", confirmPassController,
-                  isObscure: true, error: confirmError),
+                "New Password",
+                newPassController,
+                isObscure: true,
+                error: newError,
+              ),
+              _buildDialogField(
+                "Confirm New Password",
+                confirmPassController,
+                isObscure: true,
+                error: confirmError,
+              ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Cancel",
-                  style: GoogleFonts.montserrat(
-                      color: Colors.black38, fontWeight: FontWeight.w500)),
+              child: Text(
+                "Cancel",
+                style: GoogleFonts.montserrat(
+                  color: Colors.black38,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
             SizedBox(
               height: 48.h,
@@ -245,7 +275,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryPurple,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r)),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
                   elevation: 0,
                 ),
                 onPressed: isUpdating
@@ -259,37 +290,44 @@ class _ProfilePageState extends State<ProfilePage> {
 
                         bool hasError = false;
                         if (currentPassController.text.isEmpty) {
-                          setDialogState(() =>
-                              currentError = "Current password required");
+                          setDialogState(
+                            () => currentError = "Current password required",
+                          );
                           hasError = true;
                         }
                         if (newPassController.text.isEmpty) {
                           setDialogState(
-                              () => newError = "Password is required");
+                            () => newError = "Password is required",
+                          );
                           hasError = true;
                         } else if (newPassController.text.length < 8) {
+                          setDialogState(() => newError = "Min. 8 characters");
+                          hasError = true;
+                        } else if (!RegExp(
+                          r'[A-Z]',
+                        ).hasMatch(newPassController.text)) {
                           setDialogState(
-                              () => newError = "Min. 8 characters");
+                            () => newError = "Must contain 1 uppercase letter",
+                          );
                           hasError = true;
-                        } else if (!RegExp(r'[A-Z]')
-                            .hasMatch(newPassController.text)) {
-                          setDialogState(() =>
-                              newError = "Must contain 1 uppercase letter");
-                          hasError = true;
-                        } else if (!RegExp(r'[a-z]')
-                            .hasMatch(newPassController.text)) {
-                          setDialogState(() =>
-                              newError = "Must contain 1 lowercase letter");
+                        } else if (!RegExp(
+                          r'[a-z]',
+                        ).hasMatch(newPassController.text)) {
+                          setDialogState(
+                            () => newError = "Must contain 1 lowercase letter",
+                          );
                           hasError = true;
                         }
                         if (confirmPassController.text.isEmpty) {
                           setDialogState(
-                              () => confirmError = "Please confirm password");
+                            () => confirmError = "Please confirm password",
+                          );
                           hasError = true;
                         } else if (newPassController.text !=
                             confirmPassController.text) {
                           setDialogState(
-                              () => confirmError = "Passwords do not match");
+                            () => confirmError = "Passwords do not match",
+                          );
                           hasError = true;
                         }
 
@@ -299,25 +337,28 @@ class _ProfilePageState extends State<ProfilePage> {
                         try {
                           AuthCredential credential =
                               EmailAuthProvider.credential(
-                            email: currentUser!.email!,
-                            password: currentPassController.text.trim(),
+                                email: currentUser!.email!,
+                                password: currentPassController.text.trim(),
+                              );
+                          await currentUser!.reauthenticateWithCredential(
+                            credential,
                           );
-                          await currentUser!
-                              .reauthenticateWithCredential(credential);
-                          await currentUser!
-                              .updatePassword(newPassController.text.trim());
+                          await currentUser!.updatePassword(
+                            newPassController.text.trim(),
+                          );
 
                           if (mounted) {
                             Navigator.pop(context);
                             _showSuccessDialog(
-                                "Your password has been changed successfully.");
+                              "Your password has been changed successfully.",
+                            );
                           }
                         } catch (e) {
-                          setDialogState(() =>
-                              currentError = "Incorrect current password");
+                          setDialogState(
+                            () => currentError = "Incorrect current password",
+                          );
                         } finally {
-                          if (mounted)
-                            setDialogState(() => isUpdating = false);
+                          if (mounted) setDialogState(() => isUpdating = false);
                         }
                       },
                 child: isUpdating
@@ -325,12 +366,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         height: 18.r,
                         width: 18.r,
                         child: const CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
-                    : Text("Change",
+                    : Text(
+                        "Change",
                         style: GoogleFonts.montserrat(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600)),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -357,11 +403,15 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24.r)),
+            borderRadius: BorderRadius.circular(24.r),
+          ),
           title: Text(
             "Change PIN",
             style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w600, color: textDark, fontSize: 18.sp),
+              fontWeight: FontWeight.w600,
+              color: textDark,
+              fontSize: 18.sp,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -398,9 +448,13 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Cancel",
-                  style: GoogleFonts.montserrat(
-                      color: Colors.black38, fontWeight: FontWeight.w500)),
+              child: Text(
+                "Cancel",
+                style: GoogleFonts.montserrat(
+                  color: Colors.black38,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
             SizedBox(
               height: 48.h,
@@ -408,7 +462,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryPurple,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r)),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
                   elevation: 0,
                 ),
                 onPressed: isUpdating
@@ -425,39 +480,45 @@ class _ProfilePageState extends State<ProfilePage> {
                         // Validate old PIN
                         if (oldPinController.text.isEmpty) {
                           setDialogState(
-                              () => oldPinError = "Current PIN required");
+                            () => oldPinError = "Current PIN required",
+                          );
                           hasError = true;
                         } else if (oldPinController.text != currentPin) {
-                          setDialogState(
-                              () => oldPinError = "Incorrect PIN");
+                          setDialogState(() => oldPinError = "Incorrect PIN");
                           hasError = true;
                         }
 
                         // Validate new PIN
                         if (newPinController.text.isEmpty) {
                           setDialogState(
-                              () => newPinError = "New PIN required");
+                            () => newPinError = "New PIN required",
+                          );
                           hasError = true;
                         } else if (newPinController.text.length != 4) {
                           setDialogState(
-                              () => newPinError = "PIN must be exactly 4 digits");
+                            () => newPinError = "PIN must be exactly 4 digits",
+                          );
                           hasError = true;
-                        } else if (!RegExp(r'^\d{4}$')
-                            .hasMatch(newPinController.text)) {
+                        } else if (!RegExp(
+                          r'^\d{4}$',
+                        ).hasMatch(newPinController.text)) {
                           setDialogState(
-                              () => newPinError = "PIN must be numbers only");
+                            () => newPinError = "PIN must be numbers only",
+                          );
                           hasError = true;
                         }
 
                         // Validate confirm PIN
                         if (confirmPinController.text.isEmpty) {
                           setDialogState(
-                              () => confirmPinError = "Please confirm PIN");
+                            () => confirmPinError = "Please confirm PIN",
+                          );
                           hasError = true;
                         } else if (newPinController.text !=
                             confirmPinController.text) {
                           setDialogState(
-                              () => confirmPinError = "PINs do not match");
+                            () => confirmPinError = "PINs do not match",
+                          );
                           hasError = true;
                         }
 
@@ -473,16 +534,17 @@ class _ProfilePageState extends State<ProfilePage> {
                           if (mounted) {
                             Navigator.pop(context);
                             _showSuccessDialog(
-                                "Your PIN has been changed successfully.");
+                              "Your PIN has been changed successfully.",
+                            );
                           }
                         } catch (e) {
                           if (mounted) {
                             _showErrorSnack(
-                                "Couldn't update PIN. Please try again.");
+                              "Couldn't update PIN. Please try again.",
+                            );
                           }
                         } finally {
-                          if (mounted)
-                            setDialogState(() => isUpdating = false);
+                          if (mounted) setDialogState(() => isUpdating = false);
                         }
                       },
                 child: isUpdating
@@ -490,12 +552,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         height: 18.r,
                         width: 18.r,
                         child: const CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
-                    : Text("Change",
+                    : Text(
+                        "Change",
                         style: GoogleFonts.montserrat(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600)),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -529,11 +596,16 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           errorText: error,
           errorStyle: GoogleFonts.montserrat(
-              fontSize: 9.sp, color: Colors.redAccent, height: 0.8),
+            fontSize: 9.sp,
+            color: Colors.redAccent,
+            height: 0.8,
+          ),
           filled: true,
           fillColor: const Color(0xFFF8F9FB),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 16.w,
+            vertical: 12.h,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide.none,
@@ -578,11 +650,16 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           errorText: error,
           errorStyle: GoogleFonts.montserrat(
-              fontSize: 9.sp, color: Colors.redAccent, height: 0.8),
+            fontSize: 9.sp,
+            color: Colors.redAccent,
+            height: 0.8,
+          ),
           filled: true,
           fillColor: const Color(0xFFF8F9FB),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 16.w,
+            vertical: 12.h,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide.none,
@@ -671,9 +748,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 return Column(
                                   children: [
                                     ...children.map((doc) {
-                                      final data = doc.data() as Map<String, dynamic>;
+                                      final data =
+                                          doc.data() as Map<String, dynamic>;
                                       return _childCard(
-                                          data['name'], data['avatarUrl'], doc.id);
+                                        data['name'],
+                                        data['avatarUrl'],
+                                        doc.id,
+                                      );
                                     }),
                                     _addChildButton(),
                                   ],
@@ -682,15 +763,20 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             SizedBox(height: 25.h),
                             _sectionHeader("Account Actions"),
-                            _actionButton("Sign Out", Icons.logout_rounded,
-                                primaryPurple, _signOut,
-                                isOutlined: true),
+                            _actionButton(
+                              "Sign Out",
+                              Icons.logout_rounded,
+                              primaryPurple,
+                              _signOut,
+                              isOutlined: true,
+                            ),
                             SizedBox(height: 12.h),
                             _actionButton(
-                                "Delete Account",
-                                Icons.delete_forever_rounded,
-                                const Color(0xFFD32F2F).withOpacity(0.8),
-                                _confirmDelete),
+                              "Delete Account",
+                              Icons.delete_forever_rounded,
+                              const Color(0xFFD32F2F).withOpacity(0.8),
+                              _confirmDelete,
+                            ),
                           ],
                         ),
                       ),
@@ -721,8 +807,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Expanded(
                 child: Column(
                   children: [
-                    _avatarImage(userData['avatarUrl'],
-                        size: 80.r, radius: 24),
+                    _avatarImage(userData['avatarUrl'], size: 80.r, radius: 24),
                     SizedBox(height: 10.h),
                     // Name — editable in edit mode
                     if (_isEditMode)
@@ -746,13 +831,16 @@ class _ProfilePageState extends State<ProfilePage> {
                             counterText: "",
                             errorText: _nameError,
                             errorStyle: GoogleFonts.montserrat(
-                                fontSize: 9.sp,
-                                color: Colors.redAccent,
-                                height: 0.8),
+                              fontSize: 9.sp,
+                              color: Colors.redAccent,
+                              height: 0.8,
+                            ),
                             filled: true,
                             fillColor: const Color(0xFFF8F9FB),
                             contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12.w, vertical: 10.h),
+                              horizontal: 12.w,
+                              vertical: 10.h,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.r),
                               borderSide: BorderSide.none,
@@ -764,13 +852,16 @@ class _ProfilePageState extends State<ProfilePage> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.r),
                               borderSide: BorderSide(
-                                  color: primaryPurple.withOpacity(0.4),
-                                  width: 1.5),
+                                color: primaryPurple.withOpacity(0.4),
+                                width: 1.5,
+                              ),
                             ),
                             errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.r),
                               borderSide: const BorderSide(
-                                  color: Colors.redAccent, width: 1),
+                                color: Colors.redAccent,
+                                width: 1,
+                              ),
                             ),
                           ),
                         ),
@@ -846,9 +937,7 @@ class _ProfilePageState extends State<ProfilePage> {
             "Parental PIN",
             userData['pin']?.toString() ?? "Not Set",
             isAction: _isEditMode,
-            onTap: _isEditMode
-                ? () => _showChangePinDialog(currentPin)
-                : null,
+            onTap: _isEditMode ? () => _showChangePinDialog(currentPin) : null,
           ),
 
           // ── Save button (only in edit mode) ──
@@ -864,19 +953,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r)),
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
                 ),
                 child: _isSaving
                     ? SizedBox(
                         height: 18.r,
                         width: 18.r,
                         child: const CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : Text(
                         "Save Changes",
                         style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w600, fontSize: 14.sp),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                        ),
                       ),
               ),
             ),
@@ -893,8 +987,11 @@ class _ProfilePageState extends State<ProfilePage> {
           width: 40.w,
           child: IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.arrow_back_ios_new_rounded,
-                size: 20.r, color: textDark),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 20.r,
+              color: textDark,
+            ),
           ),
         ),
         Expanded(
@@ -917,29 +1014,29 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _sectionHeader(String title) => Padding(
-        padding: EdgeInsets.only(left: 4.w, bottom: 8.h),
-        child: Text(
-          title,
-          style: GoogleFonts.montserrat(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w500,
-            color: textDark.withOpacity(0.4),
-            letterSpacing: 0.5,
-          ),
-        ),
-      );
+    padding: EdgeInsets.only(left: 4.w, bottom: 8.h),
+    child: Text(
+      title,
+      style: GoogleFonts.montserrat(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w500,
+        color: textDark.withOpacity(0.4),
+        letterSpacing: 0.5,
+      ),
+    ),
+  );
 
   BoxDecoration _cardDecoration() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(24.r),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.02),
+        blurRadius: 15,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
 
   Widget _accountDetailTile(
     IconData icon,
@@ -947,110 +1044,113 @@ class _ProfilePageState extends State<ProfilePage> {
     String value, {
     bool isAction = false,
     VoidCallback? onTap,
-  }) =>
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(
-            color: primaryPurple.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          child: Icon(icon,
-              color: primaryPurple.withOpacity(0.7), size: 18.r),
-        ),
-        title: Text(
-          title,
-          style: GoogleFonts.montserrat(
-            fontSize: 10.sp,
-            color: Colors.black38,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        subtitle: Text(
-          value,
-          style: GoogleFonts.montserrat(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
-            color: textDark,
-          ),
-        ),
-        trailing: isAction
-            ? Icon(Icons.chevron_right_rounded,
-                color: Colors.black26, size: 20.r)
-            : null,
-        onTap: onTap,
-      );
+  }) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Container(
+      padding: EdgeInsets.all(8.r),
+      decoration: BoxDecoration(
+        color: primaryPurple.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Icon(icon, color: primaryPurple.withOpacity(0.7), size: 18.r),
+    ),
+    title: Text(
+      title,
+      style: GoogleFonts.montserrat(
+        fontSize: 10.sp,
+        color: Colors.black38,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+    subtitle: Text(
+      value,
+      style: GoogleFonts.montserrat(
+        fontSize: 14.sp,
+        fontWeight: FontWeight.w500,
+        color: textDark,
+      ),
+    ),
+    trailing: isAction
+        ? Icon(Icons.chevron_right_rounded, color: Colors.black26, size: 20.r)
+        : null,
+    onTap: onTap,
+  );
 
   Widget _childCard(String name, String? avatar, String id) => Container(
-        margin: EdgeInsets.only(bottom: 12.h),
-        padding: EdgeInsets.all(12.w),
-        decoration: _cardDecoration(),
-        child: Row(
-          children: [
-            _avatarImage(avatar, size: 48.r, radius: 14),
-            SizedBox(width: 14.w),
-            Expanded(
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.montserrat(
-                  fontWeight: FontWeight.w500,
-                  color: textDark,
-                  fontSize: 14.sp,
-                ),
-              ),
+    margin: EdgeInsets.only(bottom: 12.h),
+    padding: EdgeInsets.all(12.w),
+    decoration: _cardDecoration(),
+    child: Row(
+      children: [
+        _avatarImage(avatar, size: 48.r, radius: 14),
+        SizedBox(width: 14.w),
+        Expanded(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.montserrat(
+              fontWeight: FontWeight.w500,
+              color: textDark,
+              fontSize: 14.sp,
             ),
-            IconButton(
-              onPressed: () => _confirmDeleteChild(name, id),
-              icon: Icon(Icons.delete_outline_rounded,
-                  color: Colors.redAccent.withOpacity(0.6), size: 20.r),
-            ),
-          ],
+          ),
         ),
-      );
+        IconButton(
+          onPressed: () => _confirmDeleteChild(name, id),
+          icon: Icon(
+            Icons.delete_outline_rounded,
+            color: Colors.redAccent.withOpacity(0.6),
+            size: 20.r,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _addChildButton() => InkWell(
-        onTap: () => showDialog(
-            context: context, builder: (_) => const AddChildPage()),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(16.h),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18.r),
-            border: Border.all(color: primaryPurple.withOpacity(0.1)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    onTap: () =>
+        showDialog(context: context, builder: (_) => const AddChildPage()),
+    child: Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: primaryPurple.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline_rounded,
-                  color: primaryPurple.withOpacity(0.6), size: 18.r),
-              SizedBox(width: 8.w),
-              Flexible(
-                child: Text(
-                  "Add Child Profile",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.montserrat(
-                    fontWeight: FontWeight.w500,
-                    color: primaryPurple.withOpacity(0.7),
-                    fontSize: 13.sp,
-                  ),
-                ),
-              ),
-            ],
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.add_circle_outline_rounded,
+            color: primaryPurple.withOpacity(0.6),
+            size: 18.r,
           ),
-        ),
-      );
+          SizedBox(width: 8.w),
+          Flexible(
+            child: Text(
+              "Add Child Profile",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w500,
+                color: primaryPurple.withOpacity(0.7),
+                fontSize: 13.sp,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _actionButton(
     String label,
@@ -1058,33 +1158,35 @@ class _ProfilePageState extends State<ProfilePage> {
     Color color,
     VoidCallback onTap, {
     bool isOutlined = false,
-  }) =>
-      SizedBox(
-        width: double.infinity,
-        height: 54.h,
-        child: ElevatedButton.icon(
-          onPressed: onTap,
-          icon: Icon(icon, size: 18.r),
-          label: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w500, fontSize: 14.sp),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isOutlined ? Colors.white : color,
-            foregroundColor: isOutlined ? color : Colors.white,
-            elevation: isOutlined ? 0 : 4,
-            shadowColor: color.withOpacity(0.2),
-            side: isOutlined
-                ? BorderSide(color: color.withOpacity(0.2))
-                : BorderSide.none,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r)),
-          ),
+  }) => SizedBox(
+    width: double.infinity,
+    height: 54.h,
+    child: ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18.r),
+      label: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.montserrat(
+          fontWeight: FontWeight.w500,
+          fontSize: 14.sp,
         ),
-      );
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isOutlined ? Colors.white : color,
+        foregroundColor: isOutlined ? color : Colors.white,
+        elevation: isOutlined ? 0 : 4,
+        shadowColor: color.withOpacity(0.2),
+        side: isOutlined
+            ? BorderSide(color: color.withOpacity(0.2))
+            : BorderSide.none,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+      ),
+    ),
+  );
 
   void _signOut() {
     showDialog(
@@ -1092,24 +1194,36 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.r)),
-        title: Text("Sign Out",
-            style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w500, color: textDark)),
-        content: Text("Are you sure you want to sign out?",
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w400)),
+          borderRadius: BorderRadius.circular(24.r),
+        ),
+        title: Text(
+          "Sign Out",
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w500,
+            color: textDark,
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to sign out?",
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w400),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel",
-                style: GoogleFonts.montserrat(
-                    color: Colors.black38, fontWeight: FontWeight.w500)),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.montserrat(
+                color: Colors.black38,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryPurple,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r)),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
             ),
             onPressed: () async {
               Navigator.pop(context);
@@ -1117,15 +1231,18 @@ class _ProfilePageState extends State<ProfilePage> {
               if (mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => const OnboardingPage()),
+                  MaterialPageRoute(builder: (_) => const OnboardingPage()),
                   (r) => false,
                 );
               }
             },
-            child: Text("Sign Out",
-                style: GoogleFonts.montserrat(
-                    color: Colors.white, fontWeight: FontWeight.w500)),
+            child: Text(
+              "Sign Out",
+              style: GoogleFonts.montserrat(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -1138,18 +1255,26 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.r)),
-        title: Text("Delete $name?",
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w500)),
+          borderRadius: BorderRadius.circular(24.r),
+        ),
+        title: Text(
+          "Delete $name?",
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),
+        ),
         content: Text(
-            "Are you sure you want to remove this profile? All progress will be lost.",
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w400)),
+          "Are you sure you want to remove this profile? All progress will be lost.",
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w400),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel",
-                style: GoogleFonts.montserrat(
-                    color: Colors.black38, fontWeight: FontWeight.w500)),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.montserrat(
+                color: Colors.black38,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -1167,10 +1292,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
             },
-            child: Text("Delete",
-                style: GoogleFonts.montserrat(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              "Delete",
+              style: GoogleFonts.montserrat(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -1183,18 +1311,26 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.r)),
-        title: Text("Delete Account?",
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w500)),
+          borderRadius: BorderRadius.circular(24.r),
+        ),
+        title: Text(
+          "Delete Account?",
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),
+        ),
         content: Text(
-            "This will permanently delete your account and all family data.",
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w400)),
+          "This will permanently delete your account and all family data.",
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w400),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel",
-                style: GoogleFonts.montserrat(
-                    color: Colors.black38, fontWeight: FontWeight.w500)),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.montserrat(
+                color: Colors.black38,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -1208,8 +1344,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 if (mounted) {
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(
-                        builder: (_) => const OnboardingPage()),
+                    MaterialPageRoute(builder: (_) => const OnboardingPage()),
                     (r) => false,
                   );
                 }
@@ -1217,17 +1352,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
-                        "Security: Please re-login before deleting your account."),
+                      "Security: Please re-login before deleting your account.",
+                    ),
                     backgroundColor: Colors.redAccent,
                   ),
                 );
                 Navigator.pop(context);
               }
             },
-            child: Text("Delete",
-                style: GoogleFonts.montserrat(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              "Delete",
+              style: GoogleFonts.montserrat(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
