@@ -9,19 +9,17 @@ import 'add_child_page.dart';
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
-  // --- ULTRA SOFT BRAND COLORS ---
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
-  static const Color ivoryWhite = Color(0xFFFFFDFB); // Subtle beige tint
-  static const Color paleBlush = Color(0xFFFFF9F9); // Subtle pink tint
-  static const Color softCream = Color(0xFFFFFAF5); // Warm cream tint
+  static const Color ivoryWhite = Color(0xFFFFFDFB);
+  static const Color paleBlush = Color(0xFFFFF9F9);
+  static const Color softCream = Color(0xFFFFFAF5);
 
   @override
   Widget build(BuildContext context) {
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final double horizontalPad = 22.w;
 
-    // Generous top and bottom margins for the persistent header in MainWrapper
     final double topMargin = 110.h;
     final double bottomMargin = 140.h;
 
@@ -29,8 +27,11 @@ class DashboardPage extends StatelessWidget {
       return const Scaffold(body: Center(child: Text('User not logged in')));
     }
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -62,6 +63,7 @@ class DashboardPage extends StatelessWidget {
 
             final bool hasChild =
                 snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+
             final List<String> childNames = hasChild
                 ? snapshot.data!.docs
                       .map(
@@ -83,7 +85,6 @@ class DashboardPage extends StatelessWidget {
                 width: double.infinity,
                 height: double.infinity,
                 decoration: const BoxDecoration(
-                  // CONSISTENT THREE-POINT SOFT GRADIENT
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -102,12 +103,11 @@ class DashboardPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header Text (Logo removed - persistent in MainWrapper)
                       Text(
                         'Hello $parentName',
                         style: GoogleFonts.montserrat(
                           fontSize: 22.sp,
-                          fontWeight: FontWeight.w500, // Medium weight
+                          fontWeight: FontWeight.w500,
                           color: textDark.withOpacity(0.9),
                         ),
                       ),
@@ -122,17 +122,11 @@ class DashboardPage extends StatelessWidget {
 
                       SizedBox(height: 35.h),
 
-                      _buildPendingRequestCard(context),
-
-                      SizedBox(height: 30.h),
-
                       if (hasChild)
                         Column(
                           children: snapshot.data!.docs.map((doc) {
                             return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: 30.h,
-                              ), // Generous vertical margin
+                              padding: EdgeInsets.only(bottom: 30.h),
                               child: _ChildDashboardCard(doc: doc),
                             );
                           }).toList(),
@@ -147,115 +141,6 @@ class DashboardPage extends StatelessWidget {
           },
         );
       },
-    );
-  }
-
-  Widget _buildPendingRequestCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 46.r,
-                height: 46.r,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFBF8FF),
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                child: Icon(
-                  Icons.vpn_key_rounded,
-                  color: primaryPurple.withOpacity(0.7),
-                  size: 22.r,
-                ),
-              ),
-              SizedBox(width: 14.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Login Request",
-                      style: GoogleFonts.montserrat(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w500,
-                        color: textDark,
-                      ),
-                    ),
-                    Text(
-                      "A child is waiting for approval",
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11.sp,
-                        color: Colors.black38,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20.h),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    side: BorderSide(color: Colors.redAccent.withOpacity(0.1)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                  ),
-                  child: Text(
-                    "Disapprove",
-                    style: GoogleFonts.montserrat(
-                      color: Colors.redAccent.withOpacity(0.6),
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryPurple.withOpacity(0.8),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                  ),
-                  child: Text(
-                    "Approve",
-                    style: GoogleFonts.montserrat(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -284,6 +169,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     final String src = (path == null || path.isEmpty)
         ? 'assets/lexiaAv.png'
         : path;
+
     if (src.endsWith('.svg')) {
       return SvgPicture.asset(
         src,
@@ -292,6 +178,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
         fit: BoxFit.contain,
       );
     }
+
     return Image.asset(src, width: size, height: size, fit: BoxFit.cover);
   }
 
@@ -300,6 +187,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     final data = widget.doc.data() as Map<String, dynamic>;
     final String childName = data['name'] ?? 'Child';
     final String? avatarUrl = data['avatarUrl'];
+
     double levelProgress = (displayedLevel > actualLevel) ? 0.0 : 0.4;
 
     return Container(
@@ -379,9 +267,9 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                     Row(
                       children: [
                         IconButton(
-                          onPressed: () => setState(
-                            () => displayedLevel > 1 ? displayedLevel-- : null,
-                          ),
+                          onPressed: () => setState(() {
+                            if (displayedLevel > 1) displayedLevel--;
+                          }),
                           icon: Icon(Icons.chevron_left_rounded, size: 22.r),
                         ),
                         Text(
@@ -393,9 +281,9 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () => setState(
-                            () => displayedLevel < 6 ? displayedLevel++ : null,
-                          ),
+                          onPressed: () => setState(() {
+                            if (displayedLevel < 6) displayedLevel++;
+                          }),
                           icon: Icon(Icons.chevron_right_rounded, size: 22.r),
                         ),
                       ],
@@ -463,6 +351,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
 class _GameCard extends StatelessWidget {
   final String title, emoji, score, status;
   final Color color;
+
   const _GameCard({
     required this.title,
     required this.emoji,
@@ -532,6 +421,7 @@ class _GameCard extends StatelessWidget {
 
 class _StoryGrid extends StatelessWidget {
   const _StoryGrid();
+
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> stories = [
@@ -572,6 +462,7 @@ class _StoryGrid extends StatelessWidget {
         'done': false,
       },
     ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -647,6 +538,7 @@ class _StoryGrid extends StatelessWidget {
 
 class _EmptyStateCard extends StatelessWidget {
   const _EmptyStateCard();
+
   @override
   Widget build(BuildContext context) {
     return Container(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'onboarding_page.dart';
 import 'main_wrapper.dart';
+import 'profile_selection.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,8 +29,9 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              user == null ? const OnboardingPage() : const MainWrapper(),
+          builder: (context) => user == null
+              ? const OnboardingPage()
+              : const ProfileSelectionPage(),
         ),
       );
     }
