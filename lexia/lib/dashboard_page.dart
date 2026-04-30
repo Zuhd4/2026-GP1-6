@@ -65,17 +65,13 @@ class DashboardPage extends StatelessWidget {
                 snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
             final List<String> childNames = hasChild
-                ? snapshot.data!.docs
-                      .map(
-                        (doc) =>
-                            (doc.data() as Map<String, dynamic>)['name']
-                                ?.toString() ??
-                            '',
-                      )
-                      .toList()
+                ? snapshot.data!.docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['name']?.toString() ?? '';
+                  }).toList()
                 : [];
 
-            String childrenText = childNames.isEmpty
+            final String childrenText = childNames.isEmpty
                 ? "Track learning journey"
                 : "✨ Track ${childNames.join(' & ')}'s journey";
 
@@ -119,7 +115,6 @@ class DashboardPage extends StatelessWidget {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-
                       SizedBox(height: 35.h),
 
                       if (hasChild)
@@ -147,6 +142,7 @@ class DashboardPage extends StatelessWidget {
 
 class _ChildDashboardCard extends StatefulWidget {
   final QueryDocumentSnapshot doc;
+
   const _ChildDashboardCard({required this.doc});
 
   @override
@@ -155,14 +151,68 @@ class _ChildDashboardCard extends StatefulWidget {
 
 class _ChildDashboardCardState extends State<_ChildDashboardCard> {
   late int displayedLevel;
-  late int actualLevel;
 
   @override
   void initState() {
     super.initState();
+    displayedLevel = _getCurrentUnlockedLevel();
+  }
+
+  int _getCurrentUnlockedLevel() {
     final data = widget.doc.data() as Map<String, dynamic>;
-    actualLevel = ((data['level'] as num?)?.toInt() ?? 1).clamp(1, 6);
-    displayedLevel = actualLevel;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+
+    int unlockedLevel = 1;
+
+    for (int level = 1; level <= 6; level++) {
+      final levelKey = 'level_$level';
+      final levelProgress = Map<String, dynamic>.from(
+        gameProgress[levelKey] ?? {},
+      );
+      final letterScramble = Map<String, dynamic>.from(
+        levelProgress['letterScramble'] ?? {},
+      );
+
+      final bool completed = letterScramble['completed'] == true;
+
+      if (completed && level < 6) {
+        unlockedLevel = level + 1;
+      }
+    }
+
+    return unlockedLevel.clamp(1, 6);
+  }
+
+  Map<String, dynamic> _getLetterScrambleData(int level) {
+    final data = widget.doc.data() as Map<String, dynamic>;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+
+    final levelKey = 'level_$level';
+    final levelProgress = Map<String, dynamic>.from(
+      gameProgress[levelKey] ?? {},
+    );
+
+    return Map<String, dynamic>.from(levelProgress['letterScramble'] ?? {});
+  }
+
+  bool _isLetterScrambleCompleted(int level) {
+    final letterData = _getLetterScrambleData(level);
+    return letterData['completed'] == true;
+  }
+
+  int _bestStarsForLetterScramble(int level) {
+    final letterData = _getLetterScrambleData(level);
+    return ((letterData['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
+  }
+
+  bool _isLevelLocked(int level) {
+    if (level == 1) return false;
+    return !_isLetterScrambleCompleted(level - 1);
+  }
+
+  double _levelProgressValue(int level) {
+    if (_isLevelLocked(level)) return 0.0;
+    return _isLetterScrambleCompleted(level) ? 1.0 : 0.0;
   }
 
   Widget _avatarWidget(String? path, {double size = 48}) {
@@ -188,7 +238,12 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     final String childName = data['name'] ?? 'Child';
     final String? avatarUrl = data['avatarUrl'];
 
-    double levelProgress = (displayedLevel > actualLevel) ? 0.0 : 0.4;
+    final int currentUnlockedLevel = _getCurrentUnlockedLevel();
+    final bool levelLocked = _isLevelLocked(displayedLevel);
+    final bool letterCompleted = _isLetterScrambleCompleted(displayedLevel);
+    final int letterStars = _bestStarsForLetterScramble(displayedLevel);
+
+    final double levelProgress = _levelProgressValue(displayedLevel);
 
     return Container(
       width: double.infinity,
@@ -234,7 +289,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
-                          'Level $actualLevel/6',
+                          'Current Level $currentUnlockedLevel/6',
                           style: GoogleFonts.montserrat(
                             fontSize: 10.sp,
                             fontWeight: FontWeight.w500,
@@ -311,10 +366,18 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                   title: 'Letter Scramble',
                   emoji: '🧩',
                   color: const Color(0xFFF1B4AF),
-                  score: (displayedLevel > actualLevel) ? '0/3' : '1/3',
-                  status: (displayedLevel > actualLevel)
+                  score: levelLocked
+                      ? '0/3'
+                      : letterCompleted
+                      ? '$letterStars/3'
+                      : '0/3',
+                  status: levelLocked
                       ? 'Locked'
-                      : 'In Progress',
+                      : letterCompleted
+                      ? 'Completed'
+                      : 'Not started',
+                  isLocked: levelLocked,
+                  isCompleted: letterCompleted && !levelLocked,
                 ),
                 SizedBox(height: 10.h),
                 _GameCard(
@@ -322,9 +385,8 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                   emoji: '✨',
                   color: const Color(0xFF5B96CA),
                   score: '0/3',
-                  status: (displayedLevel > actualLevel)
-                      ? 'Locked'
-                      : 'Not started',
+                  status: 'Locked',
+                  isLocked: true,
                 ),
                 SizedBox(height: 10.h),
                 _GameCard(
@@ -332,15 +394,14 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                   emoji: '🎧',
                   color: const Color(0xFF59A685),
                   score: '0/3',
-                  status: (displayedLevel > actualLevel)
-                      ? 'Locked'
-                      : 'Not started',
+                  status: 'Locked',
+                  isLocked: true,
                 ),
               ],
             ),
           ),
 
-          const _StoryGrid(),
+          const _StoryGrid(isLocked: true),
           SizedBox(height: 20.h),
         ],
       ),
@@ -351,6 +412,8 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
 class _GameCard extends StatelessWidget {
   final String title, emoji, score, status;
   final Color color;
+  final bool isLocked;
+  final bool isCompleted;
 
   const _GameCard({
     required this.title,
@@ -358,16 +421,28 @@ class _GameCard extends StatelessWidget {
     required this.color,
     required this.score,
     required this.status,
+    this.isLocked = false,
+    this.isCompleted = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color statusColor = isCompleted
+        ? const Color(0xFF59A685)
+        : isLocked
+        ? Colors.black26
+        : Colors.black38;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(
+          color: isCompleted
+              ? const Color(0xFF59A685).withOpacity(0.35)
+              : Colors.black.withOpacity(0.04),
+        ),
       ),
       child: Row(
         children: [
@@ -399,20 +474,43 @@ class _GameCard extends StatelessWidget {
                   status,
                   style: GoogleFonts.montserrat(
                     fontSize: 10.sp,
-                    color: Colors.black38,
+                    color: statusColor,
+                    fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
-          Text(
-            score,
-            style: GoogleFonts.montserrat(
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF6A5ACD),
+          if (isLocked)
+            Icon(Icons.lock_rounded, size: 17.r, color: Colors.black26)
+          else if (isCompleted)
+            Row(
+              children: [
+                Text(
+                  score,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF59A685),
+                  ),
+                ),
+                SizedBox(width: 5.w),
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 17.r,
+                  color: const Color(0xFF59A685),
+                ),
+              ],
+            )
+          else
+            Text(
+              score,
+              style: GoogleFonts.montserrat(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF6A5ACD),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -420,47 +518,19 @@ class _GameCard extends StatelessWidget {
 }
 
 class _StoryGrid extends StatelessWidget {
-  const _StoryGrid();
+  final bool isLocked;
+
+  const _StoryGrid({this.isLocked = false});
 
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> stories = [
-      {
-        'name': 'Butterfly',
-        'emoji': '🦋',
-        'color': const Color(0xFFE8F5E9),
-        'done': true,
-      },
-      {
-        'name': 'Sky',
-        'emoji': '✈️',
-        'color': const Color(0xFFE3F2FD),
-        'done': true,
-      },
-      {
-        'name': 'Stars',
-        'emoji': '✨',
-        'color': const Color(0xFFF3E5F5),
-        'done': false,
-      },
-      {
-        'name': 'Moon',
-        'emoji': '🌙',
-        'color': const Color(0xFFE1F5FE),
-        'done': false,
-      },
-      {
-        'name': 'Dragon',
-        'emoji': '🐉',
-        'color': const Color(0xFFF1F8E9),
-        'done': false,
-      },
-      {
-        'name': 'Ocean',
-        'emoji': '🐠',
-        'color': const Color(0xFFE0F7FA),
-        'done': false,
-      },
+      {'name': 'Butterfly', 'emoji': '🦋', 'color': const Color(0xFFE8F5E9)},
+      {'name': 'Sky', 'emoji': '✈️', 'color': const Color(0xFFE3F2FD)},
+      {'name': 'Stars', 'emoji': '✨', 'color': const Color(0xFFF3E5F5)},
+      {'name': 'Moon', 'emoji': '🌙', 'color': const Color(0xFFE1F5FE)},
+      {'name': 'Dragon', 'emoji': '🐉', 'color': const Color(0xFFF1F8E9)},
+      {'name': 'Ocean', 'emoji': '🐠', 'color': const Color(0xFFE0F7FA)},
     ];
 
     return Column(
@@ -480,7 +550,7 @@ class _StoryGrid extends StatelessWidget {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: 6,
+          itemCount: stories.length,
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
@@ -500,18 +570,21 @@ class _StoryGrid extends StatelessWidget {
                   child: Stack(
                     children: [
                       Center(
-                        child: Text(
-                          stories[index]['emoji'],
-                          style: TextStyle(fontSize: 24.sp),
+                        child: Opacity(
+                          opacity: isLocked ? 0.45 : 1,
+                          child: Text(
+                            stories[index]['emoji'],
+                            style: TextStyle(fontSize: 24.sp),
+                          ),
                         ),
                       ),
-                      if (stories[index]['done'])
+                      if (isLocked)
                         Positioned(
                           top: 6.r,
                           right: 6.r,
                           child: Icon(
-                            Icons.check_circle,
-                            color: const Color(0xFF59A685),
+                            Icons.lock_rounded,
+                            color: Colors.black26,
                             size: 18.r,
                           ),
                         ),

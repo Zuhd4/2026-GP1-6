@@ -8,6 +8,7 @@ class LevelNode extends StatelessWidget {
   final String status; // completed, current, locked
   final Color color;
   final Offset position;
+  final String childId;
 
   const LevelNode({
     super.key,
@@ -16,6 +17,7 @@ class LevelNode extends StatelessWidget {
     required this.status,
     required this.color,
     required this.position,
+    required this.childId,
   });
 
   void _handleTap(BuildContext context) {
@@ -23,13 +25,17 @@ class LevelNode extends StatelessWidget {
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => GamesSelectionPage(level: level)),
+      MaterialPageRoute(
+        builder: (context) =>
+            GamesSelectionPage(level: level, childId: childId),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isLocked = status == "locked";
+    final isCompleted = status == "completed";
 
     return Positioned(
       left: position.dx,
@@ -42,12 +48,25 @@ class LevelNode extends StatelessWidget {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: isLocked ? Colors.grey : color,
+                color: isLocked ? Colors.grey.shade400 : color,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
               child: Center(
                 child: isLocked
-                    ? const Icon(Icons.lock, color: Colors.white)
+                    ? const Icon(Icons.lock_rounded, color: Colors.white)
+                    : isCompleted
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      )
                     : Text(
                         "$level",
                         style: GoogleFonts.fredoka(
@@ -61,6 +80,7 @@ class LevelNode extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               title,
+              textAlign: TextAlign.center,
               style: GoogleFonts.fredoka(
                 fontSize: 14,
                 color: isLocked ? Colors.grey : Colors.black,

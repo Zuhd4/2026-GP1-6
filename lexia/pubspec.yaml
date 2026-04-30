@@ -47,7 +47,7 @@ dependencies:
   flutter_svg: ^2.2.4
   flutter_lucide: ^1.8.2
   material: ^1.0.1
-
+  firebase_storage: ^13.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
