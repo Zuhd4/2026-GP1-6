@@ -1,11 +1,20 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LevelCompletePage extends StatefulWidget {
   final int stars;
+  final int level;
+  final String childId;
 
-  const LevelCompletePage({super.key, required this.stars});
+  const LevelCompletePage({
+    super.key,
+    required this.stars,
+    required this.level,
+    required this.childId,
+  });
 
   @override
   State<LevelCompletePage> createState() => _LevelCompletePageState();
@@ -14,6 +23,8 @@ class LevelCompletePage extends StatefulWidget {
 class _LevelCompletePageState extends State<LevelCompletePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  bool _isSaving = false;
+  bool _saved = false;
 
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
@@ -30,6 +41,52 @@ class _LevelCompletePageState extends State<LevelCompletePage>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
+
+    _saveTrophy();
+  }
+
+  Future<void> _saveTrophy() async {
+    if (_saved) return;
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    final childRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('children')
+        .doc(widget.childId);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snapshot = await transaction.get(childRef);
+        final data = snapshot.data() ?? {};
+
+        final List completedLevels =
+            (data['completedTrophyLevels'] as List?) ?? [];
+
+        final int currentTrophies = ((data['trophies'] as num?)?.toInt() ?? 0);
+
+        if (!completedLevels.contains(widget.level)) {
+          transaction.set(childRef, {
+            'trophies': currentTrophies + 1,
+            'completedTrophyLevels': FieldValue.arrayUnion([widget.level]),
+            'lastCompletedLevel': widget.level,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      });
+
+      _saved = true;
+    } catch (e) {
+      debugPrint('Error saving trophy: $e');
+    }
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -116,8 +173,17 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                                 },
                               ),
                               const SizedBox(height: 18),
+
+                              const Icon(
+                                Icons.emoji_events_rounded,
+                                size: 70,
+                                color: Colors.amber,
+                              ),
+
+                              const SizedBox(height: 12),
+
                               Text(
-                                "Level Complete!",
+                                "You Got a Trophy!",
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.fredoka(
                                   fontSize: 30,
@@ -125,9 +191,11 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                                   color: textDark,
                                 ),
                               ),
+
                               const SizedBox(height: 10),
+
                               Text(
-                                "Amazing work! You earned",
+                                "Amazing work!",
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.montserrat(
                                   fontSize: 15,
@@ -135,7 +203,9 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                                   color: textDark.withOpacity(0.65),
                                 ),
                               ),
+
                               const SizedBox(height: 18),
+
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: List.generate(3, (index) {
@@ -162,15 +232,18 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                                   );
                                 }),
                               ),
-                              const SizedBox(height: 10),
-                              Text(
-                                "${widget.stars}/3 stars",
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: textDark,
+
+                              if (_isSaving) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  "Saving trophy...",
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: textDark.withOpacity(0.45),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -182,12 +255,15 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                     width: double.infinity,
                     height: 58,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context, true);
-                      },
+                      onPressed: _isSaving
+                          ? null
+                          : () {
+                              Navigator.pop(context, true);
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: green,
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: green.withOpacity(0.45),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),

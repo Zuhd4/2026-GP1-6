@@ -386,7 +386,13 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
       final result = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => LevelCompletePage(stars: stars)),
+        MaterialPageRoute(
+          builder: (_) => LevelCompletePage(
+            stars: stars,
+            level: widget.level,
+            childId: widget.childId,
+          ),
+        ),
       );
 
       if (!mounted) return;

@@ -317,6 +317,8 @@ class ProfileSelectionPage extends StatelessWidget {
                                       ...children.map((doc) {
                                         final childData =
                                             doc.data() as Map<String, dynamic>;
+                                        final String childId = doc.id;
+
                                         return _buildProfileCard(
                                           name: childData['name'] ?? "Child",
                                           role: "child",
@@ -326,8 +328,9 @@ class ProfileSelectionPage extends StatelessWidget {
                                                 context,
                                                 MaterialPageRoute(
                                                   builder: (context) =>
-                                                      const MainWrapper(
+                                                      MainWrapper(
                                                         isChildMode: true,
+                                                        childId: childId,
                                                       ),
                                                 ),
                                                 (route) => false,

@@ -30,9 +30,14 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
   static const Color softCream = Color(0xFFFFFAF5);
 
   late TextEditingController _nameController;
+  late TextEditingController _pinController;
   late String _selectedAvatar;
+
   bool _isSaving = false;
+  bool _allowChildPin = false;
+
   String? _nameError;
+  String? _pinError;
 
   final List<String> _avatars = [
     'assets/lexiaAv.png',
@@ -57,53 +62,112 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
+    _pinController = TextEditingController();
     _selectedAvatar = widget.initialAvatar;
+
+    _loadPinSettings();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _pinController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPinSettings() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
+          .get();
+
+      final data = doc.data() ?? {};
+
+      if (!mounted) return;
+
+      setState(() {
+        _allowChildPin = data['allowChildPin'] == true;
+        _pinController.text = data['childPin']?.toString() ?? '';
+      });
+    } catch (e) {
+      debugPrint("Failed to load child PIN settings: $e");
+    }
   }
 
   Widget _avatarWidget(String path, {double size = 50}) {
     if (path.endsWith('.svg')) {
-      return SvgPicture.asset(path, width: size, height: size, fit: BoxFit.contain);
+      return SvgPicture.asset(
+        path,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
     }
+
     return Image.asset(path, width: size, height: size, fit: BoxFit.cover);
   }
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
 
-    setState(() => _nameError = null);
+    setState(() {
+      _nameError = null;
+      _pinError = null;
+    });
 
     if (name.isEmpty) {
       setState(() => _nameError = "Name can't be empty");
       return;
     }
+
     if (name.length < 2) {
       setState(() => _nameError = "Name is too short");
       return;
     }
+
     if (name.length > 12) {
       setState(() => _nameError = "Max 12 characters");
       return;
+    }
+
+    if (_allowChildPin) {
+      final pin = _pinController.text.trim();
+
+      if (pin.isEmpty) {
+        setState(() => _pinError = "PIN is required");
+        return;
+      }
+
+      if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
+        setState(() => _pinError = "PIN must be 4 numbers");
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
 
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('children')
           .doc(widget.childId)
           .update({
-        'name': name,
-        'avatarUrl': _selectedAvatar,
-      });
+            'name': name,
+            'avatarUrl': _selectedAvatar,
+            'childPin': _allowChildPin
+                ? _pinController.text.trim()
+                : FieldValue.delete(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
       if (mounted) {
         _showSuccessDialog();
@@ -144,13 +208,13 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
             SizedBox(height: 16.h),
             Container(
               padding: EdgeInsets.all(16.r),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.check_rounded,
-                color: const Color(0xFF59A685),
+                color: Color(0xFF59A685),
                 size: 36.r,
               ),
             ),
@@ -185,8 +249,8 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  Navigator.pop(context); // close dialog
-                  Navigator.pop(context); // close settings page
+                  Navigator.pop(context);
+                  Navigator.pop(context);
                 },
                 child: Text(
                   "Done",
@@ -203,6 +267,16 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
       ),
     );
   }
+
+  Widget _sectionLabel(String label) => Text(
+    label,
+    style: GoogleFonts.montserrat(
+      fontSize: 12.sp,
+      fontWeight: FontWeight.w500,
+      color: textDark.withOpacity(0.4),
+      letterSpacing: 0.5,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +296,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
         child: SafeArea(
           child: Column(
             children: [
-              // ── Header ──
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
                 child: Row(
@@ -262,7 +335,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Current avatar preview ──
                       Center(
                         child: Column(
                           children: [
@@ -282,15 +354,10 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(28.r),
-                                child: _avatarWidget(_selectedAvatar, size: 90.r),
-                              ),
-                            ),
-                            SizedBox(height: 8.h),
-                            Text(
-                              "Tap an avatar below to change",
-                              style: GoogleFonts.montserrat(
-                                fontSize: 11.sp,
-                                color: Colors.black38,
+                                child: _avatarWidget(
+                                  _selectedAvatar,
+                                  size: 90.r,
+                                ),
                               ),
                             ),
                           ],
@@ -299,9 +366,9 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
                       SizedBox(height: 24.h),
 
-                      // ── Name field ──
                       _sectionLabel("Name"),
                       SizedBox(height: 8.h),
+
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -383,11 +450,101 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                         ),
                       ),
 
+                      if (_allowChildPin) ...[
+                        SizedBox(height: 24.h),
+
+                        _sectionLabel("Child PIN"),
+                        SizedBox(height: 8.h),
+
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _pinController,
+                            maxLength: 4,
+                            keyboardType: TextInputType.number,
+                            obscureText: true,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                              color: textDark,
+                            ),
+                            onChanged: (_) {
+                              if (_pinError != null) {
+                                setState(() => _pinError = null);
+                              }
+                            },
+                            decoration: InputDecoration(
+                              hintText: "Enter 4-digit PIN",
+                              hintStyle: GoogleFonts.montserrat(
+                                fontSize: 13.sp,
+                                color: Colors.black26,
+                              ),
+                              counterText: "",
+                              errorText: _pinError,
+                              errorStyle: GoogleFonts.montserrat(
+                                fontSize: 10.sp,
+                                color: Colors.redAccent,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.pin_rounded,
+                                color: primaryPurple.withOpacity(0.6),
+                                size: 20.r,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16.w,
+                                vertical: 16.h,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                                borderSide: BorderSide(
+                                  color: primaryPurple.withOpacity(0.4),
+                                  width: 1.5,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                                borderSide: const BorderSide(
+                                  color: Colors.redAccent,
+                                  width: 1,
+                                ),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                                borderSide: const BorderSide(
+                                  color: Colors.redAccent,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+
                       SizedBox(height: 24.h),
 
-                      // ── Avatar picker ──
                       _sectionLabel("Choose Avatar"),
                       SizedBox(height: 12.h),
+
                       Container(
                         padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
@@ -404,18 +561,21 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                         child: GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            crossAxisSpacing: 12.w,
-                            mainAxisSpacing: 12.h,
-                          ),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                crossAxisSpacing: 12.w,
+                                mainAxisSpacing: 12.h,
+                              ),
                           itemCount: _avatars.length,
                           itemBuilder: (context, index) {
                             final path = _avatars[index];
                             final isSelected = _selectedAvatar == path;
+
                             return GestureDetector(
-                              onTap: () =>
-                                  setState(() => _selectedAvatar = path),
+                              onTap: () {
+                                setState(() => _selectedAvatar = path);
+                              },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 180),
                                 decoration: BoxDecoration(
@@ -445,7 +605,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                                         child: Container(
                                           width: 16.r,
                                           height: 16.r,
-                                          decoration: BoxDecoration(
+                                          decoration: const BoxDecoration(
                                             color: primaryPurple,
                                             shape: BoxShape.circle,
                                           ),
@@ -466,7 +626,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
                       SizedBox(height: 32.h),
 
-                      // ── Save button ──
                       SizedBox(
                         width: double.infinity,
                         height: 54.h,
@@ -509,14 +668,4 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
       ),
     );
   }
-
-  Widget _sectionLabel(String label) => Text(
-        label,
-        style: GoogleFonts.montserrat(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: textDark.withOpacity(0.4),
-          letterSpacing: 0.5,
-        ),
-      );
 }

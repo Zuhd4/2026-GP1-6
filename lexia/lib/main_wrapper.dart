@@ -10,7 +10,7 @@ import 'games_page.dart';
 import 'reading_page.dart';
 import 'my_book_page.dart';
 import 'word_page.dart';
-import 'child_profile_settings_page.dart'; // ← NEW
+import 'child_profile_page.dart';
 
 class MainWrapper extends StatefulWidget {
   final bool isChildMode;
@@ -31,11 +31,6 @@ class _MainWrapperState extends State<MainWrapper> {
     const DashboardPage(),
     const ScannerPage(),
     const WordPage(),
-  ];
-  final List<Widget> _childPages = [
-    const GamesPage(),
-    const ReadingPage(),
-    const MyBookPage(),
   ];
 
   static const Color primaryPurple = Color(0xFF6A5ACD);
@@ -59,6 +54,7 @@ class _MainWrapperState extends State<MainWrapper> {
 
         if (!doc.exists || !mounted) return;
         final data = doc.data() as Map<String, dynamic>;
+
         _navigateToSettings(
           childId: doc.id,
           name: data['name'] ?? '',
@@ -101,13 +97,7 @@ class _MainWrapperState extends State<MainWrapper> {
   }) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ChildProfileSettingsPage(
-          childId: childId,
-          initialName: name,
-          initialAvatar: avatar,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => ChildProfilePage(childId: childId)),
     );
   }
 
@@ -115,8 +105,22 @@ class _MainWrapperState extends State<MainWrapper> {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final sw = mq.size.width;
-    final List<Widget> currentPages =
-        widget.isChildMode ? _childPages : _parentPages;
+
+    final List<Widget> currentPages;
+
+    if (widget.isChildMode) {
+      if (widget.childId == null || widget.childId!.isEmpty) {
+        return const Scaffold(body: Center(child: Text("Child ID missing")));
+      }
+
+      currentPages = [
+        GamesPage(childId: widget.childId!),
+        const ReadingPage(),
+        const MyBookPage(),
+      ];
+    } else {
+      currentPages = _parentPages;
+    }
 
     return Scaffold(
       extendBody: true,
@@ -132,8 +136,8 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
- Widget _buildHeader(double sw, MediaQueryData mq) {
-    print("isChildMode: ${widget.isChildMode}"); // ← ADD THIS
+  Widget _buildHeader(double sw, MediaQueryData mq) {
+    print("isChildMode: ${widget.isChildMode}");
     return Positioned(
       top: 0,
       left: 0,
@@ -148,8 +152,12 @@ class _MainWrapperState extends State<MainWrapper> {
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 240, 230, 255)
-                      .withOpacity(0.4),
+                  color: const Color.fromARGB(
+                    255,
+                    240,
+                    230,
+                    255,
+                  ).withOpacity(0.4),
                   borderRadius: BorderRadius.circular(40),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.6),
@@ -196,10 +204,10 @@ class _MainWrapperState extends State<MainWrapper> {
                       )
                     else
                       IconButton(
-                        icon: Icon(
-  Icons.person_outline_rounded,
-  color: textDark,
-),
+                        icon: const Icon(
+                          Icons.person_outline_rounded,
+                          color: textDark,
+                        ),
                         onPressed: _openChildSettings,
                       ),
                     const SizedBox(width: 4),
