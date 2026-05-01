@@ -20,7 +20,7 @@ class DashboardPage extends StatelessWidget {
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final double horizontalPad = 22.w;
 
-    final double topMargin = 110.h;
+    final double topMargin = 135.h;
     final double bottomMargin = 140.h;
 
     if (uid.isEmpty) {

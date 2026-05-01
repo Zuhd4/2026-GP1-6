@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'change_pin_page.dart';
 
 class ChildProfileSettingsPage extends StatefulWidget {
   final String childId;
@@ -37,7 +38,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
   bool _allowChildPin = false;
 
   String? _nameError;
-  String? _pinError;
 
   final List<String> _avatars = [
     'assets/lexiaAv.png',
@@ -118,7 +118,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
     setState(() {
       _nameError = null;
-      _pinError = null;
     });
 
     if (name.isEmpty) {
@@ -136,20 +135,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
       return;
     }
 
-    if (_allowChildPin) {
-      final pin = _pinController.text.trim();
-
-      if (pin.isEmpty) {
-        setState(() => _pinError = "PIN is required");
-        return;
-      }
-
-      if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
-        setState(() => _pinError = "PIN must be 4 numbers");
-        return;
-      }
-    }
-
     setState(() => _isSaving = true);
 
     try {
@@ -163,9 +148,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
           .update({
             'name': name,
             'avatarUrl': _selectedAvatar,
-            'childPin': _allowChildPin
-                ? _pinController.text.trim()
-                : FieldValue.delete(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
@@ -280,6 +262,8 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentChildPin = _pinController.text.trim();
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -327,7 +311,6 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                   ],
                 ),
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -336,34 +319,26 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 90.r,
-                              height: 90.r,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(28.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: primaryPurple.withOpacity(0.12),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
+                        child: Container(
+                          width: 90.r,
+                          height: 90.r,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(28.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryPurple.withOpacity(0.12),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(28.r),
-                                child: _avatarWidget(
-                                  _selectedAvatar,
-                                  size: 90.r,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(28.r),
+                            child: _avatarWidget(_selectedAvatar, size: 90.r),
+                          ),
                         ),
                       ),
-
                       SizedBox(height: 24.h),
 
                       _sectionLabel("Name"),
@@ -452,89 +427,73 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
                       if (_allowChildPin) ...[
                         SizedBox(height: 24.h),
-
                         _sectionLabel("Child PIN"),
                         SizedBox(height: 8.h),
+                        GestureDetector(
+                          onTap: () {
+                            final currentPin = _pinController.text.trim();
 
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChangePinPage(
+                                  title: currentPin.isEmpty
+                                      ? "Add child PIN"
+                                      : "Update child PIN",
+                                  subtitle:
+                                      "Use a 4-digit PIN to protect this child profile.",
+                                  currentPin: currentPin,
+                                  isChild: true,
+                                  childId: widget.childId,
+                                  isAddingPin: currentPin.isEmpty,
+                                ),
                               ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _pinController,
-                            maxLength: 4,
-                            keyboardType: TextInputType.number,
-                            obscureText: true,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w500,
-                              color: textDark,
+                            ).then((_) {
+                              _loadPinSettings();
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 16.h,
                             ),
-                            onChanged: (_) {
-                              if (_pinError != null) {
-                                setState(() => _pinError = null);
-                              }
-                            },
-                            decoration: InputDecoration(
-                              hintText: "Enter 4-digit PIN",
-                              hintStyle: GoogleFonts.montserrat(
-                                fontSize: 13.sp,
-                                color: Colors.black26,
-                              ),
-                              counterText: "",
-                              errorText: _pinError,
-                              errorStyle: GoogleFonts.montserrat(
-                                fontSize: 10.sp,
-                                color: Colors.redAccent,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.pin_rounded,
-                                color: primaryPurple.withOpacity(0.6),
-                                size: 20.r,
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16.w,
-                                vertical: 16.h,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16.r),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16.r),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16.r),
-                                borderSide: BorderSide(
-                                  color: primaryPurple.withOpacity(0.4),
-                                  width: 1.5,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                              ),
-                              errorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16.r),
-                                borderSide: const BorderSide(
-                                  color: Colors.redAccent,
-                                  width: 1,
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.pin_rounded,
+                                  color: primaryPurple.withOpacity(0.6),
+                                  size: 20.r,
                                 ),
-                              ),
-                              focusedErrorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16.r),
-                                borderSide: const BorderSide(
-                                  color: Colors.redAccent,
-                                  width: 1.5,
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Text(
+                                    currentChildPin.isEmpty
+                                        ? "Add Child PIN"
+                                        : "Change Child PIN",
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: textDark,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 15.r,
+                                  color: Colors.black26,
+                                ),
+                              ],
                             ),
                           ),
                         ),

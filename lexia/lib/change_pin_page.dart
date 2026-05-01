@@ -4,16 +4,29 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ParentChangePinPage extends StatefulWidget {
+class ChangePinPage extends StatefulWidget {
+  final String title;
+  final String subtitle;
   final String currentPin;
+  final bool isChild;
+  final String? childId;
+  final bool isAddingPin;
 
-  const ParentChangePinPage({super.key, required this.currentPin});
+  const ChangePinPage({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.currentPin,
+    required this.isChild,
+    this.childId,
+    this.isAddingPin = false,
+  });
 
   @override
-  State<ParentChangePinPage> createState() => _ParentChangePinPageState();
+  State<ChangePinPage> createState() => _ChangePinPageState();
 }
 
-class _ParentChangePinPageState extends State<ParentChangePinPage> {
+class _ChangePinPageState extends State<ChangePinPage> {
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
   static const Color ivoryWhite = Color(0xFFFFFDFB);
@@ -48,31 +61,36 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
 
     bool hasError = false;
 
-    if (_oldPinController.text.isEmpty) {
-      setState(() => _oldPinError = "Current PIN required");
-      hasError = true;
-    } else if (_oldPinController.text != widget.currentPin) {
-      setState(() => _oldPinError = "Incorrect PIN");
-      hasError = true;
+    if (!widget.isAddingPin) {
+      if (_oldPinController.text.isEmpty) {
+        _oldPinError = "Current PIN required";
+        hasError = true;
+      } else if (_oldPinController.text != widget.currentPin) {
+        _oldPinError = "Incorrect PIN";
+        hasError = true;
+      }
     }
 
     if (_newPinController.text.isEmpty) {
-      setState(() => _newPinError = "New PIN required");
+      _newPinError = "New PIN required";
       hasError = true;
     } else if (!RegExp(r'^\d{4}$').hasMatch(_newPinController.text)) {
-      setState(() => _newPinError = "PIN must be 4 numbers");
+      _newPinError = "PIN must be 4 numbers";
       hasError = true;
     }
 
     if (_confirmPinController.text.isEmpty) {
-      setState(() => _confirmPinError = "Please confirm PIN");
+      _confirmPinError = "Please confirm PIN";
       hasError = true;
     } else if (_newPinController.text != _confirmPinController.text) {
-      setState(() => _confirmPinError = "PINs do not match");
+      _confirmPinError = "PINs do not match";
       hasError = true;
     }
 
-    if (hasError) return;
+    if (hasError) {
+      setState(() {});
+      return;
+    }
 
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (uid.isEmpty) return;
@@ -80,18 +98,27 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
     setState(() => _isUpdating = true);
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'pin': _newPinController.text.trim(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (widget.isChild) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('children')
+            .doc(widget.childId)
+            .update({
+              'childPin': _newPinController.text.trim(),
+              'allowChildPin': true,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+      } else {
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'pin': _newPinController.text.trim(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
 
-      if (mounted) {
-        _showSuccessDialog();
-      }
+      if (mounted) _showSuccessDialog();
     } catch (e) {
-      if (mounted) {
-        _showErrorSnack("Couldn't update PIN. Please try again.");
-      }
+      if (mounted) _showErrorSnack("Couldn't update PIN. Please try again.");
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }
@@ -120,7 +147,7 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
             ),
             SizedBox(height: 16.h),
             Text(
-              "PIN Updated!",
+              widget.isAddingPin ? "PIN Added!" : "PIN Updated!",
               style: GoogleFonts.montserrat(
                 fontSize: 17.sp,
                 fontWeight: FontWeight.w600,
@@ -129,7 +156,9 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
             ),
             SizedBox(height: 8.h),
             Text(
-              "Your parental PIN has been changed successfully.",
+              widget.isAddingPin
+                  ? "Your PIN has been added successfully."
+                  : "Your PIN has been changed successfully.",
               textAlign: TextAlign.center,
               style: GoogleFonts.montserrat(
                 fontSize: 12.sp,
@@ -198,13 +227,11 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
           color: textDark,
         ),
         onChanged: (_) {
-          if (error != null) {
-            setState(() {
-              _oldPinError = null;
-              _newPinError = null;
-              _confirmPinError = null;
-            });
-          }
+          setState(() {
+            _oldPinError = null;
+            _newPinError = null;
+            _confirmPinError = null;
+          });
         },
         decoration: InputDecoration(
           labelText: label,
@@ -213,10 +240,6 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
           labelStyle: GoogleFonts.montserrat(
             fontSize: 12.sp,
             color: error != null ? Colors.redAccent : Colors.black38,
-          ),
-          errorStyle: GoogleFonts.montserrat(
-            fontSize: 10.sp,
-            color: Colors.redAccent,
           ),
           prefixIcon: Icon(
             Icons.pin_rounded,
@@ -233,31 +256,12 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
             borderRadius: BorderRadius.circular(16.r),
             borderSide: BorderSide.none,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(
-              color: primaryPurple.withOpacity(0.4),
-              width: 1.5,
-            ),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.r),
-            borderSide: const BorderSide(color: Colors.redAccent, width: 1),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.r),
-            borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-          ),
         ),
       ),
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
       child: Row(
@@ -303,13 +307,12 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [ivoryWhite, paleBlush, softCream, Colors.white],
-            stops: [0.0, 0.4, 0.7, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              _header(context),
+              _header(),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -332,7 +335,7 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
                             ),
                             SizedBox(height: 10.h),
                             Text(
-                              "Update your parental PIN",
+                              widget.title,
                               textAlign: TextAlign.center,
                               style: GoogleFonts.montserrat(
                                 fontSize: 16.sp,
@@ -342,7 +345,7 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
                             ),
                             SizedBox(height: 6.h),
                             Text(
-                              "Use a 4-digit PIN to protect parent-only actions.",
+                              widget.subtitle,
                               textAlign: TextAlign.center,
                               style: GoogleFonts.montserrat(
                                 fontSize: 12.sp,
@@ -353,11 +356,12 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
                         ),
                       ),
                       SizedBox(height: 22.h),
-                      _buildPinField(
-                        label: "Current PIN",
-                        controller: _oldPinController,
-                        error: _oldPinError,
-                      ),
+                      if (!widget.isAddingPin)
+                        _buildPinField(
+                          label: "Current PIN",
+                          controller: _oldPinController,
+                          error: _oldPinError,
+                        ),
                       _buildPinField(
                         label: "New PIN",
                         controller: _newPinController,
@@ -393,7 +397,7 @@ class _ParentChangePinPageState extends State<ParentChangePinPage> {
                                   ),
                                 )
                               : Text(
-                                  "Change PIN",
+                                  widget.isAddingPin ? "Add PIN" : "Change PIN",
                                   style: GoogleFonts.montserrat(
                                     fontSize: 15.sp,
                                     fontWeight: FontWeight.w600,

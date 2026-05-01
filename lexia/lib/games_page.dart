@@ -83,14 +83,25 @@ class GamesPage extends StatelessWidget {
   }
 }
 
-class _GamesMapContent extends StatelessWidget {
+class _GamesMapContent extends StatefulWidget {
   final String childId;
   final Map<String, dynamic> childData;
 
   const _GamesMapContent({required this.childId, required this.childData});
 
+  @override
+  State<_GamesMapContent> createState() => _GamesMapContentState();
+}
+
+class _GamesMapContentState extends State<_GamesMapContent> {
+  final ScrollController _scrollController = ScrollController();
+  bool _didAutoScroll = false;
+
   static const Color primaryPurple = Color(0xFF6A5ACD);
   static const Color textDark = Color(0xFF2D3142);
+
+  Map<String, dynamic> get childData => widget.childData;
+  String get childId => widget.childId;
 
   Map<String, dynamic> get _gameProgress {
     return Map<String, dynamic>.from(childData['gameProgress'] ?? {});
@@ -166,11 +177,62 @@ class _GamesMapContent extends StatelessWidget {
     return 6;
   }
 
+  double _levelYPosition(int level) {
+    switch (level) {
+      case 1:
+        return 1400.h;
+      case 2:
+        return 1150.h;
+      case 3:
+        return 900.h;
+      case 4:
+        return 650.h;
+      case 5:
+        return 400.h;
+      case 6:
+        return 150.h;
+      default:
+        return 1400.h;
+    }
+  }
+
+  void _scrollToCurrentLevel(double topPadding) {
+    if (_didAutoScroll) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+
+      final screenHeight = MediaQuery.of(context).size.height;
+      final targetY = _levelYPosition(_currentLevel) + topPadding;
+
+      final targetOffset = (targetY - (screenHeight * 0.45)).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+
+      _scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutCubic,
+      );
+
+      _didAutoScroll = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final sw = MediaQuery.of(context).size.width;
     final mq = MediaQuery.of(context);
     final topPadding = mq.padding.top + 84.h;
+
+    _scrollToCurrentLevel(topPadding);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -217,6 +279,7 @@ class _GamesMapContent extends StatelessWidget {
               child: Stack(
                 children: [
                   SingleChildScrollView(
+                    controller: _scrollController,
                     physics: const BouncingScrollPhysics(),
                     child: SizedBox(
                       height: 1850.h + topPadding,

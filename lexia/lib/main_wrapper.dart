@@ -14,8 +14,6 @@ import 'child_profile_page.dart';
 
 class MainWrapper extends StatefulWidget {
   final bool isChildMode;
-
-  // TODO: pass childId properly once profile selection is updated
   final String? childId;
 
   const MainWrapper({super.key, this.isChildMode = false, this.childId});
@@ -25,18 +23,17 @@ class MainWrapper extends StatefulWidget {
 }
 
 class _MainWrapperState extends State<MainWrapper> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 1;
 
   final List<Widget> _parentPages = [
-    const DashboardPage(),
     const ScannerPage(),
+    const DashboardPage(),
     const WordPage(),
   ];
 
   static const Color primaryPurple = Color(0xFF6A5ACD);
   static const Color textDark = Color(0xFF2D3142);
 
-  // ── Fetches the first child's data (temporary until childId is passed in) ──
   Future<void> _openChildSettings() async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -44,7 +41,6 @@ class _MainWrapperState extends State<MainWrapper> {
       QuerySnapshot snap;
 
       if (widget.childId != null) {
-        // Preferred path: we already know which child
         final doc = await FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
@@ -63,7 +59,6 @@ class _MainWrapperState extends State<MainWrapper> {
         return;
       }
 
-      // Temporary fallback: use first child in collection
       snap = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -114,8 +109,8 @@ class _MainWrapperState extends State<MainWrapper> {
       }
 
       currentPages = [
-        GamesPage(childId: widget.childId!),
         const ReadingPage(),
+        GamesPage(childId: widget.childId!),
         const MyBookPage(),
       ];
     } else {
@@ -137,7 +132,6 @@ class _MainWrapperState extends State<MainWrapper> {
   }
 
   Widget _buildHeader(double sw, MediaQueryData mq) {
-    print("isChildMode: ${widget.isChildMode}");
     return Positioned(
       top: 0,
       left: 0,
@@ -167,12 +161,10 @@ class _MainWrapperState extends State<MainWrapper> {
                 child: Row(
                   children: [
                     const SizedBox(width: 4),
-                    // ── Left: back / logout ──
+
                     IconButton(
                       icon: Icon(
-                        widget.isChildMode
-                            ? Icons.arrow_back_ios_new_rounded
-                            : Icons.logout_rounded,
+                        Icons.logout_rounded,
                         color: textDark.withOpacity(0.6),
                         size: 20,
                       ),
@@ -184,11 +176,13 @@ class _MainWrapperState extends State<MainWrapper> {
                         (r) => false,
                       ),
                     ),
+
                     const Spacer(),
-                    // ── Centre: logo ──
+
                     Image.asset('assets/Lexia.png', height: 26),
+
                     const Spacer(),
-                    // ── Right: profile (parent) or settings (child) ──
+
                     if (!widget.isChildMode)
                       IconButton(
                         icon: const Icon(
@@ -210,6 +204,7 @@ class _MainWrapperState extends State<MainWrapper> {
                         ),
                         onPressed: _openChildSettings,
                       ),
+
                     const SizedBox(width: 4),
                   ],
                 ),
@@ -250,12 +245,12 @@ class _MainWrapperState extends State<MainWrapper> {
                 items: widget.isChildMode
                     ? const [
                         BottomNavigationBarItem(
-                          icon: Icon(Icons.videogame_asset_rounded),
-                          label: 'Games',
-                        ),
-                        BottomNavigationBarItem(
                           icon: Icon(Icons.menu_book_rounded),
                           label: 'Reading',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.map_rounded),
+                          label: 'Map',
                         ),
                         BottomNavigationBarItem(
                           icon: Icon(Icons.auto_stories_rounded),
@@ -264,12 +259,12 @@ class _MainWrapperState extends State<MainWrapper> {
                       ]
                     : const [
                         BottomNavigationBarItem(
-                          icon: Icon(Icons.grid_view_rounded),
-                          label: 'Dashboard',
-                        ),
-                        BottomNavigationBarItem(
                           icon: Icon(Icons.menu_book_rounded),
                           label: 'Books',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.grid_view_rounded),
+                          label: 'Dashboard',
                         ),
                         BottomNavigationBarItem(
                           icon: Icon(Icons.manage_search_rounded),

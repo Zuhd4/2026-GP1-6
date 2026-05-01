@@ -48,6 +48,12 @@ class _LevelCompletePageState extends State<LevelCompletePage>
   Future<void> _saveTrophy() async {
     if (_saved) return;
 
+    // ⭐ فقط إذا 3 نجوم
+    if (widget.stars < 3) {
+      _saved = true;
+      return;
+    }
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
 
@@ -172,18 +178,22 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                                   );
                                 },
                               ),
+
                               const SizedBox(height: 18),
 
-                              const Icon(
-                                Icons.emoji_events_rounded,
-                                size: 70,
-                                color: Colors.amber,
-                              ),
+                              if (widget.stars == 3)
+                                const Icon(
+                                  Icons.emoji_events_rounded,
+                                  size: 70,
+                                  color: Colors.amber,
+                                ),
 
-                              const SizedBox(height: 12),
+                              if (widget.stars == 3) const SizedBox(height: 12),
 
                               Text(
-                                "You Got a Trophy!",
+                                widget.stars == 3
+                                    ? "You Got a Trophy!"
+                                    : "Level Complete!",
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.fredoka(
                                   fontSize: 30,
@@ -236,7 +246,9 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                               if (_isSaving) ...[
                                 const SizedBox(height: 12),
                                 Text(
-                                  "Saving trophy...",
+                                  widget.stars == 3
+                                      ? "Saving trophy..."
+                                      : "Saving progress...",
                                   style: GoogleFonts.montserrat(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -251,6 +263,7 @@ class _LevelCompletePageState extends State<LevelCompletePage>
                     },
                   ),
                   const Spacer(),
+
                   SizedBox(
                     width: double.infinity,
                     height: 58,

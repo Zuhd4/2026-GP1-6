@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 
 class WordPage extends StatefulWidget {
   const WordPage({super.key});
@@ -21,6 +22,14 @@ class _WordPageState extends State<WordPage>
 
   late AnimationController _controllerAnim;
   late Animation<double> _fadeAnim;
+
+  static const Color textDark = Color(0xFF2D3142);
+  static const Color primaryPurple = Color(0xFF6A5ACD);
+  static const Color ivoryWhite = Color(0xFFFFFDFB);
+  static const Color paleBlush = Color(0xFFFFF9F9);
+  static const Color softCream = Color(0xFFFFFAF5);
+  static const Color green = Color(0xFF59A685);
+  static const Color softPeach = Color(0xFFF1B4AF);
 
   @override
   void initState() {
@@ -87,11 +96,11 @@ class _WordPageState extends State<WordPage>
   Color getColor() {
     switch (difficulty) {
       case "Easy":
-        return Colors.green;
+        return green;
       case "Medium":
         return Colors.orange;
       case "Hard":
-        return Colors.red;
+        return Colors.redAccent;
       default:
         return Colors.grey;
     }
@@ -103,17 +112,21 @@ class _WordPageState extends State<WordPage>
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: applied
-            ? Colors.green.withOpacity(0.12)
-            : Colors.red.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(18),
+        color: applied ? green.withOpacity(0.10) : softPeach.withOpacity(0.16),
+        border: Border.all(
+          color: applied
+              ? green.withOpacity(0.18)
+              : softPeach.withOpacity(0.28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            applied ? Icons.check_circle : Icons.cancel,
-            color: applied ? Colors.green : Colors.red,
+            applied ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            color: applied ? green : Colors.redAccent.withOpacity(0.75),
+            size: 22,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -121,14 +134,33 @@ class _WordPageState extends State<WordPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  rule["name"],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  rule["name"] ?? "",
+                  style: GoogleFonts.montserrat(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: textDark,
+                  ),
                 ),
-                Text(rule["desc"] ?? ""),
+                const SizedBox(height: 4),
                 Text(
-                  rule["detail"] ?? "",
-                  style: const TextStyle(color: Colors.grey),
+                  rule["desc"] ?? "",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 12,
+                    color: textDark.withOpacity(0.65),
+                    height: 1.35,
+                  ),
                 ),
+                if ((rule["detail"] ?? "").toString().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    rule["detail"] ?? "",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 11,
+                      color: Colors.black38,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -139,6 +171,7 @@ class _WordPageState extends State<WordPage>
 
   @override
   void dispose() {
+    _controller.dispose();
     _controllerAnim.dispose();
     super.dispose();
   }
@@ -151,130 +184,215 @@ class _WordPageState extends State<WordPage>
     final notAppliedRules = rules.where((r) => r["applied"] == false).toList();
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFF4F0FF), Color(0xFFEDE7F6)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            stops: [0.0, 0.4, 0.7, 1.0],
           ),
         ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: sw * 0.06),
-          child: Column(
-            children: [
-              const SizedBox(height: 120),
-
-              const Text(
-                "Word Analyzer",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 20),
-
-              // 🔍 Search
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: Colors.white,
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 8),
-                  ],
-                ),
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(
-                    hintText: "Enter a word...",
-                    prefixIcon: Icon(Icons.search_rounded),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(sw * 0.06, 110, sw * 0.06, 130),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Word Analyzer",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 27,
+                    fontWeight: FontWeight.w500,
+                    color: textDark.withOpacity(0.9),
                   ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                Text(
+                  "Check the difficulty score of any word",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 13,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 26),
 
-              // ✨ Button
-              GestureDetector(
-                onTap: isLoading ? null : analyzeWord,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF9C8CFF), Color(0xFF6A5ACD)],
+                    borderRadius: BorderRadius.circular(22),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.025),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _controller,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: textDark,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "Enter a word...",
+                      hintStyle: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        color: Colors.black26,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: primaryPurple.withOpacity(0.65),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 18,
+                      ),
                     ),
                   ),
-                  child: Center(
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                ),
+
+                const SizedBox(height: 18),
+
+                GestureDetector(
+                  onTap: isLoading ? null : analyzeWord,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B7CF6), primaryPurple],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryPurple.withOpacity(0.25),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              "Analyze",
+                              style: GoogleFonts.montserrat(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          )
-                        : const Text(
-                            "Analyze",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 30),
+                const SizedBox(height: 24),
 
-              if (errorMessage != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
+                if (errorMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      errorMessage!,
+                      style: GoogleFonts.montserrat(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
-                  child: Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-                const SizedBox(height: 15),
-              ],
+                  const SizedBox(height: 18),
+                ],
 
-              // 📊 Result with animation
-              Expanded(
-                child: FadeTransition(
+                FadeTransition(
                   opacity: _fadeAnim,
                   child: difficulty.isEmpty
                       ? const SizedBox()
                       : Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(25),
+                            borderRadius: BorderRadius.circular(28),
                             color: Colors.white,
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black12, blurRadius: 12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.025),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
                             ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Difficulty
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text("Difficulty"),
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: primaryPurple.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Icon(
+                                      Icons.psychology_alt_rounded,
+                                      color: primaryPurple.withOpacity(0.75),
+                                      size: 26,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _controller.text.trim(),
+                                          style: GoogleFonts.montserrat(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                            color: textDark,
+                                          ),
+                                        ),
+                                        Text(
+                                          "Total score: $score",
+                                          style: GoogleFonts.montserrat(
+                                            fontSize: 12,
+                                            color: Colors.black45,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
-                                      vertical: 6,
+                                      vertical: 7,
                                     ),
                                     decoration: BoxDecoration(
                                       color: getColor(),
@@ -282,60 +400,65 @@ class _WordPageState extends State<WordPage>
                                     ),
                                     child: Text(
                                       difficulty,
-                                      style: const TextStyle(
+                                      style: GoogleFonts.montserrat(
                                         color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
 
-                              const SizedBox(height: 15),
+                              const SizedBox(height: 22),
 
                               Text(
-                                "Score: $score",
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              const Text(
                                 "Analysis",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              Expanded(
-                                child: ListView(
-                                  children: [
-                                    if (appliedRules.isNotEmpty) ...[
-                                      const Text("✔️ Applied Rules"),
-                                      const SizedBox(height: 8),
-                                      ...appliedRules.map(
-                                        (r) => buildRuleItem(r, true),
-                                      ),
-                                      const SizedBox(height: 15),
-                                    ],
-                                    if (notAppliedRules.isNotEmpty) ...[
-                                      const Text("❌ Not Applied Rules"),
-                                      const SizedBox(height: 8),
-                                      ...notAppliedRules.map(
-                                        (r) => buildRuleItem(r, false),
-                                      ),
-                                    ],
-                                  ],
+                                style: GoogleFonts.montserrat(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: textDark,
                                 ),
                               ),
+
+                              const SizedBox(height: 12),
+
+                              if (appliedRules.isNotEmpty) ...[
+                                Text(
+                                  "Applied Rules",
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: green,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ...appliedRules.map(
+                                  (r) => buildRuleItem(r, true),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              if (notAppliedRules.isNotEmpty) ...[
+                                Text(
+                                  "Not Applied Rules",
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.redAccent.withOpacity(0.75),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ...notAppliedRules.map(
+                                  (r) => buildRuleItem(r, false),
+                                ),
+                              ],
                             ],
                           ),
                         ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -9,7 +9,7 @@ import 'onboarding_page.dart';
 import 'add_child_page.dart';
 import 'child_profile_page.dart';
 import 'parent_change_password_page.dart';
-import 'parent_change_pin_page.dart';
+import 'change_pin_page.dart';
 
 class ParentPrivacyPage extends StatelessWidget {
   final String currentPin;
@@ -101,8 +101,13 @@ class ParentPrivacyPage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ParentChangePinPage(currentPin: currentPin),
+                              builder: (_) => ChangePinPage(
+                                title: "Update your parental PIN",
+                                subtitle:
+                                    "Use a 4-digit PIN to protect parent-only actions.",
+                                currentPin: currentPin,
+                                isChild: false,
+                              ),
                             ),
                           );
                         },
@@ -287,12 +292,10 @@ class ParentPrivacyPage extends StatelessWidget {
           decoration: _cardDecoration(),
           child: Column(
             children: [
-              /// ── ROW 1 (Avatar + Name + Delete) ──
               Row(
                 children: [
                   _avatarImage(avatar, size: 48.r, radius: 14),
                   SizedBox(width: 14.w),
-
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
@@ -315,7 +318,6 @@ class ParentPrivacyPage extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   IconButton(
                     onPressed: () =>
                         _confirmDeleteChild(context, name, id, uid),
@@ -330,7 +332,6 @@ class ParentPrivacyPage extends StatelessWidget {
 
               const Divider(height: 22, color: Color(0xFFF8F9FB)),
 
-              /// ── ROW 2 (PIN TOGGLE) ──
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                 decoration: BoxDecoration(
@@ -352,7 +353,6 @@ class ParentPrivacyPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 12.w),
-
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,8 +376,6 @@ class ParentPrivacyPage extends StatelessWidget {
                         ],
                       ),
                     ),
-
-                    /// 🔥 TOGGLE SWITCH
                     GestureDetector(
                       onTap: () async {
                         await FirebaseFirestore.instance
@@ -594,14 +592,14 @@ class ParentPrivacyPage extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
+              Navigator.pop(context);
+
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(uid)
                   .collection('children')
                   .doc(id)
                   .delete();
-
-              if (context.mounted) Navigator.pop(context);
             },
             child: Text(
               "Delete",
@@ -641,6 +639,8 @@ class ParentPrivacyPage extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
+              Navigator.pop(context);
+
               try {
                 final uid = user!.uid;
 
@@ -668,7 +668,6 @@ class ParentPrivacyPage extends StatelessWidget {
                       backgroundColor: Colors.redAccent,
                     ),
                   );
-                  Navigator.pop(context);
                 }
               }
             },

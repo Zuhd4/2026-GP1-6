@@ -61,7 +61,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   }
 
   List<String> _buildScrambledLetters(String word) {
-    final letters = word.split('');
+    final letters = word.replaceAll(' ', '').split('');
     if (letters.length <= 1) return letters;
 
     final shuffled = List<String>.from(letters);
@@ -70,7 +70,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     do {
       shuffled.shuffle();
       attempts++;
-    } while (shuffled.join() == word && attempts < 10);
+    } while (shuffled.join() == word.replaceAll(' ', '') && attempts < 10);
 
     return shuffled;
   }
@@ -232,8 +232,9 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     if (targetWord.isEmpty || isChecking || isLoading) return;
 
     final userAnswer = selectedLetters.join();
+    final correctAnswer = targetWord.replaceAll(' ', '');
 
-    if (userAnswer.length != targetWord.length) {
+    if (userAnswer.length != correctAnswer.length) {
       await _showSimpleDialog(
         title: "Complete the word first",
         message: "Arrange all letters before checking.",
@@ -247,7 +248,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       isChecking = true;
     });
 
-    if (userAnswer == targetWord) {
+    if (userAnswer == correctAnswer) {
       stars++;
       correctWithoutHelp++;
 
@@ -414,13 +415,23 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   String get currentAnswer {
     if (targetWord.isEmpty) return "";
 
-    final display = List<String>.filled(targetWord.length, "_");
+    int selectedIndex = 0;
+    final List<String> display = [];
 
-    for (int i = 0; i < selectedLetters.length && i < display.length; i++) {
-      display[i] = selectedLetters[i];
+    for (int i = 0; i < targetWord.length; i++) {
+      if (targetWord[i] == ' ') {
+        display.add('   ');
+      } else {
+        if (selectedIndex < selectedLetters.length) {
+          display.add(selectedLetters[selectedIndex]);
+          selectedIndex++;
+        } else {
+          display.add('_');
+        }
+      }
     }
 
-    return display.join(" ");
+    return display.join(' ');
   }
 
   Future<void> _showStarDialog() async {
@@ -604,28 +615,32 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: primaryPurple),
-                  )
-                : errorMessage != null
-                ? _buildErrorState()
-                : Column(
+          child: isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: primaryPurple),
+                )
+              : errorMessage != null
+              ? Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: _buildErrorState(),
+                )
+              : SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                  child: Column(
                     children: [
                       _buildProgressHeader(),
                       const SizedBox(height: 14),
                       _buildQuestionCard(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 22),
                       _buildLetters(),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       _buildActionButtons(),
-                      const Spacer(),
+                      const SizedBox(height: 18),
                       _buildCheckButton(),
                     ],
                   ),
-          ),
+                ),
         ),
       ),
     );
