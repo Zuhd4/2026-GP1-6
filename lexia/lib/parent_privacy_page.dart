@@ -296,28 +296,37 @@ class ParentPrivacyPage extends StatelessWidget {
                 children: [
                   _avatarImage(avatar, size: 48.r, radius: 14),
                   SizedBox(width: 14.w),
+
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChildProfilePage(childId: id),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.montserrat(
-                          fontWeight: FontWeight.w500,
-                          color: textDark,
-                          fontSize: 14.sp,
-                        ),
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.w500,
+                        color: textDark,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ),
+
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChildProfilePage(childId: id),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.edit_rounded,
+                      size: 18.r,
+                      color: primaryPurple.withOpacity(0.7),
+                    ),
+                  ),
+
+                  // زر الحذف (زي ما هو)
                   IconButton(
                     onPressed: () =>
                         _confirmDeleteChild(context, name, id, uid),
