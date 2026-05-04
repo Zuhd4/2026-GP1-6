@@ -64,6 +64,27 @@ class R {
   }
 
   // =========================================================
+  // GAME MAP RESPONSIVE
+  // كل ما الشاشة تكبر، عناصر خريطة الألعاب تصغر شوي
+  // =========================================================
+
+  static double gameScale({double minFactor = 0.72, double maxFactor = 1.00}) {
+    final factor = (390 / _sw).clamp(minFactor, maxFactor);
+    return factor;
+  }
+
+  static double gameSpace(double value) => value * gameScale();
+
+  static double gameText(double value) =>
+      value * gameScale(minFactor: 0.76, maxFactor: 1.00);
+
+  static double gameIcon(double value) =>
+      value * gameScale(minFactor: 0.74, maxFactor: 1.00);
+
+  static double gameRadius(double value) =>
+      value * gameScale(minFactor: 0.78, maxFactor: 1.00);
+
+  // =========================================================
   // 🔥 DASHBOARD RESPONSIVE (جديد - خاص بالداشبورد فقط)
   // =========================================================
 

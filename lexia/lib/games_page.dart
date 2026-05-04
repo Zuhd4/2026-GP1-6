@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'responsive_helper.dart';
 import 'widgets/trail_painter.dart';
 import 'widgets/level_node.dart';
 
@@ -20,6 +20,8 @@ class GamesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    R.init(context);
+
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (uid.isEmpty) {
@@ -44,7 +46,7 @@ class GamesPage extends StatelessWidget {
         }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return _emptyMessage("Child profile not found");
+          return _emptyMessage(context, "Child profile not found");
         }
 
         final childDoc = snapshot.data!;
@@ -55,7 +57,9 @@ class GamesPage extends StatelessWidget {
     );
   }
 
-  Widget _emptyMessage(String message) {
+  Widget _emptyMessage(BuildContext context, String message) {
+    R.init(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -72,7 +76,7 @@ class GamesPage extends StatelessWidget {
           child: Text(
             message,
             style: GoogleFonts.montserrat(
-              fontSize: 16.sp,
+              fontSize: R.text(16),
               fontWeight: FontWeight.w600,
               color: textDark,
             ),
@@ -129,9 +133,11 @@ class _GamesMapContentState extends State<_GamesMapContent> {
 
   int get _totalStars {
     int total = 0;
+
     for (int level = 1; level <= 6; level++) {
       total += _gameBestStars(level, 'letterScramble');
     }
+
     return total.clamp(0, 18);
   }
 
@@ -174,25 +180,47 @@ class _GamesMapContentState extends State<_GamesMapContent> {
     for (int level = 1; level <= 6; level++) {
       if (_levelStatus(level) == "current") return level;
     }
+
     return 6;
   }
+
+  double get _mapHeight => R.gameSpace(1580);
 
   double _levelYPosition(int level) {
     switch (level) {
       case 1:
-        return 1400.h;
+        return R.gameSpace(1210);
       case 2:
-        return 1150.h;
+        return R.gameSpace(1010);
       case 3:
-        return 900.h;
+        return R.gameSpace(800);
       case 4:
-        return 650.h;
+        return R.gameSpace(590);
       case 5:
-        return 400.h;
+        return R.gameSpace(380);
       case 6:
-        return 150.h;
+        return R.gameSpace(175);
       default:
-        return 1400.h;
+        return R.gameSpace(1210);
+    }
+  }
+
+  double _levelXPosition(int level, double mapWidth) {
+    switch (level) {
+      case 1:
+        return mapWidth * 0.45;
+      case 2:
+        return mapWidth * 0.25;
+      case 3:
+        return mapWidth * 0.65;
+      case 4:
+        return mapWidth * 0.30;
+      case 5:
+        return mapWidth * 0.60;
+      case 6:
+        return mapWidth * 0.45;
+      default:
+        return mapWidth * 0.45;
     }
   }
 
@@ -228,9 +256,11 @@ class _GamesMapContentState extends State<_GamesMapContent> {
 
   @override
   Widget build(BuildContext context) {
-    final sw = MediaQuery.of(context).size.width;
-    final mq = MediaQuery.of(context);
-    final topPadding = mq.padding.top + 84.h;
+    R.init(context);
+
+    final double topPadding = R.safeTop + R.gameSpace(62);
+    final double outerPad = R.gameSpace(9);
+    final double mapSidePad = R.gameSpace(12);
 
     _scrollToCurrentLevel(topPadding);
 
@@ -252,7 +282,12 @@ class _GamesMapContentState extends State<_GamesMapContent> {
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 12.h),
+          padding: EdgeInsets.fromLTRB(
+            mapSidePad,
+            outerPad,
+            mapSidePad,
+            outerPad,
+          ),
           child: Container(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -265,92 +300,98 @@ class _GamesMapContentState extends State<_GamesMapContent> {
                   Colors.white,
                 ],
               ),
-              borderRadius: BorderRadius.circular(32.r),
+              borderRadius: BorderRadius.circular(R.gameRadius(30)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.04),
-                  blurRadius: 20,
+                  blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(32.r),
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(),
-                    child: SizedBox(
-                      height: 1850.h + topPadding,
-                      width: double.infinity,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: TrailPainter(
-                                currentLevel: _currentLevel,
+              borderRadius: BorderRadius.circular(R.gameRadius(30)),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final double mapWidth = constraints.maxWidth;
+
+                  return Stack(
+                    children: [
+                      SingleChildScrollView(
+                        controller: _scrollController,
+                        physics: const BouncingScrollPhysics(),
+                        child: SizedBox(
+                          height: _mapHeight + topPadding + R.gameSpace(110),
+                          width: double.infinity,
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: CustomPaint(
+                                  painter: TrailPainter(
+                                    currentLevel: _currentLevel,
+                                  ),
+                                ),
                               ),
-                            ),
+                              _node(
+                                1,
+                                _levelStatus(1),
+                                const Color(0xFF7D99D4),
+                                _levelXPosition(1, mapWidth),
+                                _levelYPosition(1),
+                                topPadding,
+                              ),
+                              _node(
+                                2,
+                                _levelStatus(2),
+                                const Color(0xFFF1B0AB),
+                                _levelXPosition(2, mapWidth),
+                                _levelYPosition(2),
+                                topPadding,
+                              ),
+                              _node(
+                                3,
+                                _levelStatus(3),
+                                const Color(0xFF59A685),
+                                _levelXPosition(3, mapWidth),
+                                _levelYPosition(3),
+                                topPadding,
+                              ),
+                              _node(
+                                4,
+                                _levelStatus(4),
+                                primaryPurple,
+                                _levelXPosition(4, mapWidth),
+                                _levelYPosition(4),
+                                topPadding,
+                              ),
+                              _node(
+                                5,
+                                _levelStatus(5),
+                                const Color(0xFFF1B4AF),
+                                _levelXPosition(5, mapWidth),
+                                _levelYPosition(5),
+                                topPadding,
+                              ),
+                              _node(
+                                6,
+                                _levelStatus(6),
+                                const Color(0xFFFACC15),
+                                _levelXPosition(6, mapWidth),
+                                _levelYPosition(6),
+                                topPadding,
+                              ),
+                            ],
                           ),
-                          _node(
-                            1,
-                            _levelStatus(1),
-                            const Color(0xFF7D99D4),
-                            sw * 0.45,
-                            1400.h,
-                            topPadding,
-                          ),
-                          _node(
-                            2,
-                            _levelStatus(2),
-                            const Color(0xFFF1B0AB),
-                            sw * 0.25,
-                            1150.h,
-                            topPadding,
-                          ),
-                          _node(
-                            3,
-                            _levelStatus(3),
-                            const Color(0xFF59A685),
-                            sw * 0.65,
-                            900.h,
-                            topPadding,
-                          ),
-                          _node(
-                            4,
-                            _levelStatus(4),
-                            primaryPurple,
-                            sw * 0.30,
-                            650.h,
-                            topPadding,
-                          ),
-                          _node(
-                            5,
-                            _levelStatus(5),
-                            const Color(0xFFF1B4AF),
-                            sw * 0.60,
-                            400.h,
-                            topPadding,
-                          ),
-                          _node(
-                            6,
-                            _levelStatus(6),
-                            const Color(0xFFFACC15),
-                            sw * 0.45,
-                            150.h,
-                            topPadding,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    top: topPadding + 8.h,
-                    left: 14.w,
-                    child: _buildProgressCards(),
-                  ),
-                ],
+                      Positioned(
+                        top: topPadding + R.gameSpace(8),
+                        left: R.gameSpace(12),
+                        child: _buildProgressCards(),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -389,7 +430,7 @@ class _GamesMapContentState extends State<_GamesMapContent> {
           value: "$_totalTrophies/6",
           bgColor: const Color(0xFFFFF8E1),
         ),
-        SizedBox(height: 8.h),
+        SizedBox(height: R.gameSpace(8)),
         _miniCard(
           icon: Icons.star_rounded,
           iconColor: Colors.amber,
@@ -409,11 +450,14 @@ class _GamesMapContentState extends State<_GamesMapContent> {
     required Color bgColor,
   }) {
     return Container(
-      width: 112.w,
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 9.h),
+      width: R.gameSpace(102),
+      padding: EdgeInsets.symmetric(
+        horizontal: R.gameSpace(9),
+        vertical: R.gameSpace(8),
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(R.gameRadius(16)),
         border: Border.all(color: iconColor.withOpacity(0.25), width: 1),
         boxShadow: [
           BoxShadow(
@@ -426,32 +470,36 @@ class _GamesMapContentState extends State<_GamesMapContent> {
       child: Row(
         children: [
           Container(
-            width: 33.w,
-            height: 33.w,
+            width: R.gameIcon(31),
+            height: R.gameIcon(31),
             decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 21),
+            child: Icon(icon, color: iconColor, size: R.gameIcon(20)),
           ),
-          SizedBox(width: 8.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.montserrat(
-                  fontSize: 8.5.sp,
-                  fontWeight: FontWeight.w700,
-                  color: textDark.withOpacity(0.48),
+          SizedBox(width: R.gameSpace(7)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.montserrat(
+                    fontSize: R.gameText(8),
+                    fontWeight: FontWeight.w700,
+                    color: textDark.withOpacity(0.48),
+                  ),
                 ),
-              ),
-              Text(
-                value,
-                style: GoogleFonts.fredoka(
-                  fontSize: 17.sp,
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
+                Text(
+                  value,
+                  style: GoogleFonts.fredoka(
+                    fontSize: R.gameText(16),
+                    fontWeight: FontWeight.bold,
+                    color: textDark,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
