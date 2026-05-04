@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'letter_scramble_page.dart';
+import 'responsive_helper.dart';
 
 class GamesSelectionPage extends StatefulWidget {
   final int level;
@@ -48,17 +48,15 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   bool _readLetterScrambleCompleted(Map<String, dynamic>? data) {
     if (data == null) return false;
 
-    final Map<String, dynamic> gameProgress = Map<String, dynamic>.from(
-      data['gameProgress'] ?? {},
-    );
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
 
-    final String levelKey = 'level_${widget.level}';
+    final levelKey = 'level_${widget.level}';
 
-    final Map<String, dynamic> levelProgress = Map<String, dynamic>.from(
+    final levelProgress = Map<String, dynamic>.from(
       gameProgress[levelKey] ?? {},
     );
 
-    final Map<String, dynamic> letterScramble = Map<String, dynamic>.from(
+    final letterScramble = Map<String, dynamic>.from(
       levelProgress['letterScramble'] ?? {},
     );
 
@@ -68,17 +66,15 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   int _readLetterScrambleBestStars(Map<String, dynamic>? data) {
     if (data == null) return 0;
 
-    final Map<String, dynamic> gameProgress = Map<String, dynamic>.from(
-      data['gameProgress'] ?? {},
-    );
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
 
-    final String levelKey = 'level_${widget.level}';
+    final levelKey = 'level_${widget.level}';
 
-    final Map<String, dynamic> levelProgress = Map<String, dynamic>.from(
+    final levelProgress = Map<String, dynamic>.from(
       gameProgress[levelKey] ?? {},
     );
 
-    final Map<String, dynamic> letterScramble = Map<String, dynamic>.from(
+    final letterScramble = Map<String, dynamic>.from(
       levelProgress['letterScramble'] ?? {},
     );
 
@@ -86,19 +82,76 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   }
 
   void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Coming Soon!",
-          style: GoogleFonts.montserrat(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: primaryPurple.withOpacity(0.85),
-        behavior: SnackBarBehavior.floating,
+    R.init(context);
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(R.radius(24)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(R.space(22)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: R.icon(60),
+                height: R.icon(60),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF9E6),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text('🚀', style: TextStyle(fontSize: R.text(28))),
+                ),
+              ),
+              SizedBox(height: R.space(16)),
+              Text(
+                'Coming Soon!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.montserrat(
+                  fontSize: R.text(18),
+                  fontWeight: FontWeight.w500,
+                  color: textDark,
+                ),
+              ),
+              SizedBox(height: R.space(8)),
+              Text(
+                'This feature will be available soon!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.montserrat(
+                  color: Colors.black45,
+                  fontSize: R.text(12),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              SizedBox(height: R.space(24)),
+              SizedBox(
+                width: double.infinity,
+                height: R.buttonH(54),
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: green.withOpacity(0.8),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(R.radius(16)),
+                    ),
+                  ),
+                  child: Text(
+                    'Got it!',
+                    style: GoogleFonts.montserrat(
+                      fontWeight: FontWeight.w500,
+                      fontSize: R.text(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -124,7 +177,13 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    R.init(context);
+
     final childRef = _childRef;
+
+    final double horizontalPad = R.pagePad;
+    final double topMargin = R.safeTop + R.space(35);
+    final double bottomMargin = R.safeBottom + R.space(120);
 
     if (childRef == null) {
       return const Scaffold(
@@ -157,86 +216,132 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
                 stops: [0.0, 0.4, 0.7, 1.0],
               ),
             ),
-            child: SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(22.w, 16.h, 22.w, 28.h),
-                child: Column(
-                  children: [
-                    _buildTopBar(context),
-                    SizedBox(height: 18.h),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: R.maxContentWidth),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPad,
+                    topMargin,
+                    horizontalPad,
+                    bottomMargin,
+                  ),
+                  child: Column(
+                    children: [
+                      _buildTopBar(context),
+                      SizedBox(height: R.space(14)),
 
-                    Text(
-                      "Level ${widget.level} Games",
-                      style: GoogleFonts.fredoka(
-                        fontSize: 32.sp,
-                        fontWeight: FontWeight.bold,
-                        color: primaryPurple,
-                      ),
-                    ),
-
-                    SizedBox(height: 6.h),
-
-                    Text(
-                      "Choose a game to practice",
-                      style: GoogleFonts.montserrat(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                        color: textDark.withOpacity(0.55),
-                      ),
-                    ),
-
-                    SizedBox(height: 22.h),
-
-                    _buildCharacter(),
-
-                    SizedBox(height: 26.h),
-
-                    _GameCard(
-                      title: "Letter Scramble",
-                      subtitle: isLetterScrambleCompleted
-                          ? "Completed! Best score: $bestStars/3 stars."
-                          : "Arrange the letters to form the correct word.",
-                      emoji: "🧩",
-                      color: coral,
-                      isLarge: true,
-                      buttonText: isLetterScrambleCompleted
-                          ? "Completed"
-                          : "Play",
-                      isCompleted: isLetterScrambleCompleted,
-                      onTap: _openLetterScramble,
-                    ),
-
-                    SizedBox(height: 16.h),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _GameCard(
-                            title: "Listen\nand Spell",
-                            subtitle: "Listen carefully and spell the word.",
-                            emoji: "🎧",
-                            color: green,
-                            buttonText: "Coming Soon",
-                            isLocked: true,
-                            onTap: () => _showComingSoon(context),
-                          ),
+                      Text(
+                        "Level ${widget.level} Games",
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.fredoka(
+                          fontSize: R.text(29),
+                          fontWeight: FontWeight.bold,
+                          color: primaryPurple,
+                          height: 1.05,
                         ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: _GameCard(
-                            title: "Word\nMatching",
-                            subtitle: "Match the word with the picture.",
-                            emoji: "✨",
-                            color: blue,
-                            buttonText: "Coming Soon",
-                            isLocked: true,
-                            onTap: () => _showComingSoon(context),
-                          ),
+                      ),
+
+                      SizedBox(height: R.space(5)),
+
+                      Text(
+                        "Choose a game to practice",
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.montserrat(
+                          fontSize: R.text(12),
+                          fontWeight: FontWeight.w500,
+                          color: textDark.withOpacity(0.55),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+
+                      SizedBox(height: R.space(18)),
+
+                      _buildCharacter(),
+
+                      SizedBox(height: R.space(20)),
+
+                      _GameCard(
+                        title: "Letter Scramble",
+                        subtitle: isLetterScrambleCompleted
+                            ? "Completed! Best score: $bestStars/3 stars."
+                            : "Arrange the letters to form the correct word.",
+                        emoji: "🧩",
+                        color: coral,
+                        isLarge: true,
+                        buttonText: isLetterScrambleCompleted
+                            ? "Completed"
+                            : "Play",
+                        isCompleted: isLetterScrambleCompleted,
+                        onTap: _openLetterScramble,
+                      ),
+
+                      SizedBox(height: R.space(14)),
+
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final bool veryNarrow = constraints.maxWidth < 330;
+
+                          if (veryNarrow) {
+                            return Column(
+                              children: [
+                                _GameCard(
+                                  title: "Listen and Spell",
+                                  subtitle:
+                                      "Listen carefully and spell the word.",
+                                  emoji: "🎧",
+                                  color: green,
+                                  buttonText: "Coming soon",
+                                  isLocked: true,
+                                  onTap: () => _showComingSoon(context),
+                                ),
+                                SizedBox(height: R.space(12)),
+                                _GameCard(
+                                  title: "Word Matching",
+                                  subtitle: "Match the word with the picture.",
+                                  emoji: "✨",
+                                  color: blue,
+                                  buttonText: "Coming soon",
+                                  isLocked: true,
+                                  onTap: () => _showComingSoon(context),
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: _GameCard(
+                                  title: "Listen\nand Spell",
+                                  subtitle:
+                                      "Listen carefully and spell the word.",
+                                  emoji: "🎧",
+                                  color: green,
+                                  buttonText: "Play",
+                                  isLocked: true,
+                                  onTap: () => _showComingSoon(context),
+                                ),
+                              ),
+                              SizedBox(width: R.space(12)),
+                              Expanded(
+                                child: _GameCard(
+                                  title: "Word\nMatching",
+                                  subtitle: "Match the word with the picture.",
+                                  emoji: "✨",
+                                  color: blue,
+                                  buttonText: "Play",
+                                  isLocked: true,
+                                  onTap: () => _showComingSoon(context),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -250,8 +355,8 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
     return Row(
       children: [
         Container(
-          width: 44.r,
-          height: 44.r,
+          width: R.icon(42),
+          height: R.icon(42),
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
@@ -267,17 +372,20 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
             onPressed: () => Navigator.pop(context),
             icon: Icon(
               Icons.arrow_back_ios_new_rounded,
-              size: 20.r,
+              size: R.icon(18),
               color: primaryPurple,
             ),
           ),
         ),
         const Spacer(),
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+          padding: EdgeInsets.symmetric(
+            horizontal: R.space(12),
+            vertical: R.space(7),
+          ),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(18.r),
+            borderRadius: BorderRadius.circular(R.radius(18)),
           ),
         ),
       ],
@@ -287,14 +395,14 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   Widget _buildCharacter() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: 18.h),
+      padding: EdgeInsets.symmetric(vertical: R.space(12)),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(28.r),
+        borderRadius: BorderRadius.circular(R.radius(26)),
       ),
       child: Image.asset(
         "assets/e_happy.png",
-        height: 140.h,
+        height: R.space(105),
         fit: BoxFit.contain,
       ),
     );
@@ -332,15 +440,15 @@ class _GameCard extends StatelessWidget {
         children: [
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(isLarge ? 18.w : 14.w),
+            padding: EdgeInsets.all(isLarge ? R.space(16) : R.space(12)),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24.r),
+              borderRadius: BorderRadius.circular(R.radius(22)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.025),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
                 ),
               ],
               border: Border.all(
@@ -354,11 +462,11 @@ class _GameCard extends StatelessWidget {
           ),
           if (isCompleted)
             Positioned(
-              top: 12.h,
-              right: 12.w,
+              top: R.space(10),
+              right: R.space(10),
               child: Container(
-                width: 30.r,
-                height: 30.r,
+                width: R.icon(28),
+                height: R.icon(28),
                 decoration: BoxDecoration(
                   color: const Color(0xFF59A685),
                   shape: BoxShape.circle,
@@ -372,7 +480,7 @@ class _GameCard extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.check_rounded,
-                  size: 20.r,
+                  size: R.icon(18),
                   color: Colors.white,
                 ),
               ),
@@ -385,16 +493,16 @@ class _GameCard extends StatelessWidget {
   Widget _largeLayout() {
     return Row(
       children: [
-        _iconBox(70),
-        SizedBox(width: 16.w),
+        _iconBox(58),
+        SizedBox(width: R.space(14)),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _titleText(fontSize: 22),
-              SizedBox(height: 6.h),
+              _titleText(fontSize: 20),
+              SizedBox(height: R.space(5)),
               _subtitleText(),
-              SizedBox(height: 14.h),
+              SizedBox(height: R.space(12)),
               _button(),
             ],
           ),
@@ -406,21 +514,12 @@ class _GameCard extends StatelessWidget {
   Widget _smallLayout() {
     return Column(
       children: [
-        if (isLocked)
-          Align(
-            alignment: Alignment.topRight,
-            child: Icon(
-              Icons.lock_rounded,
-              color: color.withOpacity(0.6),
-              size: 18.r,
-            ),
-          ),
-        _iconBox(56),
-        SizedBox(height: 10.h),
-        _titleText(fontSize: 18, center: true),
-        SizedBox(height: 8.h),
+        _iconBox(46),
+        SizedBox(height: R.space(8)),
+        _titleText(fontSize: 16, center: true),
+        SizedBox(height: R.space(6)),
         _subtitleText(center: true),
-        SizedBox(height: 14.h),
+        SizedBox(height: R.space(12)),
         _button(),
       ],
     );
@@ -428,14 +527,32 @@ class _GameCard extends StatelessWidget {
 
   Widget _iconBox(double size) {
     return Container(
-      width: size.r,
-      height: size.r,
+      width: R.icon(size),
+      height: R.icon(size),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(R.radius(16)),
       ),
-      child: Center(
-        child: Text(emoji, style: TextStyle(fontSize: (size * 0.42).sp)),
+      child: Stack(
+        children: [
+          Center(
+            child: Opacity(
+              opacity: isLocked ? 0.3 : 1.0,
+              child: Text(
+                emoji,
+                style: TextStyle(fontSize: R.text(size * 0.40)),
+              ),
+            ),
+          ),
+          if (isLocked)
+            Center(
+              child: Icon(
+                Icons.lock_outline_rounded,
+                color: const Color(0xFF2D3142).withOpacity(0.4),
+                size: R.icon(24),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -444,8 +561,10 @@ class _GameCard extends StatelessWidget {
     return Text(
       title,
       textAlign: center ? TextAlign.center : TextAlign.start,
+      maxLines: isLarge ? 2 : 3,
+      overflow: TextOverflow.ellipsis,
       style: GoogleFonts.fredoka(
-        fontSize: fontSize.sp,
+        fontSize: R.text(fontSize),
         fontWeight: FontWeight.bold,
         height: 1.05,
         color: color,
@@ -460,9 +579,9 @@ class _GameCard extends StatelessWidget {
       maxLines: isLarge ? 2 : 3,
       overflow: TextOverflow.ellipsis,
       style: GoogleFonts.montserrat(
-        fontSize: isLarge ? 12.sp : 10.5.sp,
+        fontSize: isLarge ? R.text(11.5) : R.text(10),
         fontWeight: FontWeight.w400,
-        height: 1.35,
+        height: 1.3,
         color: const Color(0xFF2D3142).withOpacity(0.55),
       ),
     );
@@ -471,14 +590,16 @@ class _GameCard extends StatelessWidget {
   Widget _button() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: isLarge ? 11.h : 9.h),
+      padding: EdgeInsets.symmetric(
+        vertical: isLarge ? R.space(10) : R.space(8),
+      ),
       decoration: BoxDecoration(
         color: isLocked
             ? Colors.grey.shade300
             : isCompleted
             ? const Color(0xFF59A685)
             : color,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(R.radius(15)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -486,18 +607,22 @@ class _GameCard extends StatelessWidget {
           if (isCompleted) ...[
             Icon(
               Icons.replay_rounded,
-              size: isLarge ? 18.r : 15.r,
+              size: isLarge ? R.icon(17) : R.icon(14),
               color: Colors.white,
             ),
-            SizedBox(width: 6.w),
+            SizedBox(width: R.space(6)),
           ],
-          Text(
-            buttonText,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.montserrat(
-              fontSize: isLarge ? 13.sp : 11.sp,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          Flexible(
+            child: Text(
+              buttonText,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.montserrat(
+                fontSize: isLarge ? R.text(12.5) : R.text(10),
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

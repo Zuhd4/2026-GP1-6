@@ -156,18 +156,18 @@ class ReadingPage extends StatelessWidget {
                     if (isLocked) {
                       _showPopup(
                         context: context,
-                        title: 'Story Locked',
+                        title: 'Coming Soon!',
                         message:
-                            'Complete the previous stories to unlock $name! 🔒',
-                        emoji: '🔐',
-                        buttonColor: Colors.grey,
+                            'The story "$name" is being prepared for you! ',
+                        emoji: '🚀',
+                        buttonColor: primaryGreen,
                       );
                     } else {
                       _showPopup(
                         context: context,
                         title: 'Coming Soon!',
                         message:
-                            'The story "$name" is being prepared for you! 🚀',
+                            'The story "$name" is being prepared for you! ',
                         emoji: '🚀',
                         buttonColor: primaryGreen,
                       );
@@ -236,7 +236,7 @@ class _WoodenShelfRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(items.length, (index) {
                 final globalIndex = startIndex + index;
-                final bool locked = globalIndex != 0;
+                final bool locked = true;
                 return _LibraryBook(
                   data: items[index],
                   isLocked: locked,

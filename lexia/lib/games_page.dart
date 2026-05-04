@@ -430,7 +430,7 @@ class _GamesMapContentState extends State<_GamesMapContent> {
           value: "$_totalTrophies/6",
           bgColor: const Color(0xFFFFF8E1),
         ),
-        SizedBox(height: R.gameSpace(8)),
+        SizedBox(height: R.gameSpace(5)),
         _miniCard(
           icon: Icons.star_rounded,
           iconColor: Colors.amber,
@@ -450,50 +450,40 @@ class _GamesMapContentState extends State<_GamesMapContent> {
     required Color bgColor,
   }) {
     return Container(
-      width: R.gameSpace(102),
+      width: R.gameSpace(95),
       padding: EdgeInsets.symmetric(
-        horizontal: R.gameSpace(9),
-        vertical: R.gameSpace(8),
+        horizontal: R.gameSpace(8),
+        vertical: R.gameSpace(7),
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(R.gameRadius(16)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(R.gameRadius(14)),
         border: Border.all(color: iconColor.withOpacity(0.25), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.045),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: R.gameIcon(31),
-            height: R.gameIcon(31),
+            width: R.gameIcon(28),
+            height: R.gameIcon(28),
             decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: R.gameIcon(20)),
+            child: Icon(icon, color: iconColor, size: R.gameIcon(17)),
           ),
-          SizedBox(width: R.gameSpace(7)),
+          SizedBox(width: R.gameSpace(6)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.gameText(8),
-                    fontWeight: FontWeight.w700,
-                    color: textDark.withOpacity(0.48),
-                  ),
-                ),
-                Text(
                   value,
                   style: GoogleFonts.fredoka(
-                    fontSize: R.gameText(16),
+                    fontSize: R.gameText(14),
                     fontWeight: FontWeight.bold,
                     color: textDark,
                   ),

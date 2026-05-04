@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'level_complete_page.dart';
+import 'responsive_helper.dart';
 
 class LetterScramblePage extends StatefulWidget {
   final int level;
@@ -442,9 +443,11 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       barrierDismissible: false,
       builder: (_) => Dialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(R.radius(26)),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(R.space(24)),
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.65, end: 1.0),
             duration: const Duration(milliseconds: 650),
@@ -455,35 +458,35 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.star_rounded,
-                      size: 96,
+                      size: R.icon(84),
                       color: Colors.amber,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: R.space(12)),
                     Text(
                       "Awesome!",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.fredoka(
-                        fontSize: 26,
+                        fontSize: R.text(24),
                         fontWeight: FontWeight.bold,
                         color: textDark,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: R.space(8)),
                     Text(
                       "You earned a star",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.montserrat(
-                        fontSize: 15,
+                        fontSize: R.text(14),
                         fontWeight: FontWeight.w500,
                         color: textDark.withOpacity(0.65),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: R.space(22)),
                     SizedBox(
                       width: double.infinity,
-                      height: 54,
+                      height: R.buttonH(52),
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
@@ -491,13 +494,13 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(R.radius(16)),
                           ),
                         ),
                         child: Text(
                           "Nice!",
                           style: GoogleFonts.montserrat(
-                            fontSize: 15,
+                            fontSize: R.text(14),
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
@@ -527,38 +530,40 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       barrierDismissible: false,
       builder: (_) => Dialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(R.radius(26)),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(R.space(24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 76, color: iconColor),
-              const SizedBox(height: 16),
+              Icon(icon, size: R.icon(68), color: iconColor),
+              SizedBox(height: R.space(16)),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.fredoka(
-                  fontSize: 24,
+                  fontSize: R.text(22),
                   fontWeight: FontWeight.bold,
                   color: textDark,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: R.space(8)),
               Text(
                 message,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.montserrat(
-                  fontSize: 14,
+                  fontSize: R.text(13),
                   fontWeight: FontWeight.w500,
                   color: textDark.withOpacity(0.65),
                   height: 1.45,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: R.space(22)),
               SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: R.buttonH(52),
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
@@ -566,13 +571,13 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(R.radius(16)),
                     ),
                   ),
                   child: Text(
                     "Got it",
                     style: GoogleFonts.montserrat(
-                      fontSize: 15,
+                      fontSize: R.text(14),
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -588,6 +593,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
   @override
   Widget build(BuildContext context) {
+    R.init(context);
     return Scaffold(
       backgroundColor: ivoryWhite,
       appBar: AppBar(
@@ -598,6 +604,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         title: Text(
           "Letter Scramble",
           style: GoogleFonts.fredoka(
+            fontSize: R.text(22),
             color: textDark,
             fontWeight: FontWeight.bold,
           ),
@@ -621,24 +628,35 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                 )
               : errorMessage != null
               ? Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(R.space(20)),
                   child: _buildErrorState(),
                 )
-              : SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-                  child: Column(
-                    children: [
-                      _buildProgressHeader(),
-                      const SizedBox(height: 14),
-                      _buildQuestionCard(),
-                      const SizedBox(height: 22),
-                      _buildLetters(),
-                      const SizedBox(height: 22),
-                      _buildActionButtons(),
-                      const SizedBox(height: 18),
-                      _buildCheckButton(),
-                    ],
+              : Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: R.maxContentWidth),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        R.pagePad,
+                        R.space(14),
+                        R.pagePad,
+                        R.safeBottom + R.space(24),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildProgressHeader(),
+                          SizedBox(height: R.space(14)),
+                          _buildQuestionCard(),
+                          SizedBox(height: R.space(18)),
+                          _buildLetters(),
+                          SizedBox(height: R.space(18)),
+                          _buildActionButtons(),
+                          SizedBox(height: R.space(16)),
+                          _buildCheckButton(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
         ),
@@ -653,7 +671,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         Text(
           "Word ${currentWordIndex + 1}/$totalWordsPerRound",
           style: GoogleFonts.montserrat(
-            fontSize: 18,
+            fontSize: R.text(17),
             fontWeight: FontWeight.w800,
             color: textDark,
           ),
@@ -663,7 +681,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
             return Icon(
               index < stars ? Icons.star_rounded : Icons.star_border_rounded,
               color: index < stars ? Colors.amber : textDark.withOpacity(0.25),
-              size: 32,
+              size: R.icon(28),
             );
           }),
         ),
@@ -680,12 +698,12 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
             errorMessage!,
             textAlign: TextAlign.center,
             style: GoogleFonts.montserrat(
-              fontSize: 16,
+              fontSize: R.text(15),
               fontWeight: FontWeight.w600,
               color: Colors.redAccent,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: R.space(16)),
           ElevatedButton(
             onPressed: loadNewRound,
             style: ElevatedButton.styleFrom(
@@ -693,7 +711,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(R.radius(16)),
               ),
             ),
             child: Text(
@@ -709,10 +727,10 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   Widget _buildQuestionCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(R.space(16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(R.radius(28)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.035),
@@ -724,42 +742,47 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       child: Column(
         children: [
           _buildRoundedImageFrame(),
-          const SizedBox(height: 18),
+          SizedBox(height: R.space(16)),
           Text(
             "Arrange the letters to form the correct word",
             textAlign: TextAlign.center,
             style: GoogleFonts.montserrat(
-              fontSize: 17,
+              fontSize: R.text(15.5),
               height: 1.35,
               fontWeight: FontWeight.w700,
               color: textDark,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: R.space(8)),
           Text(
             "Attempt ${attemptsForCurrentWord + 1}/$maxAttemptsPerWord",
             style: GoogleFonts.montserrat(
-              fontSize: 13,
+              fontSize: R.text(12),
               fontWeight: FontWeight.w500,
               color: textDark.withOpacity(0.38),
             ),
           ),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-            decoration: BoxDecoration(
-              color: primaryPurple.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Center(
-              child: Text(
-                currentAnswer,
-                style: GoogleFonts.fredoka(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 5,
-                  color: primaryPurple,
+          SizedBox(height: R.space(16)),
+          FractionallySizedBox(
+            widthFactor: 0.82,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: R.space(10),
+                vertical: R.space(10),
+              ),
+              decoration: BoxDecoration(
+                color: primaryPurple.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(R.radius(16)),
+              ),
+              child: Center(
+                child: Text(
+                  currentAnswer,
+                  style: GoogleFonts.fredoka(
+                    fontSize: R.text(15),
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: R.space(1.5),
+                    color: primaryPurple,
+                  ),
                 ),
               ),
             ),
@@ -772,12 +795,12 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   Widget _buildRoundedImageFrame() {
     return Center(
       child: Container(
-        width: 170,
-        height: 170,
-        padding: const EdgeInsets.all(8),
+        width: R.icon(150),
+        height: R.icon(150),
+        padding: EdgeInsets.all(R.space(7)),
         decoration: BoxDecoration(
           color: softCream,
-          borderRadius: BorderRadius.circular(32),
+          borderRadius: BorderRadius.circular(R.radius(30)),
           border: Border.all(
             color: primaryPurple.withOpacity(0.08),
             width: 1.5,
@@ -791,7 +814,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(R.radius(24)),
           child: Container(
             color: Colors.white.withOpacity(0.65),
             child: currentImageUrl.isNotEmpty
@@ -815,7 +838,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     return Center(
       child: Icon(
         Icons.image_rounded,
-        size: 46,
+        size: R.icon(42),
         color: primaryPurple.withOpacity(0.35),
       ),
     );
@@ -823,8 +846,8 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
   Widget _buildLetters() {
     return Wrap(
-      spacing: 14,
-      runSpacing: 14,
+      spacing: R.space(10),
+      runSpacing: R.space(10),
       alignment: WrapAlignment.center,
       children: List.generate(scrambledLetters.length, (index) {
         final letter = scrambledLetters[index];
@@ -833,13 +856,13 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           onTap: () => onLetterTap(index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            width: 58,
-            height: 58,
+            width: R.icon(44),
+            height: R.icon(44),
             decoration: BoxDecoration(
               color: letter.isEmpty
                   ? Colors.white.withOpacity(0.65)
                   : primaryPurple,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(R.radius(16)),
               border: Border.all(
                 color: letter.isEmpty
                     ? primaryPurple.withOpacity(0.08)
@@ -857,7 +880,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
               child: Text(
                 letter,
                 style: GoogleFonts.fredoka(
-                  fontSize: 25,
+                  fontSize: R.text(18),
                   fontWeight: FontWeight.bold,
                   color: letter.isEmpty ? Colors.transparent : Colors.white,
                 ),
@@ -874,15 +897,15 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       children: [
         Expanded(
           child: SizedBox(
-            height: 56,
+            height: R.buttonH(52),
             child: ElevatedButton.icon(
               onPressed: removeLastLetter,
-              icon: const Icon(Icons.backspace_outlined, size: 20),
+              icon: Icon(Icons.backspace_outlined, size: R.icon(19)),
               label: Text(
                 "Delete",
                 style: GoogleFonts.montserrat(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: R.text(14),
                 ),
               ),
               style: ElevatedButton.styleFrom(
@@ -890,25 +913,25 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                 foregroundColor: const Color(0xFFD94B43),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(R.radius(17)),
                   side: BorderSide(color: Colors.black.withOpacity(0.05)),
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: R.space(10)),
         Expanded(
           child: SizedBox(
-            height: 56,
+            height: R.buttonH(52),
             child: ElevatedButton.icon(
               onPressed: resetWord,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
+              icon: Icon(Icons.refresh_rounded, size: R.icon(19)),
               label: Text(
                 "Reset",
                 style: GoogleFonts.montserrat(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: R.text(14),
                 ),
               ),
               style: ElevatedButton.styleFrom(
@@ -916,7 +939,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                 foregroundColor: primaryPurple,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(R.radius(17)),
                   side: BorderSide(color: Colors.black.withOpacity(0.05)),
                 ),
               ),
@@ -930,20 +953,20 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   Widget _buildCheckButton() {
     return SizedBox(
       width: double.infinity,
-      height: 62,
+      height: R.buttonH(58),
       child: ElevatedButton(
         onPressed: checkAnswer,
         style: ElevatedButton.styleFrom(
           backgroundColor: green,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(R.radius(20)),
           ),
         ),
         child: Text(
           "Check Answer",
           style: GoogleFonts.montserrat(
-            fontSize: 18,
+            fontSize: R.text(16),
             fontWeight: FontWeight.w800,
             color: Colors.white,
           ),
