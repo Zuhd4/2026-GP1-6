@@ -19,7 +19,7 @@ class R {
   static double get safeTop => _mq.padding.top;
   static double get safeBottom => _mq.padding.bottom;
 
-  /// Main clamped scale so UI does not become huge on large Android phones
+  /// 🔹 ORIGINAL SCALE (لا نغيره عشان باقي الصفحات)
   static double s(
     double value, {
     double minFactor = 0.88,
@@ -48,7 +48,6 @@ class R {
       s(value, minFactor: 0.94, maxFactor: 1.00);
 
   static double get pagePad => _sw * 0.07;
-
   static double get pagePadWide => _sw * 0.08;
 
   static double get maxContentWidth => 430;
@@ -59,6 +58,51 @@ class R {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxContentWidth),
+        child: child,
+      ),
+    );
+  }
+
+  // =========================================================
+  // 🔥 DASHBOARD RESPONSIVE (جديد - خاص بالداشبورد فقط)
+  // =========================================================
+
+  static double dash(
+    double value, {
+    double minFactor = 0.72,
+    double maxFactor = 0.88,
+  }) {
+    final base = _sw < _sh ? _sw : _sh;
+    final factor = (base / 390).clamp(minFactor, maxFactor);
+    return value * factor;
+  }
+
+  static double dashText(double value) =>
+      dash(value, minFactor: 0.74, maxFactor: 0.86);
+
+  static double dashRadius(double value) =>
+      dash(value, minFactor: 0.78, maxFactor: 0.90);
+
+  static double dashSpace(double value) =>
+      dash(value, minFactor: 0.74, maxFactor: 0.88);
+
+  static double dashIcon(double value) =>
+      dash(value, minFactor: 0.74, maxFactor: 0.88);
+
+  static double dashButtonH([double value = 48]) =>
+      dash(value, minFactor: 0.78, maxFactor: 0.90);
+
+  static double get dashPagePad => (_sw * 0.06).clamp(18.0, 24.0);
+
+  static double get dashMaxContentWidth => 370;
+
+  static EdgeInsets dashPageInsets() =>
+      EdgeInsets.symmetric(horizontal: dashPagePad);
+
+  static Widget dashPageWrap({required Widget child}) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: dashMaxContentWidth),
         child: child,
       ),
     );

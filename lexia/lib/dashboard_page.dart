@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'add_child_page.dart';
+import 'responsive_helper.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -17,11 +18,13 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final double horizontalPad = 22.w;
+    R.init(context);
 
-    final double topMargin = 135.h;
-    final double bottomMargin = 140.h;
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final double horizontalPad = R.pagePad;
+
+    final double topMargin = R.safeTop + R.space(95);
+    final double bottomMargin = R.safeBottom + R.space(105);
 
     if (uid.isEmpty) {
       return const Scaffold(body: Center(child: Text('User not logged in')));
@@ -88,47 +91,50 @@ class DashboardPage extends StatelessWidget {
                     stops: [0.0, 0.4, 0.7, 1.0],
                   ),
                 ),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPad,
-                    topMargin,
-                    horizontalPad,
-                    bottomMargin,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hello $parentName',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.w500,
-                          color: textDark.withOpacity(0.9),
+                child: R.pageWrap(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPad,
+                      topMargin,
+                      horizontalPad,
+                      bottomMargin,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hello $parentName',
+                          style: GoogleFonts.montserrat(
+                            fontSize: R.text(21),
+                            fontWeight: FontWeight.w500,
+                            color: textDark.withOpacity(0.9),
+                          ),
                         ),
-                      ),
-                      Text(
-                        childrenText,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 12.sp,
-                          color: Colors.black45,
-                          fontWeight: FontWeight.w400,
+                        SizedBox(height: R.space(2)),
+                        Text(
+                          childrenText,
+                          style: GoogleFonts.montserrat(
+                            fontSize: R.text(12),
+                            color: Colors.black45,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 35.h),
+                        SizedBox(height: R.space(28)),
 
-                      if (hasChild)
-                        Column(
-                          children: snapshot.data!.docs.map((doc) {
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 30.h),
-                              child: _ChildDashboardCard(doc: doc),
-                            );
-                          }).toList(),
-                        )
-                      else
-                        const _EmptyStateCard(),
-                    ],
+                        if (hasChild)
+                          Column(
+                            children: snapshot.data!.docs.map((doc) {
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: R.space(26)),
+                                child: _ChildDashboardCard(doc: doc),
+                              );
+                            }).toList(),
+                          )
+                        else
+                          const _EmptyStateCard(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -166,9 +172,11 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
 
     for (int level = 1; level <= 6; level++) {
       final levelKey = 'level_$level';
+
       final levelProgress = Map<String, dynamic>.from(
         gameProgress[levelKey] ?? {},
       );
+
       final letterScramble = Map<String, dynamic>.from(
         levelProgress['letterScramble'] ?? {},
       );
@@ -188,6 +196,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
 
     final levelKey = 'level_$level';
+
     final levelProgress = Map<String, dynamic>.from(
       gameProgress[levelKey] ?? {},
     );
@@ -215,7 +224,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     return _isLetterScrambleCompleted(level) ? 1.0 : 0.0;
   }
 
-  Widget _avatarWidget(String? path, {double size = 48}) {
+  Widget _avatarWidget(String? path, {double size = 44}) {
     final String src = (path == null || path.isEmpty)
         ? 'assets/lexiaAv.png'
         : path;
@@ -229,7 +238,10 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
       );
     }
 
-    return Image.asset(src, width: size, height: size, fit: BoxFit.cover);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(R.radius(12)),
+      child: Image.asset(src, width: size, height: size, fit: BoxFit.cover),
+    );
   }
 
   @override
@@ -249,10 +261,10 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
+        borderRadius: BorderRadius.circular(R.radius(22)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withOpacity(0.025),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -261,11 +273,11 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
       child: Column(
         children: [
           Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(R.space(14)),
             child: Row(
               children: [
-                _avatarWidget(avatarUrl, size: 50.r),
-                SizedBox(width: 12.w),
+                _avatarWidget(avatarUrl, size: R.icon(44)),
+                SizedBox(width: R.space(11)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,25 +285,25 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                       Text(
                         childName,
                         style: GoogleFonts.montserrat(
-                          fontSize: 18.sp,
+                          fontSize: R.text(17),
                           fontWeight: FontWeight.w500,
                           color: const Color(0xFF2D3142),
                         ),
                       ),
-                      SizedBox(height: 4.h),
+                      SizedBox(height: R.space(4)),
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 8.w,
-                          vertical: 3.h,
+                          horizontal: R.space(8),
+                          vertical: R.space(3),
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8E4F8),
-                          borderRadius: BorderRadius.circular(8.r),
+                          borderRadius: BorderRadius.circular(R.radius(8)),
                         ),
                         child: Text(
                           'Current Level $currentUnlockedLevel/6',
                           style: GoogleFonts.montserrat(
-                            fontSize: 10.sp,
+                            fontSize: R.text(10),
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF6A5ACD),
                           ),
@@ -305,51 +317,60 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
           ),
 
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            padding: EdgeInsets.symmetric(horizontal: R.space(14)),
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Level $displayedLevel Progress',
-                      style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13.sp,
-                        color: const Color(0xFF2D3142),
+                    Expanded(
+                      child: Text(
+                        'Level $displayedLevel Progress',
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w500,
+                          fontSize: R.text(13),
+                          color: const Color(0xFF2D3142),
+                        ),
                       ),
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => setState(() {
-                            if (displayedLevel > 1) displayedLevel--;
-                          }),
-                          icon: Icon(Icons.chevron_left_rounded, size: 22.r),
-                        ),
-                        Text(
-                          '$displayedLevel',
-                          style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 13.sp,
-                            color: const Color(0xFF6A5ACD),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => setState(() {
-                            if (displayedLevel < 6) displayedLevel++;
-                          }),
-                          icon: Icon(Icons.chevron_right_rounded, size: 22.r),
-                        ),
-                      ],
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(
+                        minWidth: R.icon(30),
+                        minHeight: R.icon(30),
+                      ),
+                      onPressed: () => setState(() {
+                        if (displayedLevel > 1) displayedLevel--;
+                      }),
+                      icon: Icon(Icons.chevron_left_rounded, size: R.icon(20)),
+                    ),
+                    Text(
+                      '$displayedLevel',
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.w500,
+                        fontSize: R.text(13),
+                        color: const Color(0xFF6A5ACD),
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(
+                        minWidth: R.icon(30),
+                        minHeight: R.icon(30),
+                      ),
+                      onPressed: () => setState(() {
+                        if (displayedLevel < 6) displayedLevel++;
+                      }),
+                      icon: Icon(Icons.chevron_right_rounded, size: R.icon(20)),
                     ),
                   ],
                 ),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(R.radius(12)),
                   child: LinearProgressIndicator(
                     value: levelProgress,
-                    minHeight: 10.h,
+                    minHeight: R.space(8),
                     backgroundColor: const Color(0xFFF3F4F8),
                     color: const Color(0xFF6A5ACD),
                   ),
@@ -359,7 +380,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
           ),
 
           Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(R.space(14)),
             child: Column(
               children: [
                 _GameCard(
@@ -379,20 +400,20 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                   isLocked: levelLocked,
                   isCompleted: letterCompleted && !levelLocked,
                 ),
-                SizedBox(height: 10.h),
-                _GameCard(
+                SizedBox(height: R.space(9)),
+                const _GameCard(
                   title: 'Word Matching',
                   emoji: '✨',
-                  color: const Color(0xFF5B96CA),
+                  color: Color(0xFF5B96CA),
                   score: '0/3',
                   status: 'Locked',
                   isLocked: true,
                 ),
-                SizedBox(height: 10.h),
-                _GameCard(
+                SizedBox(height: R.space(9)),
+                const _GameCard(
                   title: 'Listen and Spell',
                   emoji: '🎧',
-                  color: const Color(0xFF59A685),
+                  color: Color(0xFF59A685),
                   score: '0/3',
                   status: 'Locked',
                   isLocked: true,
@@ -402,7 +423,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
           ),
 
           const _StoryGrid(isLocked: true),
-          SizedBox(height: 20.h),
+          SizedBox(height: R.space(18)),
         ],
       ),
     );
@@ -410,7 +431,10 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
 }
 
 class _GameCard extends StatelessWidget {
-  final String title, emoji, score, status;
+  final String title;
+  final String emoji;
+  final String score;
+  final String status;
   final Color color;
   final bool isLocked;
   final bool isCompleted;
@@ -434,10 +458,13 @@ class _GameCard extends StatelessWidget {
         : Colors.black38;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: R.space(10),
+        vertical: R.space(8),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(R.radius(12)),
         border: Border.all(
           color: isCompleted
               ? const Color(0xFF59A685).withOpacity(0.35)
@@ -447,33 +474,36 @@ class _GameCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 32.r,
-            height: 32.r,
+            width: R.icon(31),
+            height: R.icon(31),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(R.radius(8)),
             ),
             child: Center(
-              child: Text(emoji, style: TextStyle(fontSize: 14.sp)),
+              child: Text(emoji, style: TextStyle(fontSize: R.text(14))),
             ),
           ),
-          SizedBox(width: 10.w),
+          SizedBox(width: R.space(10)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.montserrat(
                     fontWeight: FontWeight.w500,
-                    fontSize: 12.sp,
+                    fontSize: R.text(12),
                     color: const Color(0xFF2D3142),
                   ),
                 ),
+                SizedBox(height: R.space(1)),
                 Text(
                   status,
                   style: GoogleFonts.montserrat(
-                    fontSize: 10.sp,
+                    fontSize: R.text(10),
                     color: statusColor,
                     fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w400,
                   ),
@@ -482,22 +512,22 @@ class _GameCard extends StatelessWidget {
             ),
           ),
           if (isLocked)
-            Icon(Icons.lock_rounded, size: 17.r, color: Colors.black26)
+            Icon(Icons.lock_rounded, size: R.icon(16), color: Colors.black26)
           else if (isCompleted)
             Row(
               children: [
                 Text(
                   score,
                   style: GoogleFonts.montserrat(
-                    fontSize: 11.sp,
+                    fontSize: R.text(11),
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF59A685),
                   ),
                 ),
-                SizedBox(width: 5.w),
+                SizedBox(width: R.space(5)),
                 Icon(
                   Icons.check_circle_rounded,
-                  size: 17.r,
+                  size: R.icon(16),
                   color: const Color(0xFF59A685),
                 ),
               ],
@@ -506,7 +536,7 @@ class _GameCard extends StatelessWidget {
             Text(
               score,
               style: GoogleFonts.montserrat(
-                fontSize: 11.sp,
+                fontSize: R.text(11),
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF6A5ACD),
               ),
@@ -537,11 +567,14 @@ class _StoryGrid extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+          padding: EdgeInsets.symmetric(
+            horizontal: R.space(14),
+            vertical: R.space(8),
+          ),
           child: Text(
             'Recent Stories',
             style: GoogleFonts.montserrat(
-              fontSize: 14.sp,
+              fontSize: R.text(13),
               fontWeight: FontWeight.w500,
               color: const Color(0xFF2D3142),
             ),
@@ -551,58 +584,60 @@ class _StoryGrid extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: stories.length,
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          padding: EdgeInsets.symmetric(horizontal: R.space(14)),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 12.w,
-            mainAxisSpacing: 15.h,
-            childAspectRatio: 0.85,
+            crossAxisCount: R.sw < 340 ? 2 : 3,
+            crossAxisSpacing: R.space(10),
+            mainAxisSpacing: R.space(12),
+            childAspectRatio: R.sw < 340 ? 0.95 : 0.9,
           ),
-          itemBuilder: (context, index) => Column(
-            children: [
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: stories[index]['color'],
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Opacity(
-                          opacity: isLocked ? 0.45 : 1,
-                          child: Text(
-                            stories[index]['emoji'],
-                            style: TextStyle(fontSize: 24.sp),
+          itemBuilder: (context, index) {
+            return Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: stories[index]['color'],
+                      borderRadius: BorderRadius.circular(R.radius(14)),
+                    ),
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Opacity(
+                            opacity: isLocked ? 0.45 : 1,
+                            child: Text(
+                              stories[index]['emoji'],
+                              style: TextStyle(fontSize: R.text(23)),
+                            ),
                           ),
                         ),
-                      ),
-                      if (isLocked)
-                        Positioned(
-                          top: 6.r,
-                          right: 6.r,
-                          child: Icon(
-                            Icons.lock_rounded,
-                            color: Colors.black26,
-                            size: 18.r,
+                        if (isLocked)
+                          Positioned(
+                            top: R.space(6),
+                            right: R.space(6),
+                            child: Icon(
+                              Icons.lock_rounded,
+                              color: Colors.black26,
+                              size: R.icon(17),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                stories[index]['name'],
-                style: GoogleFonts.montserrat(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF2D3142),
+                SizedBox(height: R.space(7)),
+                Text(
+                  stories[index]['name'],
+                  style: GoogleFonts.montserrat(
+                    fontSize: R.text(10),
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF2D3142),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -616,31 +651,31 @@ class _EmptyStateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(24.w),
+      padding: EdgeInsets.all(R.space(22)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
+        borderRadius: BorderRadius.circular(R.radius(22)),
       ),
       child: Column(
         children: [
           Icon(
             Icons.child_care_rounded,
-            size: 48.r,
+            size: R.icon(44),
             color: const Color(0xFF6A5ACD),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: R.space(12)),
           Text(
             'Add a child profile',
             style: GoogleFonts.montserrat(
-              fontSize: 18.sp,
+              fontSize: R.text(17),
               fontWeight: FontWeight.w500,
               color: const Color(0xFF2D3142),
             ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: R.space(15)),
           SizedBox(
             width: double.infinity,
-            height: 54.h,
+            height: R.buttonH(50),
             child: ElevatedButton(
               onPressed: () => showDialog(
                 context: context,
@@ -650,13 +685,13 @@ class _EmptyStateCard extends StatelessWidget {
                 backgroundColor: const Color(0xFF6A5ACD),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.r),
+                  borderRadius: BorderRadius.circular(R.radius(16)),
                 ),
               ),
               child: Text(
                 'Add Child',
                 style: GoogleFonts.montserrat(
-                  fontSize: 14.sp,
+                  fontSize: R.text(14),
                   fontWeight: FontWeight.w600,
                 ),
               ),
