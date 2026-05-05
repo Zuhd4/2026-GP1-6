@@ -216,26 +216,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
 
   int _totalTrophiesCollected() {
     final data = widget.doc.data() as Map<String, dynamic>;
-    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
-
-    int total = 0;
-
-    for (int level = 1; level <= 6; level++) {
-      final levelKey = 'level_$level';
-
-      final levelProgress = Map<String, dynamic>.from(
-        gameProgress[levelKey] ?? {},
-      );
-
-      final games = ['letterScramble', 'wordMatching', 'listenAndSpell'];
-
-      for (final game in games) {
-        final gameData = Map<String, dynamic>.from(levelProgress[game] ?? {});
-        total += ((gameData['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
-      }
-    }
-
-    return total;
+    return ((data['trophies'] as num?)?.toInt() ?? 0).clamp(0, 6);
   }
 
   bool _isLevelLocked(int level) {
@@ -304,7 +285,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
           ),
           SizedBox(width: R.space(5)),
           Text(
-            '$count',
+            '$count/6',
             style: GoogleFonts.montserrat(
               fontSize: R.text(12),
               fontWeight: FontWeight.w600,
