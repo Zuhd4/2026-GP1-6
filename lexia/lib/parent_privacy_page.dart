@@ -5,9 +5,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'widgets/lexia_popup.dart';
 import 'onboarding_page.dart';
 import 'add_child_page.dart';
-import 'child_profile_page.dart';
+import 'child_profile_settings_page.dart';
 import 'parent_change_password_page.dart';
 import 'change_pin_page.dart';
 
@@ -97,19 +98,32 @@ class ParentPrivacyPage extends StatelessWidget {
                         icon: Icons.lock_outline_rounded,
                         title: "Parental PIN",
                         value: "••••",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ChangePinPage(
-                                title: "Update your parental PIN",
-                                subtitle:
-                                    "Use a 4-digit PIN to protect parent-only actions.",
-                                currentPin: currentPin,
-                                isChild: false,
+                        onTap: () async {
+                          final String uid =
+                              FirebaseAuth.instance.currentUser?.uid ?? '';
+
+                          final userDoc = await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(uid)
+                              .get();
+
+                          final latestPin =
+                              userDoc.data()?['pin']?.toString() ?? currentPin;
+
+                          if (context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChangePinPage(
+                                  title: "Update your parental PIN",
+                                  subtitle:
+                                      "Use a 4-digit PIN to protect parent-only actions.",
+                                  currentPin: latestPin,
+                                  isChild: false,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         },
                       ),
                     ],
@@ -132,6 +146,7 @@ class ParentPrivacyPage extends StatelessWidget {
                       children: [
                         ...children.map((doc) {
                           final data = doc.data() as Map<String, dynamic>;
+
                           return _childCard(
                             context,
                             data['name'] ?? 'Child',
@@ -284,7 +299,23 @@ class ParentPrivacyPage extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data() ?? {};
+
         final bool allowChildPin = data['allowChildPin'] == true;
+        final String childPin = data['childPin']?.toString() ?? '';
+
+        final bool childPinEnabled =
+            data['childPinEnabled'] == true ||
+            (data['childPinEnabled'] == null && childPin.isNotEmpty);
+
+        final String permissionStatus = allowChildPin
+            ? "PIN allowed"
+            : "PIN not allowed";
+
+        final String childLockStatus = childPin.isEmpty
+            ? "No PIN added yet"
+            : childPinEnabled
+            ? "Child turned PIN on"
+            : "Child turned PIN off";
 
         return Container(
           margin: EdgeInsets.only(bottom: 12.h),
@@ -315,7 +346,11 @@ class ParentPrivacyPage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ChildProfilePage(childId: id),
+                          builder: (_) => ChildProfileSettingsPage(
+                            childId: id,
+                            initialName: name,
+                            initialAvatar: avatar ?? 'assets/lexiaAv.png',
+                          ),
                         ),
                       );
                     },
@@ -326,7 +361,6 @@ class ParentPrivacyPage extends StatelessWidget {
                     ),
                   ),
 
-                  // زر الحذف (زي ما هو)
                   IconButton(
                     onPressed: () =>
                         _confirmDeleteChild(context, name, id, uid),
@@ -347,93 +381,214 @@ class ParentPrivacyPage extends StatelessWidget {
                   color: primaryPurple.withOpacity(0.035),
                   borderRadius: BorderRadius.circular(16.r),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(8.r),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                      child: Icon(
-                        Icons.pin_rounded,
-                        color: primaryPurple.withOpacity(0.7),
-                        size: 18.r,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Child PIN",
-                            style: GoogleFonts.montserrat(
-                              fontSize: 10.sp,
-                              color: Colors.black38,
-                              fontWeight: FontWeight.w400,
-                            ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8.r),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10.r),
                           ),
-                          Text(
-                            allowChildPin ? "PIN enabled" : "PIN disabled",
-                            style: GoogleFonts.montserrat(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w500,
-                              color: textDark,
-                            ),
+                          child: Icon(
+                            Icons.pin_rounded,
+                            color: primaryPurple.withOpacity(0.7),
+                            size: 18.r,
                           ),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () async {
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(uid)
-                            .collection('children')
-                            .doc(id)
-                            .set({
-                              'allowChildPin': !allowChildPin,
-                              if (allowChildPin)
-                                'childPin': FieldValue.delete(),
-                            }, SetOptions(merge: true));
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 54.w,
-                        height: 30.h,
-                        padding: EdgeInsets.all(3.r),
-                        decoration: BoxDecoration(
-                          color: allowChildPin
-                              ? primaryPurple
-                              : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(30.r),
                         ),
-                        child: AnimatedAlign(
-                          duration: const Duration(milliseconds: 200),
-                          alignment: allowChildPin
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            width: 24.r,
-                            height: 24.r,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              allowChildPin
-                                  ? Icons.check_rounded
-                                  : Icons.close_rounded,
-                              size: 15.r,
+                        SizedBox(width: 12.w),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Child PIN Permission",
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 10.sp,
+                                  color: Colors.black38,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              Text(
+                                permissionStatus,
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: textDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        GestureDetector(
+                          onTap: () async {
+                            final bool newAllowValue = !allowChildPin;
+
+                            final Map<String, dynamic> updateData = {
+                              'allowChildPin': newAllowValue,
+                              'updatedAt': FieldValue.serverTimestamp(),
+                            };
+
+                            if (!newAllowValue) {
+                              updateData['childPinEnabled'] = false;
+                            }
+
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(uid)
+                                .collection('children')
+                                .doc(id)
+                                .set(updateData, SetOptions(merge: true));
+
+                            if (context.mounted) {
+                              LexiaPopup.showMessage(
+                                context: context,
+                                title: newAllowValue
+                                    ? "Child PIN Allowed"
+                                    : "Child PIN Disabled",
+                                message: newAllowValue
+                                    ? "$name can now add or use a PIN for this profile."
+                                    : "$name can enter the profile without a PIN. The saved PIN was not deleted.",
+                                icon: newAllowValue
+                                    ? Icons.lock_rounded
+                                    : Icons.lock_open_rounded,
+                                iconColor: primaryPurple,
+                                buttonColor: primaryPurple,
+                                buttonText: "Got it",
+                              );
+                            }
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 54.w,
+                            height: 30.h,
+                            padding: EdgeInsets.all(3.r),
+                            decoration: BoxDecoration(
                               color: allowChildPin
                                   ? primaryPurple
-                                  : Colors.grey,
+                                  : Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(30.r),
+                            ),
+                            child: AnimatedAlign(
+                              duration: const Duration(milliseconds: 200),
+                              alignment: allowChildPin
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                width: 24.r,
+                                height: 24.r,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  allowChildPin
+                                      ? Icons.check_rounded
+                                      : Icons.close_rounded,
+                                  size: 15.r,
+                                  color: allowChildPin
+                                      ? primaryPurple
+                                      : Colors.grey,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
+
+                    if (allowChildPin) ...[
+                      SizedBox(height: 10.h),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: primaryPurple.withOpacity(0.08),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              childPinEnabled
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
+                              size: 18.r,
+                              color: childPinEnabled
+                                  ? primaryPurple.withOpacity(0.75)
+                                  : Colors.black45,
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Text(
+                                childLockStatus,
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 11.sp,
+                                  color: childPinEnabled
+                                      ? textDark.withOpacity(0.75)
+                                      : Colors.black45,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    if (allowChildPin && childPin.isNotEmpty) ...[
+                      SizedBox(height: 10.h),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: primaryPurple.withOpacity(0.08),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.password_rounded,
+                              size: 18.r,
+                              color: primaryPurple.withOpacity(0.7),
+                            ),
+                            SizedBox(width: 10.w),
+                            Text(
+                              "Selected PIN",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 11.sp,
+                                color: Colors.black45,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              childPin,
+                              style: GoogleFonts.montserrat(
+                                fontSize: 14.sp,
+                                color: textDark,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -528,49 +683,28 @@ class ParentPrivacyPage extends StatelessWidget {
     );
   }
 
-  void _signOut(BuildContext context) {
-    showDialog(
+  void _signOut(BuildContext context) async {
+    final shouldSignOut = await LexiaPopup.showConfirm(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        title: Text(
-          "Sign Out",
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),
-        ),
-        content: Text(
-          "Are you sure you want to sign out?",
-          style: GoogleFonts.montserrat(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: GoogleFonts.montserrat()),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryPurple),
-            onPressed: () async {
-              Navigator.pop(context);
-              await FirebaseAuth.instance.signOut();
-
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const OnboardingPage()),
-                  (r) => false,
-                );
-              }
-            },
-            child: Text(
-              "Sign Out",
-              style: GoogleFonts.montserrat(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+      title: "Sign Out",
+      message: "Are you sure you want to sign out?",
+      confirmText: "Sign Out",
+      confirmColor: primaryPurple,
+      icon: Icons.logout_rounded,
+      iconColor: primaryPurple,
     );
+
+    if (!shouldSignOut) return;
+
+    await FirebaseAuth.instance.signOut();
+
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const OnboardingPage()),
+        (r) => false,
+      );
+    }
   }
 
   void _confirmDeleteChild(
@@ -578,118 +712,68 @@ class ParentPrivacyPage extends StatelessWidget {
     String name,
     String id,
     String uid,
-  ) {
-    showDialog(
+  ) async {
+    final shouldDelete = await LexiaPopup.showConfirm(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        title: Text(
-          "Delete $name?",
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),
-        ),
-        content: Text(
+      title: "Delete $name?",
+      message:
           "Are you sure you want to remove this profile? All progress will be lost.",
-          style: GoogleFonts.montserrat(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: GoogleFonts.montserrat()),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(uid)
-                  .collection('children')
-                  .doc(id)
-                  .delete();
-            },
-            child: Text(
-              "Delete",
-              style: GoogleFonts.montserrat(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      confirmText: "Delete",
+      confirmColor: Colors.redAccent,
+      icon: Icons.delete_outline_rounded,
+      iconColor: Colors.redAccent,
     );
+
+    if (shouldDelete) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('children')
+          .doc(id)
+          .delete();
+    }
   }
 
-  void _confirmDelete(BuildContext context) {
+  void _confirmDelete(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
 
-    showDialog(
+    final shouldDelete = await LexiaPopup.showConfirm(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        title: Text(
-          "Delete Account?",
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),
-        ),
-        content: Text(
-          "This will permanently delete your account and all family data.",
-          style: GoogleFonts.montserrat(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: GoogleFonts.montserrat()),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              try {
-                final uid = user!.uid;
-
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(uid)
-                    .delete();
-
-                await user.delete();
-
-                if (context.mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OnboardingPage()),
-                    (r) => false,
-                  );
-                }
-              } catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Security: Please re-login before deleting your account.",
-                      ),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(
-              "Delete",
-              style: GoogleFonts.montserrat(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: "Delete Account?",
+      message: "This will permanently delete your account and all family data.",
+      confirmText: "Delete",
+      confirmColor: Colors.redAccent,
+      icon: Icons.delete_forever_rounded,
+      iconColor: Colors.redAccent,
     );
+
+    if (!shouldDelete) return;
+
+    try {
+      final uid = user!.uid;
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      await user.delete();
+
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingPage()),
+          (r) => false,
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        LexiaPopup.showMessage(
+          context: context,
+          title: "Security Required",
+          message: "Please re-login before deleting your account.",
+          icon: Icons.lock_outline_rounded,
+          iconColor: Colors.redAccent,
+          buttonColor: primaryPurple,
+          buttonText: "Got it",
+        );
+      }
+    }
   }
 }

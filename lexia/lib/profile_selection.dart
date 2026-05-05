@@ -70,157 +70,166 @@ class ProfileSelectionPage extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(R.radius(24)),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(R.space(24)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Enter PIN",
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(18),
-                    fontWeight: FontWeight.w500,
-                    color: textDark,
-                  ),
-                ),
-                SizedBox(height: R.space(8)),
-                Text(
-                  "Enter your 4-digit PIN to access parent controls",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(12),
-                    color: Colors.black45,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                SizedBox(height: R.space(20)),
-                TextField(
-                  controller: pinController,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  textAlignVertical: TextAlignVertical.center,
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(16),
-                    fontWeight: FontWeight.w500,
-                    color: textDark,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: "Enter PIN",
-                    floatingLabelBehavior: FloatingLabelBehavior.auto,
-                    hintStyle: GoogleFonts.montserrat(
-                      fontSize: R.text(14),
-                      color: Colors.black38,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF3F4F8),
-                    counterText: "",
-                    errorText: pinError,
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: R.space(18),
-                      horizontal: R.space(18),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                      borderSide: BorderSide.none,
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                      borderSide: const BorderSide(
-                        color: Colors.red,
-                        width: 1.4,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                      borderSide: const BorderSide(
-                        color: Colors.red,
-                        width: 1.6,
-                      ),
-                    ),
-                  ),
-                  onChanged: (_) {
-                    if (pinError != null) {
-                      setState(() {
-                        pinError = null;
-                      });
-                    }
-                  },
-                ),
-                SizedBox(height: R.space(24)),
-                Row(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: const TextScaler.linear(1.0)),
+        child: StatefulBuilder(
+          builder: (context, setState) => Dialog(
+            backgroundColor: Colors.white,
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: R.space(28),
+              vertical: R.space(24),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(R.radius(24)),
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: EdgeInsets.all(R.space(22)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          "Cancel",
-                          style: GoogleFonts.montserrat(
-                            color: Colors.black38,
-                            fontWeight: FontWeight.w500,
-                            fontSize: R.text(12),
-                          ),
-                        ),
+                    Text(
+                      "Enter PIN",
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(18),
+                        fontWeight: FontWeight.w500,
+                        color: textDark,
                       ),
                     ),
-                    SizedBox(width: R.space(12)),
-                    Expanded(
-                      child: SizedBox(
-                        height: R.buttonH(48),
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryPurple,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(R.radius(14)),
-                            ),
+                    SizedBox(height: R.space(8)),
+                    Text(
+                      "Enter your 4-digit PIN to access parent controls",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(12),
+                        color: Colors.black45,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    SizedBox(height: R.space(18)),
+                    TextField(
+                      controller: pinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      maxLength: 4,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(16),
+                        fontWeight: FontWeight.w500,
+                        color: textDark,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: "Enter PIN",
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
+                        filled: true,
+                        fillColor: const Color(0xFFF3F4F8),
+                        counterText: "",
+                        errorText: pinError,
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: R.space(14),
+                          horizontal: R.space(16),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.4,
                           ),
-                          onPressed: () {
-                            if (pinController.text == correctPin) {
-                              Navigator.pop(context);
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const MainWrapper(isChildMode: false),
-                                ),
-                                (route) => false,
-                              );
-                            } else {
-                              setState(() {
-                                pinError = "Incorrect PIN";
-                              });
-                            }
-                          },
-                          child: Text(
-                            "Enter",
-                            style: GoogleFonts.montserrat(
-                              fontWeight: FontWeight.w500,
-                              fontSize: R.text(12),
-                            ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.6,
                           ),
                         ),
                       ),
+                      onChanged: (_) {
+                        if (pinError != null) {
+                          setState(() {
+                            pinError = null;
+                          });
+                        }
+                      },
+                    ),
+                    SizedBox(height: R.space(20)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              "Cancel",
+                              style: GoogleFonts.montserrat(
+                                color: Colors.black38,
+                                fontWeight: FontWeight.w500,
+                                fontSize: R.text(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: R.space(10)),
+                        Expanded(
+                          child: SizedBox(
+                            height: R.buttonH(46),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryPurple,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    R.radius(14),
+                                  ),
+                                ),
+                              ),
+                              onPressed: () {
+                                if (pinController.text == correctPin) {
+                                  Navigator.pop(context);
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const MainWrapper(isChildMode: false),
+                                    ),
+                                    (route) => false,
+                                  );
+                                } else {
+                                  setState(() {
+                                    pinError = "Incorrect PIN";
+                                  });
+                                }
+                              },
+                              child: Text(
+                                "Enter",
+                                style: GoogleFonts.montserrat(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: R.text(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -321,11 +330,21 @@ class ProfileSelectionPage extends StatelessWidget {
 
                                         final bool allowChildPin =
                                             childData['allowChildPin'] == true;
+
                                         final String childPin =
                                             (childData['childPin'] ?? '')
                                                 .toString();
+
+                                        final bool childPinEnabled =
+                                            childData['childPinEnabled'] ==
+                                                true ||
+                                            (childData['childPinEnabled'] ==
+                                                    null &&
+                                                childPin.isNotEmpty);
+
                                         final bool isChildLocked =
                                             allowChildPin &&
+                                            childPinEnabled &&
                                             childPin.isNotEmpty;
 
                                         return _buildProfileCard(
@@ -387,129 +406,167 @@ class ProfileSelectionPage extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(R.radius(24)),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(R.space(24)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Enter PIN",
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(18),
-                    fontWeight: FontWeight.w500,
-                    color: textDark,
-                  ),
-                ),
-                SizedBox(height: R.space(8)),
-                Text(
-                  "Enter your 4-digit PIN to access this child profile",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(12),
-                    color: Colors.black45,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                SizedBox(height: R.space(20)),
-                TextField(
-                  controller: pinController,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  textAlignVertical: TextAlignVertical.center,
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(16),
-                    fontWeight: FontWeight.w500,
-                    color: textDark,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: "Enter PIN",
-                    filled: true,
-                    fillColor: const Color(0xFFF3F4F8),
-                    counterText: "",
-                    errorText: pinError,
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: R.space(18),
-                      horizontal: R.space(18),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onChanged: (_) {
-                    if (pinError != null) {
-                      setState(() => pinError = null);
-                    }
-                  },
-                ),
-                SizedBox(height: R.space(24)),
-                Row(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: const TextScaler.linear(1.0)),
+        child: StatefulBuilder(
+          builder: (context, setState) => Dialog(
+            backgroundColor: Colors.white,
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: R.space(28),
+              vertical: R.space(24),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(R.radius(24)),
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: EdgeInsets.all(R.space(22)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          "Cancel",
-                          style: GoogleFonts.montserrat(
-                            color: Colors.black38,
-                            fontWeight: FontWeight.w500,
-                            fontSize: R.text(12),
+                    Text(
+                      "Enter PIN",
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(18),
+                        fontWeight: FontWeight.w500,
+                        color: textDark,
+                      ),
+                    ),
+                    SizedBox(height: R.space(8)),
+                    Text(
+                      "Enter your 4-digit PIN to access this child profile",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(12),
+                        color: Colors.black45,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    SizedBox(height: R.space(18)),
+                    TextField(
+                      controller: pinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      maxLength: 4,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(16),
+                        fontWeight: FontWeight.w500,
+                        color: textDark,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: "Enter PIN",
+                        filled: true,
+                        fillColor: const Color(0xFFF3F4F8),
+                        counterText: "",
+                        errorText: pinError,
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: R.space(14),
+                          horizontal: R.space(16),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.4,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(16)),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.6,
                           ),
                         ),
                       ),
+                      onChanged: (_) {
+                        if (pinError != null) {
+                          setState(() {
+                            pinError = null;
+                          });
+                        }
+                      },
                     ),
-                    SizedBox(width: R.space(12)),
-                    Expanded(
-                      child: SizedBox(
-                        height: R.buttonH(48),
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryPurple,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(R.radius(14)),
+                    SizedBox(height: R.space(20)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              "Cancel",
+                              style: GoogleFonts.montserrat(
+                                color: Colors.black38,
+                                fontWeight: FontWeight.w500,
+                                fontSize: R.text(12),
+                              ),
                             ),
                           ),
-                          onPressed: () {
-                            if (pinController.text == correctPin) {
-                              Navigator.pop(context);
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MainWrapper(
-                                    isChildMode: true,
-                                    childId: childId,
+                        ),
+                        SizedBox(width: R.space(10)),
+                        Expanded(
+                          child: SizedBox(
+                            height: R.buttonH(46),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryPurple,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    R.radius(14),
                                   ),
                                 ),
-                                (route) => false,
-                              );
-                            } else {
-                              setState(() {
-                                pinError = "Incorrect PIN";
-                              });
-                            }
-                          },
-                          child: Text(
-                            "Enter",
-                            style: GoogleFonts.montserrat(
-                              fontWeight: FontWeight.w500,
-                              fontSize: R.text(12),
+                              ),
+                              onPressed: () {
+                                if (pinController.text == correctPin) {
+                                  Navigator.pop(context);
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MainWrapper(
+                                        isChildMode: true,
+                                        childId: childId,
+                                      ),
+                                    ),
+                                    (route) => false,
+                                  );
+                                } else {
+                                  setState(() {
+                                    pinError = "Incorrect PIN";
+                                  });
+                                }
+                              },
+                              child: Text(
+                                "Enter",
+                                style: GoogleFonts.montserrat(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: R.text(12),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

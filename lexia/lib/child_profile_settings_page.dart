@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/lexia_popup.dart';
 import 'change_pin_page.dart';
 
 class ChildProfileSettingsPage extends StatefulWidget {
@@ -29,6 +30,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
   static const Color ivoryWhite = Color(0xFFFFFDFB);
   static const Color paleBlush = Color(0xFFFFF9F9);
   static const Color softCream = Color(0xFFFFFAF5);
+  static const Color green = Color(0xFF59A685);
 
   late TextEditingController _nameController;
   late TextEditingController _pinController;
@@ -36,6 +38,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
   bool _isSaving = false;
   bool _allowChildPin = false;
+  bool _childPinEnabled = false;
 
   String? _nameError;
 
@@ -88,16 +91,120 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
           .get();
 
       final data = doc.data() ?? {};
+      final String childPin = data['childPin']?.toString() ?? '';
 
       if (!mounted) return;
 
       setState(() {
         _allowChildPin = data['allowChildPin'] == true;
-        _pinController.text = data['childPin']?.toString() ?? '';
+        _pinController.text = childPin;
+
+        _childPinEnabled =
+            data['childPinEnabled'] == true ||
+            (data['childPinEnabled'] == null && childPin.isNotEmpty);
       });
     } catch (e) {
       debugPrint("Failed to load child PIN settings: $e");
     }
+  }
+
+  Future<void> _toggleChildPinEnabled() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return;
+
+    final currentPin = _pinController.text.trim();
+
+    if (currentPin.isEmpty) {
+      _openChildPinPage();
+      return;
+    }
+
+    final bool newValue = !_childPinEnabled;
+
+    setState(() {
+      _childPinEnabled = newValue;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
+          .set({
+            'childPinEnabled': newValue,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Failed to toggle child PIN: $e");
+
+      if (mounted) {
+        setState(() {
+          _childPinEnabled = !newValue;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Couldn't update PIN setting. Please try again.",
+              style: GoogleFonts.montserrat(fontSize: 13.sp),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  void _openChildPinPage() {
+    final currentPin = _pinController.text.trim();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangePinPage(
+          title: currentPin.isEmpty ? "Add child PIN" : "Update child PIN",
+          subtitle: "Use a 4-digit PIN to protect this child profile.",
+          currentPin: currentPin,
+          isChild: true,
+          childId: widget.childId,
+          isAddingPin: currentPin.isEmpty,
+        ),
+      ),
+    ).then((_) {
+      _loadPinSettings();
+    });
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 40.w,
+          child: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 20.r,
+              color: textDark,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Text(
+              "Edit Profile",
+              style: GoogleFonts.montserrat(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w500,
+                color: textDark,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 40.w),
+      ],
+    );
   }
 
   Widget _avatarWidget(String path, {double size = 50}) {
@@ -176,77 +283,18 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
+    LexiaPopup.showMessage(
       context: context,
+      title: "Profile Updated!",
+      message: "Your changes have been saved successfully.",
+      icon: Icons.check_rounded,
+      iconColor: green,
+      buttonColor: primaryPurple,
+      buttonText: "Done",
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 16.h),
-            Container(
-              padding: EdgeInsets.all(16.r),
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                color: Color(0xFF59A685),
-                size: 36.r,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              "Profile Updated!",
-              style: GoogleFonts.montserrat(
-                fontSize: 17.sp,
-                fontWeight: FontWeight.w600,
-                color: textDark,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              "Your changes have been saved successfully.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 12.sp,
-                color: Colors.black45,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            SizedBox(
-              width: double.infinity,
-              height: 48.h,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryPurple,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  "Done",
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      onDone: () {
+        Navigator.pop(context);
+      },
     );
   }
 
@@ -260,10 +308,167 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
     ),
   );
 
+  Widget _childPinCard() {
+    final currentChildPin = _pinController.text.trim();
+    final bool hasPin = currentChildPin.isNotEmpty;
+
+    final String statusText = !hasPin
+        ? "No PIN added"
+        : _childPinEnabled
+        ? "PIN is on"
+        : "PIN is off";
+
+    final String actionText = !hasPin ? "Add Child PIN" : "Change Child PIN";
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 24.h),
+        _sectionLabel("Child PIN"),
+        SizedBox(height: 8.h),
+
+        Container(
+          padding: EdgeInsets.all(14.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42.r,
+                    height: 42.r,
+                    decoration: BoxDecoration(
+                      color: primaryPurple.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(13.r),
+                    ),
+                    child: Icon(
+                      _childPinEnabled
+                          ? Icons.lock_rounded
+                          : Icons.lock_open_rounded,
+                      color: primaryPurple.withOpacity(0.75),
+                      size: 21.r,
+                    ),
+                  ),
+
+                  SizedBox(width: 12.w),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Profile Lock",
+                          style: GoogleFonts.montserrat(
+                            fontSize: 10.sp,
+                            color: Colors.black38,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          statusText,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 13.sp,
+                            color: textDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  GestureDetector(
+                    onTap: _toggleChildPinEnabled,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 54.w,
+                      height: 30.h,
+                      padding: EdgeInsets.all(3.r),
+                      decoration: BoxDecoration(
+                        color: _childPinEnabled
+                            ? primaryPurple
+                            : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(30.r),
+                      ),
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 200),
+                        alignment: _childPinEnabled
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          width: 24.r,
+                          height: 24.r,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _childPinEnabled
+                                ? Icons.lock_rounded
+                                : Icons.lock_open_rounded,
+                            size: 14.r,
+                            color: _childPinEnabled
+                                ? primaryPurple
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 12.h),
+              const Divider(height: 1, color: Color(0xFFF8F9FB)),
+              SizedBox(height: 12.h),
+
+              GestureDetector(
+                onTap: _openChildPinPage,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.pin_rounded,
+                      color: primaryPurple.withOpacity(0.65),
+                      size: 20.r,
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Text(
+                        actionText,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                          color: textDark,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 15.r,
+                      color: Colors.black26,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final currentChildPin = _pinController.text.trim();
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -282,35 +487,9 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
             children: [
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 40.w,
-                      child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 20.r,
-                          color: textDark,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          "Edit Profile",
-                          style: GoogleFonts.montserrat(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w500,
-                            color: textDark,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 40.w),
-                  ],
-                ),
+                child: _buildHeader(context),
               ),
+
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -339,6 +518,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                           ),
                         ),
                       ),
+
                       SizedBox(height: 24.h),
 
                       _sectionLabel("Name"),
@@ -425,79 +605,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                         ),
                       ),
 
-                      if (_allowChildPin) ...[
-                        SizedBox(height: 24.h),
-                        _sectionLabel("Child PIN"),
-                        SizedBox(height: 8.h),
-                        GestureDetector(
-                          onTap: () {
-                            final currentPin = _pinController.text.trim();
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChangePinPage(
-                                  title: currentPin.isEmpty
-                                      ? "Add child PIN"
-                                      : "Update child PIN",
-                                  subtitle:
-                                      "Use a 4-digit PIN to protect this child profile.",
-                                  currentPin: currentPin,
-                                  isChild: true,
-                                  childId: widget.childId,
-                                  isAddingPin: currentPin.isEmpty,
-                                ),
-                              ),
-                            ).then((_) {
-                              _loadPinSettings();
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 16.w,
-                              vertical: 16.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.pin_rounded,
-                                  color: primaryPurple.withOpacity(0.6),
-                                  size: 20.r,
-                                ),
-                                SizedBox(width: 12.w),
-                                Expanded(
-                                  child: Text(
-                                    currentChildPin.isEmpty
-                                        ? "Add Child PIN"
-                                        : "Change Child PIN",
-                                    style: GoogleFonts.montserrat(
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w500,
-                                      color: textDark,
-                                    ),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 15.r,
-                                  color: Colors.black26,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                      if (_allowChildPin) _childPinCard(),
 
                       SizedBox(height: 24.h),
 

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'widgets/lexia_popup.dart';
 import 'letter_scramble_page.dart';
 import 'responsive_helper.dart';
 
@@ -82,78 +82,13 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   }
 
   void _showComingSoon(BuildContext context) {
-    R.init(context);
-
-    showDialog(
+    LexiaPopup.showMessage(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(R.radius(24)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(R.space(22)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: R.icon(60),
-                height: R.icon(60),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFF9E6),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text('🚀', style: TextStyle(fontSize: R.text(28))),
-                ),
-              ),
-              SizedBox(height: R.space(16)),
-              Text(
-                'Coming Soon!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: R.text(18),
-                  fontWeight: FontWeight.w500,
-                  color: textDark,
-                ),
-              ),
-              SizedBox(height: R.space(8)),
-              Text(
-                'This feature will be available soon!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  color: Colors.black45,
-                  fontSize: R.text(12),
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              SizedBox(height: R.space(24)),
-              SizedBox(
-                width: double.infinity,
-                height: R.buttonH(54),
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: green.withOpacity(0.8),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                    ),
-                  ),
-                  child: Text(
-                    'Got it!',
-                    style: GoogleFonts.montserrat(
-                      fontWeight: FontWeight.w500,
-                      fontSize: R.text(14),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      title: "Coming Soon!",
+      message: "This feature will be available soon!",
+      emoji: "🚀",
+      buttonColor: green.withOpacity(0.8),
+      buttonText: "Got it!",
     );
   }
 
@@ -354,40 +289,30 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   Widget _buildTopBar(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: R.icon(42),
-          height: R.icon(42),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
+        SizedBox(
+          width: 40,
           child: IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: Icon(
+            icon: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              size: R.icon(18),
-              color: primaryPurple,
+              size: 20,
+              color: textDark,
             ),
           ),
         ),
-        const Spacer(),
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: R.space(12),
-            vertical: R.space(7),
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(R.radius(18)),
+        Expanded(
+          child: Center(
+            child: Text(
+              "Level ${widget.level} Games",
+              style: GoogleFonts.montserrat(
+                fontSize: R.text(18),
+                fontWeight: FontWeight.w500,
+                color: textDark,
+              ),
+            ),
           ),
         ),
+        const SizedBox(width: 40),
       ],
     );
   }

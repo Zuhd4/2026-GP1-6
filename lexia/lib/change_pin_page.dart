@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/lexia_popup.dart';
 
 class ChangePinPage extends StatefulWidget {
   final String title;
@@ -52,6 +53,30 @@ class _ChangePinPageState extends State<ChangePinPage> {
     super.dispose();
   }
 
+  Future<String> _getLatestCurrentPin(String uid) async {
+    if (widget.isChild) {
+      if (widget.childId == null || widget.childId!.isEmpty) {
+        return widget.currentPin;
+      }
+
+      final childDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
+          .get();
+
+      return childDoc.data()?['childPin']?.toString() ?? widget.currentPin;
+    }
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    return userDoc.data()?['pin']?.toString() ?? widget.currentPin;
+  }
+
   Future<void> _changePin() async {
     setState(() {
       _oldPinError = null;
@@ -59,30 +84,45 @@ class _ChangePinPageState extends State<ChangePinPage> {
       _confirmPinError = null;
     });
 
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return;
+
+    String latestCurrentPin = widget.currentPin;
+
+    try {
+      latestCurrentPin = await _getLatestCurrentPin(uid);
+    } catch (e) {
+      debugPrint("Failed to get latest PIN: $e");
+    }
+
     bool hasError = false;
 
+    final oldPin = _oldPinController.text.trim();
+    final newPin = _newPinController.text.trim();
+    final confirmPin = _confirmPinController.text.trim();
+
     if (!widget.isAddingPin) {
-      if (_oldPinController.text.isEmpty) {
+      if (oldPin.isEmpty) {
         _oldPinError = "Current PIN required";
         hasError = true;
-      } else if (_oldPinController.text != widget.currentPin) {
+      } else if (oldPin != latestCurrentPin) {
         _oldPinError = "Incorrect PIN";
         hasError = true;
       }
     }
 
-    if (_newPinController.text.isEmpty) {
+    if (newPin.isEmpty) {
       _newPinError = "New PIN required";
       hasError = true;
-    } else if (!RegExp(r'^\d{4}$').hasMatch(_newPinController.text)) {
+    } else if (!RegExp(r'^\d{4}$').hasMatch(newPin)) {
       _newPinError = "PIN must be 4 numbers";
       hasError = true;
     }
 
-    if (_confirmPinController.text.isEmpty) {
+    if (confirmPin.isEmpty) {
       _confirmPinError = "Please confirm PIN";
       hasError = true;
-    } else if (_newPinController.text != _confirmPinController.text) {
+    } else if (newPin != confirmPin) {
       _confirmPinError = "PINs do not match";
       hasError = true;
     }
@@ -91,9 +131,6 @@ class _ChangePinPageState extends State<ChangePinPage> {
       setState(() {});
       return;
     }
-
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (uid.isEmpty) return;
 
     setState(() => _isUpdating = true);
 
@@ -104,20 +141,21 @@ class _ChangePinPageState extends State<ChangePinPage> {
             .doc(uid)
             .collection('children')
             .doc(widget.childId)
-            .update({
-              'childPin': _newPinController.text.trim(),
+            .set({
+              'childPin': newPin,
               'allowChildPin': true,
               'updatedAt': FieldValue.serverTimestamp(),
-            });
+            }, SetOptions(merge: true));
       } else {
-        await FirebaseFirestore.instance.collection('users').doc(uid).update({
-          'pin': _newPinController.text.trim(),
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'pin': newPin,
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
       }
 
       if (mounted) _showSuccessDialog();
     } catch (e) {
+      debugPrint("Couldn't update PIN: $e");
       if (mounted) _showErrorSnack("Couldn't update PIN. Please try again.");
     } finally {
       if (mounted) setState(() => _isUpdating = false);
@@ -125,74 +163,20 @@ class _ChangePinPageState extends State<ChangePinPage> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
+    LexiaPopup.showMessage(
       context: context,
+      title: widget.isAddingPin ? "PIN Added!" : "PIN Updated!",
+      message: widget.isAddingPin
+          ? "Your PIN has been added successfully."
+          : "Your PIN has been changed successfully.",
+      icon: Icons.check_rounded,
+      iconColor: green,
+      buttonColor: primaryPurple,
+      buttonText: "Done",
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 16.h),
-            Container(
-              padding: EdgeInsets.all(16.r),
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.check_rounded, color: green, size: 36.r),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              widget.isAddingPin ? "PIN Added!" : "PIN Updated!",
-              style: GoogleFonts.montserrat(
-                fontSize: 17.sp,
-                fontWeight: FontWeight.w600,
-                color: textDark,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              widget.isAddingPin
-                  ? "Your PIN has been added successfully."
-                  : "Your PIN has been changed successfully.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 12.sp,
-                color: Colors.black45,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            SizedBox(
-              width: double.infinity,
-              height: 48.h,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryPurple,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  "Done",
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      onDone: () {
+        Navigator.pop(context);
+      },
     );
   }
 
@@ -227,11 +211,15 @@ class _ChangePinPageState extends State<ChangePinPage> {
           color: textDark,
         ),
         onChanged: (_) {
-          setState(() {
-            _oldPinError = null;
-            _newPinError = null;
-            _confirmPinError = null;
-          });
+          if (_oldPinError != null ||
+              _newPinError != null ||
+              _confirmPinError != null) {
+            setState(() {
+              _oldPinError = null;
+              _newPinError = null;
+              _confirmPinError = null;
+            });
+          }
         },
         decoration: InputDecoration(
           labelText: label,
@@ -255,6 +243,25 @@ class _ChangePinPageState extends State<ChangePinPage> {
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
             borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            borderSide: BorderSide(
+              color: primaryPurple.withOpacity(0.35),
+              width: 1.4,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.4),
           ),
         ),
       ),
@@ -356,23 +363,28 @@ class _ChangePinPageState extends State<ChangePinPage> {
                         ),
                       ),
                       SizedBox(height: 22.h),
+
                       if (!widget.isAddingPin)
                         _buildPinField(
                           label: "Current PIN",
                           controller: _oldPinController,
                           error: _oldPinError,
                         ),
+
                       _buildPinField(
                         label: "New PIN",
                         controller: _newPinController,
                         error: _newPinError,
                       ),
+
                       _buildPinField(
                         label: "Confirm New PIN",
                         controller: _confirmPinController,
                         error: _confirmPinError,
                       ),
+
                       SizedBox(height: 18.h),
+
                       SizedBox(
                         width: double.infinity,
                         height: 54.h,

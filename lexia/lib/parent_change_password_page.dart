@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/lexia_popup.dart';
 
 class ParentChangePasswordPage extends StatefulWidget {
   const ParentChangePasswordPage({super.key});
@@ -104,72 +105,18 @@ class _ParentChangePasswordPageState extends State<ParentChangePasswordPage> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
+    LexiaPopup.showMessage(
       context: context,
+      title: "Password Updated!",
+      message: "Your password has been changed successfully.",
+      icon: Icons.check_rounded,
+      iconColor: const Color(0xFF59A685),
+      buttonColor: primaryPurple,
+      buttonText: "Done",
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 16.h),
-            Container(
-              padding: EdgeInsets.all(16.r),
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.check_rounded, color: green, size: 36.r),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              "Password Updated!",
-              style: GoogleFonts.montserrat(
-                fontSize: 17.sp,
-                fontWeight: FontWeight.w600,
-                color: textDark,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              "Your password has been changed successfully.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 12.sp,
-                color: Colors.black45,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            SizedBox(
-              width: double.infinity,
-              height: 48.h,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryPurple,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  "Done",
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      onDone: () {
+        Navigator.pop(context);
+      },
     );
   }
 

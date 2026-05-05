@@ -191,16 +191,16 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     return unlockedLevel.clamp(1, 6);
   }
 
-  Map<String, dynamic> _getLetterScrambleData(int level) {
+  Map<String, dynamic> _getLevelProgress(int level) {
     final data = widget.doc.data() as Map<String, dynamic>;
     final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
-
     final levelKey = 'level_$level';
 
-    final levelProgress = Map<String, dynamic>.from(
-      gameProgress[levelKey] ?? {},
-    );
+    return Map<String, dynamic>.from(gameProgress[levelKey] ?? {});
+  }
 
+  Map<String, dynamic> _getLetterScrambleData(int level) {
+    final levelProgress = _getLevelProgress(level);
     return Map<String, dynamic>.from(levelProgress['letterScramble'] ?? {});
   }
 
@@ -212,6 +212,30 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
   int _bestStarsForLetterScramble(int level) {
     final letterData = _getLetterScrambleData(level);
     return ((letterData['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
+  }
+
+  int _totalTrophiesCollected() {
+    final data = widget.doc.data() as Map<String, dynamic>;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+
+    int total = 0;
+
+    for (int level = 1; level <= 6; level++) {
+      final levelKey = 'level_$level';
+
+      final levelProgress = Map<String, dynamic>.from(
+        gameProgress[levelKey] ?? {},
+      );
+
+      final games = ['letterScramble', 'wordMatching', 'listenAndSpell'];
+
+      for (final game in games) {
+        final gameData = Map<String, dynamic>.from(levelProgress[game] ?? {});
+        total += ((gameData['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
+      }
+    }
+
+    return total;
   }
 
   bool _isLevelLocked(int level) {
@@ -244,6 +268,54 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     );
   }
 
+  Widget _trophyBadge(int count) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: R.space(9),
+        vertical: R.space(6),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(R.radius(14)),
+        border: Border.all(color: Colors.amber.withOpacity(0.25), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.025),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: R.icon(26),
+            height: R.icon(26),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF8E1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.emoji_events_rounded,
+              color: Colors.amber,
+              size: R.icon(16),
+            ),
+          ),
+          SizedBox(width: R.space(5)),
+          Text(
+            '$count',
+            style: GoogleFonts.montserrat(
+              fontSize: R.text(12),
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF2D3142),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.doc.data() as Map<String, dynamic>;
@@ -251,6 +323,8 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     final String? avatarUrl = data['avatarUrl'];
 
     final int currentUnlockedLevel = _getCurrentUnlockedLevel();
+    final int totalTrophies = _totalTrophiesCollected();
+
     final bool levelLocked = _isLevelLocked(displayedLevel);
     final bool letterCompleted = _isLetterScrambleCompleted(displayedLevel);
     final int letterStars = _bestStarsForLetterScramble(displayedLevel);
@@ -312,6 +386,7 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                     ],
                   ),
                 ),
+                _trophyBadge(totalTrophies),
               ],
             ),
           ),

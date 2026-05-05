@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'widgets/lexia_popup.dart';
 import 'level_complete_page.dart';
 import 'responsive_helper.dart';
 
@@ -438,82 +439,15 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   Future<void> _showStarDialog() async {
     if (!mounted) return;
 
-    await showDialog(
+    await LexiaPopup.showMessage(
       context: context,
+      title: "Awesome!",
+      message: "You earned a star",
+      icon: Icons.star_rounded,
+      iconColor: Colors.amber,
+      buttonColor: green,
+      buttonText: "Nice!",
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(R.radius(26)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(R.space(24)),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.65, end: 1.0),
-            duration: const Duration(milliseconds: 650),
-            curve: Curves.elasticOut,
-            builder: (context, scale, child) {
-              return Transform.scale(
-                scale: scale,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.star_rounded,
-                      size: R.icon(84),
-                      color: Colors.amber,
-                    ),
-                    SizedBox(height: R.space(12)),
-                    Text(
-                      "Awesome!",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.fredoka(
-                        fontSize: R.text(24),
-                        fontWeight: FontWeight.bold,
-                        color: textDark,
-                      ),
-                    ),
-                    SizedBox(height: R.space(8)),
-                    Text(
-                      "You earned a star",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.montserrat(
-                        fontSize: R.text(14),
-                        fontWeight: FontWeight.w500,
-                        color: textDark.withOpacity(0.65),
-                      ),
-                    ),
-                    SizedBox(height: R.space(22)),
-                    SizedBox(
-                      width: double.infinity,
-                      height: R.buttonH(52),
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: green,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(R.radius(16)),
-                          ),
-                        ),
-                        child: Text(
-                          "Nice!",
-                          style: GoogleFonts.montserrat(
-                            fontSize: R.text(14),
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ),
     );
   }
 
@@ -525,91 +459,24 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   }) async {
     if (!mounted) return;
 
-    await showDialog(
+    await LexiaPopup.showMessage(
       context: context,
+      title: title,
+      message: message,
+      icon: icon,
+      iconColor: iconColor,
+      buttonColor: green,
+      buttonText: "Got it",
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(R.radius(26)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(R.space(24)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: R.icon(68), color: iconColor),
-              SizedBox(height: R.space(16)),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(
-                  fontSize: R.text(22),
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
-                ),
-              ),
-              SizedBox(height: R.space(8)),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: R.text(13),
-                  fontWeight: FontWeight.w500,
-                  color: textDark.withOpacity(0.65),
-                  height: 1.45,
-                ),
-              ),
-              SizedBox(height: R.space(22)),
-              SizedBox(
-                width: double.infinity,
-                height: R.buttonH(52),
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: green,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(R.radius(16)),
-                    ),
-                  ),
-                  child: Text(
-                    "Got it",
-                    style: GoogleFonts.montserrat(
-                      fontSize: R.text(14),
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     R.init(context);
+
     return Scaffold(
       backgroundColor: ivoryWhite,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: textDark),
-        title: Text(
-          "Letter Scramble",
-          style: GoogleFonts.fredoka(
-            fontSize: R.text(22),
-            color: textDark,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -622,45 +489,92 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           ),
         ),
         child: SafeArea(
-          child: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: primaryPurple),
-                )
-              : errorMessage != null
-              ? Padding(
-                  padding: EdgeInsets.all(R.space(20)),
-                  child: _buildErrorState(),
-                )
-              : Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: R.maxContentWidth),
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(
-                        R.pagePad,
-                        R.space(14),
-                        R.pagePad,
-                        R.safeBottom + R.space(24),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildProgressHeader(),
-                          SizedBox(height: R.space(14)),
-                          _buildQuestionCard(),
-                          SizedBox(height: R.space(18)),
-                          _buildLetters(),
-                          SizedBox(height: R.space(18)),
-                          _buildActionButtons(),
-                          SizedBox(height: R.space(16)),
-                          _buildCheckButton(),
-                        ],
-                      ),
-                    ),
-                  ),
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: R.pagePad,
+                  vertical: R.space(10),
                 ),
+                child: _buildHeader(context),
+              ),
+
+              Expanded(
+                child: isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: primaryPurple),
+                      )
+                    : errorMessage != null
+                    ? Padding(
+                        padding: EdgeInsets.all(R.space(20)),
+                        child: _buildErrorState(),
+                      )
+                    : Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: R.maxContentWidth,
+                          ),
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              R.pagePad,
+                              R.space(14),
+                              R.pagePad,
+                              R.safeBottom + R.space(24),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildProgressHeader(),
+                                SizedBox(height: R.space(14)),
+                                _buildQuestionCard(),
+                                SizedBox(height: R.space(18)),
+                                _buildLetters(),
+                                SizedBox(height: R.space(18)),
+                                _buildActionButtons(),
+                                SizedBox(height: R.space(16)),
+                                _buildCheckButton(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: R.icon(40),
+          child: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: R.icon(20),
+              color: textDark,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Text(
+              "Letter Scramble",
+              style: GoogleFonts.montserrat(
+                fontSize: R.text(18),
+                fontWeight: FontWeight.w500,
+                color: textDark,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: R.icon(40)),
+      ],
     );
   }
 

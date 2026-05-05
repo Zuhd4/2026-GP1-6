@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/lexia_popup.dart';
 
 class ParentProfileEditPage extends StatefulWidget {
   final String initialName;
@@ -99,53 +100,15 @@ class _ParentProfileEditPageState extends State<ParentProfileEditPage> {
       return;
     }
 
-    final shouldSave = await showDialog<bool>(
+    final shouldSave = await LexiaPopup.showConfirm(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        title: Text(
-          "Save Changes?",
-          style: GoogleFonts.montserrat(
-            fontWeight: FontWeight.w600,
-            color: textDark,
-          ),
-        ),
-        content: Text(
-          "Are you sure you want to save these profile changes?",
-          style: GoogleFonts.montserrat(color: textDark.withOpacity(0.65)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              "Cancel",
-              style: GoogleFonts.montserrat(color: Colors.black38),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryPurple,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-            ),
-            child: Text(
-              "Save",
-              style: GoogleFonts.montserrat(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: "Save Changes?",
+      message: "Are you sure you want to save these profile changes?",
+      confirmText: "Save",
+      confirmColor: primaryPurple,
+      icon: Icons.save_outlined,
+      iconColor: primaryPurple,
     );
-
     if (shouldSave == true) {
       await _saveProfile();
     }
@@ -178,67 +141,18 @@ class _ParentProfileEditPageState extends State<ParentProfileEditPage> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
+    LexiaPopup.showMessage(
       context: context,
+      title: "PIN Updated!",
+      message: "Your PIN has been changed successfully.",
+      icon: Icons.check_rounded,
+      iconColor: const Color(0xFF59A685),
+      buttonColor: primaryPurple,
+      buttonText: "Done",
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 16.h),
-            Container(
-              padding: EdgeInsets.all(16.r),
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                color: Color(0xFF59A685),
-                size: 36.r,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              "Profile Updated!",
-              style: GoogleFonts.montserrat(
-                fontSize: 17.sp,
-                fontWeight: FontWeight.w600,
-                color: textDark,
-              ),
-            ),
-            SizedBox(height: 20.h),
-            SizedBox(
-              width: double.infinity,
-              height: 48.h,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryPurple,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                ),
-                child: Text(
-                  "Done",
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      onDone: () {
+        Navigator.pop(context);
+      },
     );
   }
 

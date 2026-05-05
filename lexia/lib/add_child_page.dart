@@ -102,36 +102,37 @@ class _AddChildPageState extends State<AddChildPage> {
   }
 
   Widget _header(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 40.w,
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 20.r,
+    return _buildHeader(context, "New Child Profile");
+  }
+
+  Widget _buildHeader(BuildContext context, String title) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 40.w,
+          child: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 20.r,
+              color: textDark,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Text(
+              title,
+              style: GoogleFonts.montserrat(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w500,
                 color: textDark,
               ),
             ),
           ),
-          Expanded(
-            child: Center(
-              child: Text(
-                "New Child Profile",
-                style: GoogleFonts.montserrat(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w500,
-                  color: textDark,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 40.w),
-        ],
-      ),
+        ),
+        SizedBox(width: 40.w),
+      ],
     );
   }
 
