@@ -1,3 +1,8 @@
 # Lexia – Dyslexia Support Learning Application
-Lexia is an interactive mobile application designed to help children with dyslexia improve their reading, spelling, and comprehension skills. It uses a level based system where children start at Level 1 and progress step by step, giving them a clear and structured learning path. The application has two connected interfaces: a child interface and a parent interface. The child interface includes fun mini games like Word Matching to improve vocabulary, Letter Scramble to practice spelling, listen and spell and a Short Story section to support reading, pronunciation, and understanding. Accessibility features, such as the OpenDyslexic font, make reading easier for children with dyslexia. The parent interface allows caregivers to track their child’s progress and performance, and it also includes an OCR feature to capture real world text and identify difficult words. The goal of Lexia is to provide a simple, engaging, and supportive learning tool that strengthens literacy skills, builds confidence, and encourages independent learning for children with dyslexia.
+
+# Introduction
+
+Lexia is an Android mobile learning application designed to support children with dyslexia in improving their reading and spelling skills. The application provides a child-friendly interface with interactive learning activities, level-based progression, text-to-speech support, speech recognition, OCR text capture, and a word difficulty scoring system.
+
+The goal of Lexia is to create a supportive and engaging learning environment where children can practice reading and spelling through educational games and reading activities. The application also provides a parent interface that allows parents to manage child profiles, monitor progress, scan learning materials, and analyze word difficulty.
 
