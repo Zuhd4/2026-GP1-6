@@ -2,7 +2,71 @@
 
 # Introduction
 
-Lexia is an Android mobile learning application designed to support children with dyslexia in improving their reading and spelling skills. The application provides a child-friendly interface with interactive learning activities, level-based progression, text-to-speech support, speech recognition, OCR text capture, and a word difficulty scoring system.
+Lexia is an Android mobile learning application designed to support children with dyslexia in improving their reading and spelling skills through interactive and child-friendly learning activities.
 
-The goal of Lexia is to create a supportive and engaging learning environment where children can practice reading and spelling through educational games and reading activities. The application also provides a parent interface that allows parents to manage child profiles, monitor progress, scan learning materials, and analyze word difficulty.
+The application includes two main interfaces: a child interface and a parent interface. The child interface allows children to practice through educational games, reading activities, text-to-speech support, speech recognition, and level-based progression. The parent interface allows parents to create and manage child profiles, monitor the child’s progress, scan learning materials using OCR, and analyze word difficulty.
 
+Lexia assists children by:
+
+* Providing educational games such as Letter Scramble, Word Matching, and Listen & Spell.
+
+* Supporting reading activities with speech recognition and feedback.
+
+* Using a word difficulty scoring system to classify words based on linguistic rules.
+
+* Highlighting difficult words to support children while reading.
+
+* Allowing parents to track learning progress through a dedicated parent dashboard.
+
+Unlike traditional learning applications, Lexia combines dyslexia-friendly design, interactive learning activities, OCR text capture, and a custom word difficulty scoring system to create a supportive reading and spelling environment.
+
+# Technologies Used
+
+Lexia uses a combination of mobile, cloud, backend, and data processing tools:
+
+**Mobile Application**
+
+* Flutter — Used to develop the Android mobile application.
+
+* Dart — Used as the main programming language for the Flutter application.
+
+* Android Emulator — Used to run and test the application on a virtual Android device.
+
+**Firebase Services**
+
+* Firebase Authentication — Used for parent account registration and login.
+
+* Cloud Firestore — Used to store parent accounts, child profiles, vocabulary data, and learning progress.
+
+**Backend and Data Processing**
+
+* Python — Used to process the vocabulary corpus and apply the word difficulty scoring rules.
+
+* Flask — Used to build the word analyzer backend.
+
+* Node.js — Used for Firebase Admin SDK scripts and generative AI processing workflows.
+
+* Google Colab — Used during dataset preparation and corpus processing.
+
+**Generative AI**
+
+* Google Generative AI / Gemini API — Used for text validation and image validation during the educational content preparation process.
+
+**Development and Version Control Tools**
+
+* Visual Studio Code — Used as the main development environment.
+
+* GitHub — Used for version control, collaboration, and storing the project repository.
+
+# Launch Instructions
+
+-a
+
+--- 
+
+# Student Names: 
+
+* Norah Alshamsan, 444200817
+* Dana Alsalami, 443200945
+* Zuhd Ibrahim, 444201206
+* Layan Alhowaimel, 444200969
