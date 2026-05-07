@@ -696,6 +696,15 @@ class ParentPrivacyPage extends StatelessWidget {
 
     if (!shouldSignOut) return;
 
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid != null) {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'sessionActive': false,
+        'signedOutAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
     await FirebaseAuth.instance.signOut();
 
     if (context.mounted) {

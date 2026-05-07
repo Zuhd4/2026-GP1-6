@@ -11,6 +11,7 @@ import 'reading_page.dart';
 import 'my_book_page.dart';
 import 'word_page.dart';
 import 'child_profile_page.dart';
+import 'onboarding_page.dart';
 
 class MainWrapper extends StatefulWidget {
   final bool isChildMode;
@@ -277,5 +278,34 @@ class _MainWrapperState extends State<MainWrapper> {
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.isChildMode) {
+      _listenToParentSession();
+    }
+  }
+
+  void _listenToParentSession() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    FirebaseFirestore.instance.collection('users').doc(uid).snapshots().listen((
+      doc,
+    ) {
+      final data = doc.data();
+      final sessionActive = data?['sessionActive'];
+
+      if (sessionActive == false && mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingPage()),
+          (route) => false,
+        );
+      }
+    });
   }
 }
