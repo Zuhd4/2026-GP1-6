@@ -91,50 +91,34 @@ class DashboardPage extends StatelessWidget {
                     stops: [0.0, 0.4, 0.7, 1.0],
                   ),
                 ),
-                child: R.pageWrap(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPad,
-                      topMargin,
-                      horizontalPad,
-                      bottomMargin,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hello $parentName',
-                          style: GoogleFonts.montserrat(
-                            fontSize: R.text(21),
-                            fontWeight: FontWeight.w500,
-                            color: textDark.withOpacity(0.9),
-                          ),
-                        ),
-                        SizedBox(height: R.space(2)),
-                        Text(
-                          childrenText,
-                          style: GoogleFonts.montserrat(
-                            fontSize: R.text(12),
-                            color: Colors.black45,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        SizedBox(height: R.space(28)),
-
-                        if (hasChild)
-                          Column(
-                            children: snapshot.data!.docs.map((doc) {
-                              return Padding(
-                                padding: EdgeInsets.only(bottom: R.space(26)),
-                                child: _ChildDashboardCard(doc: doc),
-                              );
-                            }).toList(),
-                          )
-                        else
-                          const _EmptyStateCard(),
-                      ],
-                    ),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPad,
+                    topMargin,
+                    horizontalPad,
+                    bottomMargin,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _DashboardHeader(
+                        parentName: parentName,
+                        childrenText: childrenText,
+                      ),
+                      SizedBox(height: R.space(28)),
+                      if (hasChild)
+                        Column(
+                          children: snapshot.data!.docs.map((doc) {
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: R.space(26)),
+                              child: _ChildDashboardCard(doc: doc),
+                            );
+                          }).toList(),
+                        )
+                      else
+                        const _EmptyStateCard(),
+                    ],
                   ),
                 ),
               ),
@@ -142,6 +126,42 @@ class DashboardPage extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _DashboardHeader extends StatelessWidget {
+  final String parentName;
+  final String childrenText;
+
+  const _DashboardHeader({
+    required this.parentName,
+    required this.childrenText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hello $parentName',
+          style: GoogleFonts.montserrat(
+            fontSize: R.text(21),
+            fontWeight: FontWeight.w500,
+            color: DashboardPage.textDark.withOpacity(0.9),
+          ),
+        ),
+        SizedBox(height: R.space(2)),
+        Text(
+          childrenText,
+          style: GoogleFonts.montserrat(
+            fontSize: R.text(12),
+            color: Colors.black45,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -733,10 +753,12 @@ class _EmptyStateCard extends StatelessWidget {
             width: double.infinity,
             height: R.buttonH(50),
             child: ElevatedButton(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => const AddChildPage(),
-              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddChildPage()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6A5ACD),
                 foregroundColor: Colors.white,

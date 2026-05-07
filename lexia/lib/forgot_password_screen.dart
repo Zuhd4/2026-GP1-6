@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'responsive_helper.dart';
+import 'widgets/lexia_popup.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -35,10 +36,34 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     final email = _emailController.text.trim().toLowerCase();
 
-    // Basic regex for email validation
-    final emailRegex = RegExp(
-      r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
-    );
+    bool isValidEmailFormat(String email) {
+      final emailRegex = RegExp(
+        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+      );
+
+      if (!emailRegex.hasMatch(email)) {
+        return false;
+      }
+
+      if (email.contains('..') ||
+          email.startsWith('.') ||
+          email.endsWith('.') ||
+          email.contains('@.') ||
+          email.contains('.@')) {
+        return false;
+      }
+
+      final allowedDomains = [
+        'gmail.com',
+        'hotmail.com',
+        'outlook.com',
+        'icloud.com',
+        'yahoo.com',
+      ];
+
+      final domain = email.split('@').last;
+      return allowedDomains.contains(domain);
+    }
 
     bool isValid = true;
 
@@ -48,13 +73,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       successMessage = null;
 
       if (email.isEmpty) {
-        emailError = "Email is required";
+        emailError = "Please enter your email address";
         isValid = false;
-      } else if (!emailRegex.hasMatch(email) ||
-          email.contains("..") ||
-          email.startsWith(".") ||
-          email.endsWith(".")) {
-        emailError = "Invalid email";
+      } else if (!isValidEmailFormat(email)) {
+        emailError = "Please enter a valid email address";
         isValid = false;
       }
     });
@@ -71,24 +93,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (!mounted) return;
 
       setState(() {
-        successMessage = "Reset link sent to your email";
+        _isLoading = false;
+        successMessage = null;
         emailError = null;
         generalError = null;
       });
 
-      // Wait a moment so the user can see the success message before closing
-      await Future.delayed(const Duration(seconds: 2));
+      await LexiaPopup.showMessage(
+        context: context,
+        title: "Reset Link Sent",
+        message: "Please check your email to reset your password.",
+        icon: Icons.mark_email_read_outlined,
+        iconColor: primary,
+        buttonColor: primary,
+        buttonText: "OK",
+        barrierDismissible: false,
+        onDone: () {
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        },
+      );
 
-      if (!mounted) return;
-      Navigator.pop(context);
-      
+      return;
     } on FirebaseAuthException catch (e) {
       setState(() {
         // Specific handling for unregistered accounts
         if (e.code == 'user-not-found') {
           generalError = "This email is not registered";
         } else if (e.code == 'invalid-email') {
-          generalError = "Invalid email format";
+          emailError = "Please enter a valid email address";
         } else if (e.code == 'network-request-failed') {
           generalError = "Network error. Please check your connection";
         } else {
@@ -240,7 +274,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       onSubmitted: (_) => _sendResetEmail(),
                     ),
-                    
+
                     // Error and Success messages
                     if (generalError != null) ...[
                       SizedBox(height: R.space(10)),
@@ -264,7 +298,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                       ),
                     ],
-                    
+
                     SizedBox(height: R.space(20)),
                     SizedBox(
                       width: double.infinity,

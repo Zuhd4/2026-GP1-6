@@ -85,6 +85,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         passwordError = "Must contain 1 uppercase letter";
       } else if (!RegExp(r'[a-z]').hasMatch(password)) {
         passwordError = "Must contain 1 lowercase letter";
+      } else if (!RegExp(r'[0-9]').hasMatch(password)) {
+        passwordError = "Must contain 1 number";
       } else {
         passwordError = null;
       }
