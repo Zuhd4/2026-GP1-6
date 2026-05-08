@@ -63,7 +63,7 @@ Lexia uses a combination of mobile, cloud, backend, and data processing tools:
 ## 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone http: https://github.com/Zuhd4/2026-GP1-6.git
 cd lexia
 ```
 
