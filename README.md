@@ -1,4 +1,4 @@
-# Lexia – Dyslexia Support Learning Application
+<img width="449" height="329" alt="image" src="https://github.com/user-attachments/assets/8c9e29e9-8ee8-4046-97c1-2ed86f4038d5" /># Lexia – Dyslexia Support Learning Application
 
 # Introduction
 
@@ -58,9 +58,14 @@ Lexia uses a combination of mobile, cloud, backend, and data processing tools:
 
 * GitHub — Used for version control, collaboration, and storing the project repository.
 
-# Launch Instructions
+# Launching Instructions
 
--a
+## 1. Clone the Repository
+
+'''bash 
+git clone <repository-url>
+cd lexia
+'''
 
 --- 
 
