@@ -17,6 +17,35 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isTemporaryError(error) {
+  const msg = (error?.message || "").toLowerCase();
+  return (
+    msg.includes("429") ||
+    msg.includes("503") ||
+    msg.includes("quota") ||
+    msg.includes("too many requests") ||
+    msg.includes("high demand") ||
+    msg.includes("service unavailable")
+  );
+}
+
+async function generateWithRetry(prompt, word, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.generateContent(prompt);
+    } catch (error) {
+      if (!isTemporaryError(error) || attempt === maxRetries) {
+        throw error;
+      }
+
+      const waitTime = attempt * 10000;
+      console.log(
+        `⏳ Temporary error with ${word}. Retry ${attempt}/${maxRetries - 1} in ${waitTime / 1000}s...`,
+      );
+      await sleep(waitTime);
+    }
+  }
+}
 function buildValidationPrompt(word, aiResult) {
   return `
 You are a strict classification quality reviewer for Lexia, a children's English literacy app for children aged 5–12.
@@ -110,13 +139,12 @@ animal, food, object, nature, action, place, unknown
 
 Special Rules:
 - If the word is religious:
-  → all false + category "unknown"
+  → all fields set to false + category "unknown"
 
 - If the word is not valid English:
-  → all false + category "unknown"
+  → all fields set to false + category "unknown"
 
 Examples:
-
 Word: "abiyuch"
 Previous:
 all false
@@ -152,18 +180,25 @@ async function validateWords() {
   const snapshot = await db
     .collection("vocabulary_test")
     .where("status", "==", "done")
-    .where("validation_status", "!=", "done")
-    .limit(50)
     .get();
 
   if (snapshot.empty) {
+    console.log("No completed AI words found.");
+    return;
+  }
+
+  const docsToValidate = snapshot.docs
+    .filter((doc) => doc.data().validation_status !== "done")
+    .slice(0, 50);
+
+  if (docsToValidate.length === 0) {
     console.log("No words to validate.");
     return;
   }
 
-  console.log(`Validating ${snapshot.size} words...`);
+  console.log(`Validating ${docsToValidate.length} words...`);
 
-  for (const doc of snapshot.docs) {
+  for (const doc of docsToValidate) {
     const data = doc.data();
 
     if (data.validation_status === "done") {
@@ -180,8 +215,9 @@ async function validateWords() {
     };
 
     try {
-      const result = await model.generateContent(
-        buildValidationPrompt(word, aiResult)
+      const result = await generateWithRetry(
+        buildValidationPrompt(word, aiResult),
+        word,
       );
 
       const text = result.response.text();
@@ -204,21 +240,30 @@ async function validateWords() {
         category: validatorData.category ?? data.category ?? "unknown",
         changed_fields: changedFields,
         validation_status: "done",
+        validator_error: admin.firestore.FieldValue.delete(),
       });
 
       console.log(
-        `✅ ${word} validated. Changed fields: ${changedFields.length ? changedFields.join(", ") : "none"}`
+        `✅ ${word} validated. Changed fields: ${changedFields.length ? changedFields.join(", ") : "none"}`,
       );
     } catch (e) {
       console.log(`❌ Error with ${word}:`, e.message);
 
-      await doc.ref.update({
-        validation_status: "pending",
-        validator_error: e.message,
-      });
+      if (isTemporaryError(e)) {
+        await doc.ref.update({
+          validation_status: "pending",
+          validator_error: e.message,
+        });
+        console.log(`⏳ ${word} will retry later`);
+      } else {
+        await doc.ref.update({
+          validation_status: "error",
+          validator_error: e.message,
+        });
+      }
     }
 
-    await sleep(2000);
+    await sleep(5000);
   }
 
   console.log("🎉 Validation batch done!");

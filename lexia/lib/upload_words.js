@@ -69,7 +69,9 @@ async function uploadWords() {
       const batch = db.batch();
 
       for (const row of chunks[i]) {
-        const word = String(row.word || "").trim().toLowerCase();
+        const word = String(row.word || "")
+          .trim()
+          .toLowerCase();
         const totalScore = Number(row.total_score);
         const difficulty = String(row.difficulty || "").trim();
         const level = Number(row.level);

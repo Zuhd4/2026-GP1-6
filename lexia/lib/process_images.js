@@ -2,18 +2,18 @@ require("dotenv").config();
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// 🔑 Firebase
+
 const serviceAccount = require("./lexia-5a462-firebase-adminsdk-fbsvc-240ef9b957.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: "lexia-5a462.appspot.com",
+  storageBucket: "lexia-5a462.firebasestorage.app",
 });
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
-// 🔑 Gemini Image / Nano Banana
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-2.5-flash-image",
@@ -44,83 +44,77 @@ function cleanFileName(word) {
 
 function buildImagePrompt(word, category) {
   return `
-Generate a simple, clean, child-friendly illustration of the word "${word}".
+Create a simple child-friendly educational illustration for the word "${word}".
 
-Category: ${category}
+Category hint: ${category}
 
-GENERAL STYLE (VERY IMPORTANT):
-- Style: cartoon, flat illustration (2D)
-- The image must be in a square format (1:1 aspect ratio)
-- The background must be a full square
-- No circular backgrounds, no glow, no vignette
-- Do NOT place the subject inside a circle
-- The subject must be centered inside a square canvas
-- Leave balanced padding around the object
-- No realistic or 3D rendering
-- No text, letters, numbers, or words in the image
-- White or soft solid background (no gradients)
-- Bright, friendly colors
-- One clear subject only
-- Clean shapes and simple design
+IMPORTANT:
+The category is only a hint. If the category does not fit the word clearly, ignore it and create the most direct simple visual meaning of the word.
+
+IMAGE STYLE:
+- Cute cartoon style
+- Flat illustration, 2D
+- Clean app-style educational icon
+- Square image, 1:1 ratio
+- Full image canvas must have one single solid soft pastel background color
+- No rounded corners inside the generated image
+- No transparent corners
+- No black corners
+- No borders, frames, shadows, glow, vignette, or extra background layers
+- The app will apply rounded corners later, so generate a normal full square image
+
+SUBJECT:
+- One main subject only
+- Subject centered
+- Subject should fill about 60–75% of the image
+- Leave balanced padding around the subject
+- Clear, simple, easy for a child to recognize
+- Bright friendly colors
 - Suitable for children aged 5–12
 
-Category-specific rules (ONLY apply if the word clearly belongs to the category):
-
-Animals:
-- Show one animal clearly
-- No humans
-- No background clutter
-
-People / Jobs:
-- Show a person doing the job
-- Use simple visual hints such as uniform or tools
-- No text labels
-
-Plants:
-- Show the plant clearly
-- Keep it simple
-
-Objects:
-- Show one object centered
-- No multiple items
-
-Food:
-- Show one food item only
-- Clean and clear
-
-Toys:
-- Show one toy clearly
-
-Clothes:
-- Show clothing item alone OR worn by a simple figure
-
-Places:
-- Show a simple place or building
-- Avoid too many objects
-
-Actions:
-- Show a person performing the action
-- Minimal background
-
-Nature:
-- Show natural element clearly
-
-IF THE WORD DOES NOT CLEARLY BELONG TO ANY CATEGORY:
-- Follow ONLY the general style rules
-- Create the simplest and most direct visual representation
-- Do not add extra elements or complexity
-
-Restrictions:
-- No multiple unrelated objects
-- No clutter
-- No text, letters, numbers, logos, or watermarks
+DO NOT INCLUDE:
+- No text
+- No letters
+- No numbers
+- No logos
+- No watermarks
 - No realistic style
+- No 3D style
 - No complex scenes
+- No multiple unrelated objects
+
+CATEGORY GUIDANCE:
+
+If category is "animal":
+- Show one clear animal only
+
+If category is "food":
+- Show one clear food item only
+
+If category is "object":
+- Show one clear object only
+
+If category is "nature":
+- Show one clear natural element, such as sun, rain, tree, flower, mountain, or river
+
+If category is "action":
+- Show one child-friendly character clearly performing the action
+- Keep the background simple
+
+If category is "place":
+- Show a very simple scene or building representing the place
+- Avoid too many details
+
+If category is "unknown":
+- Create the simplest direct visual representation of the word
+- If the word is too abstract, use the most concrete child-friendly symbol possible
+
+FINAL CHECK:
+The final image must look like one clean square educational icon with a pastel background and one centered cartoon subject.
 
 Return image only.
 `;
 }
-
 async function generateImageWithRetry(word, category, maxRetries = 3) {
   const prompt = buildImagePrompt(word, category);
 
@@ -160,7 +154,7 @@ async function processImages() {
 
   const docsToGenerate = snapshot.docs
     .filter((doc) => doc.data().image_status !== "done")
-    .slice(0, 5);
+    .slice(0, 20);
 
   if (docsToGenerate.length === 0) {
     console.log("No images to generate.");
