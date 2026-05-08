@@ -1,4 +1,4 @@
-<img width="449" height="329" alt="image" src="https://github.com/user-attachments/assets/8c9e29e9-8ee8-4046-97c1-2ed86f4038d5" /># Lexia – Dyslexia Support Learning Application
+# Lexia – Dyslexia Support Learning Application
 
 # Introduction
 
@@ -62,10 +62,63 @@ Lexia uses a combination of mobile, cloud, backend, and data processing tools:
 
 ## 1. Clone the Repository
 
-'''bash 
+```bash
 git clone <repository-url>
 cd lexia
-'''
+```
+
+## 2. Mobile Application Setup
+Install the Flutter dependencies:
+
+```bash
+flutter pub get
+```
+Run the application on an Android emulator or connected Android device:
+```bash
+flutter run
+```
+Make sure Flutter SDK, Android Studio, and Android Emulator are installed and configured before running the application.
+
+## 3. Flask Backend Setup
+
+The project includes a Flask backend used for the word difficulty analyzer.
+
+Install the required Python packages:
+```bash
+pip install -r requirements.txt
+```
+
+Run the Flask backend:
+```bash
+python app.py
+```
+## 4. Node.js Scripts Setup
+
+Some data processing and generative AI workflows are handled using Node.js scripts, such as Firebase upload scripts, text validation, image generation, and image validation.
+
+Navigate to the folder that contains the required script:
+```bash
+cd <script-folder-name>
+```
+Install dependencies:
+```bash
+npm install
+```
+Run the selected script:
+```bash
+node <script-name>.js
+```
+
+## 5. Required Local Files
+
+The following files may be required locally but should not be uploaded to GitHub for security reasons:
+```bash
+.env
+serviceAccountKey.json
+Firebase API keys
+Gemini API key
+Firebase configuration files
+```
 
 --- 
 
