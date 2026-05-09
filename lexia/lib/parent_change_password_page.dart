@@ -41,43 +41,61 @@ class _ParentChangePasswordPageState extends State<ParentChangePasswordPage> {
     super.dispose();
   }
 
-  Future<void> _changePassword() async {
+  bool _validateFields() {
+    bool isValid = true;
+    final currentPassword = _currentPassController.text;
+    final newPassword = _newPassController.text;
+    final confirmPassword = _confirmPassController.text;
+
     setState(() {
       _currentError = null;
       _newError = null;
       _confirmError = null;
+
+      if (currentPassword.isEmpty) {
+        _currentError = "Current password required";
+      } else {
+        _currentError = null;
+      }
+
+      if (newPassword.isEmpty) {
+        _newError = "Password is required";
+      } else if (newPassword.length < 8) {
+        _newError = "Min. 8 characters";
+      } else if (!RegExp(r'[A-Z]').hasMatch(newPassword)) {
+        _newError = "Must contain 1 uppercase letter";
+      } else if (!RegExp(r'[a-z]').hasMatch(newPassword)) {
+        _newError = "Must contain 1 lowercase letter";
+      } else if (!RegExp(r'[0-9]').hasMatch(newPassword)) {
+        _newError = "Must contain 1 number";
+      } else {
+        _newError = null;
+      }
+
+      if (confirmPassword.isEmpty) {
+        _confirmError = "Please confirm password";
+      } else if (confirmPassword != newPassword) {
+        _confirmError = "Passwords do not match";
+      } else {
+        _confirmError = null;
+      }
+
+      if (_currentError != null || _newError != null || _confirmError != null) {
+        isValid = false;
+      }
     });
 
-    bool hasError = false;
+    return isValid;
+  }
 
-    if (_currentPassController.text.isEmpty) {
-      setState(() => _currentError = "Current password required");
-      hasError = true;
+  Future<void> _changePassword() async {
+    if (_isUpdating) return;
+
+    final isValid = _validateFields();
+
+    if (_currentPassController.text.trim().isEmpty) {
+      return;
     }
-
-    if (_newPassController.text.isEmpty) {
-      setState(() => _newError = "Password is required");
-      hasError = true;
-    } else if (_newPassController.text.length < 8) {
-      setState(() => _newError = "Min. 8 characters");
-      hasError = true;
-    } else if (!RegExp(r'[A-Z]').hasMatch(_newPassController.text)) {
-      setState(() => _newError = "Must contain 1 uppercase letter");
-      hasError = true;
-    } else if (!RegExp(r'[a-z]').hasMatch(_newPassController.text)) {
-      setState(() => _newError = "Must contain 1 lowercase letter");
-      hasError = true;
-    }
-
-    if (_confirmPassController.text.isEmpty) {
-      setState(() => _confirmError = "Please confirm password");
-      hasError = true;
-    } else if (_newPassController.text != _confirmPassController.text) {
-      setState(() => _confirmError = "Passwords do not match");
-      hasError = true;
-    }
-
-    if (hasError) return;
 
     setState(() => _isUpdating = true);
 
@@ -90,10 +108,25 @@ class _ParentChangePasswordPageState extends State<ParentChangePasswordPage> {
       );
 
       await user.reauthenticateWithCredential(credential);
+
+      if (!isValid) return;
+
       await user.updatePassword(_newPassController.text.trim());
 
       if (mounted) {
         _showSuccessDialog();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          if (e.code == 'network-request-failed') {
+            _currentError = "Network error. Please try again";
+          } else if (e.code == 'weak-password') {
+            _newError = "Password is too weak";
+          } else {
+            _currentError = "Incorrect current password";
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -140,9 +173,13 @@ class _ParentChangePasswordPageState extends State<ParentChangePasswordPage> {
         onChanged: (_) {
           if (error != null) {
             setState(() {
-              _currentError = null;
-              _newError = null;
-              _confirmError = null;
+              if (controller == _currentPassController) {
+                _currentError = null;
+              } else if (controller == _newPassController) {
+                _newError = null;
+              } else if (controller == _confirmPassController) {
+                _confirmError = null;
+              }
             });
           }
         },

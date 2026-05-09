@@ -143,8 +143,8 @@ class _ParentProfileEditPageState extends State<ParentProfileEditPage> {
   void _showSuccessDialog() {
     LexiaPopup.showMessage(
       context: context,
-      title: "PIN Updated!",
-      message: "Your PIN has been changed successfully.",
+      title: "Profile Updated!",
+      message: "Your changes have been saved successfully.",
       icon: Icons.check_rounded,
       iconColor: const Color(0xFF59A685),
       buttonColor: primaryPurple,
