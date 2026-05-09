@@ -51,13 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
       passwordError = null;
       generalError = null;
 
-      if (email.isEmpty) {
-        emailError = "Email is required";
-        isValid = false;
-      }
-
-      if (pass.isEmpty) {
-        passwordError = "Password is required";
+      if (email.isEmpty || pass.isEmpty) {
+        generalError = "Invalid email or password";
         isValid = false;
       }
     });
@@ -89,29 +84,15 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } on FirebaseAuthException catch (e) {
       setState(() {
-        switch (e.code) {
-          case 'invalid-email':
-            emailError = "Invalid email";
-            break;
-          case 'user-not-found':
-            emailError = "No account found";
-            break;
-          case 'wrong-password':
-            passwordError = "Incorrect password";
-            break;
-          case 'invalid-credential':
-            generalError = "Invalid email or password";
-            break;
-          case 'network-request-failed':
-            generalError = "Network error. Please try again";
-            break;
-          default:
-            generalError = "Login failed";
+        if (e.code == 'network-request-failed') {
+          generalError = "Network error. Please try again";
+        } else {
+          generalError = "Invalid email or password";
         }
       });
     } catch (_) {
       setState(() {
-        generalError = "Login failed";
+        generalError = "Invalid email or password";
       });
     } finally {
       if (mounted) {
