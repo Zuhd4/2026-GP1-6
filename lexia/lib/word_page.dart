@@ -365,22 +365,6 @@ class _WordPageState extends State<WordPage>
                               children: [
                                 Row(
                                   children: [
-                                    Container(
-                                      width: R.icon(48),
-                                      height: R.icon(48),
-                                      decoration: BoxDecoration(
-                                        color: primaryPurple.withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(
-                                          R.radius(15),
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.psychology_alt_rounded,
-                                        color: primaryPurple.withOpacity(0.75),
-                                        size: R.icon(26),
-                                      ),
-                                    ),
-                                    SizedBox(width: R.space(12)),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
