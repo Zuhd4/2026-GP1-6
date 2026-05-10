@@ -50,6 +50,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   String targetWord = "";
   String currentImageUrl = "";
   String currentImageStoragePath = "";
+  Future<String?>? currentImageFuture;
 
   List<String> scrambledLetters = [];
   List<String> selectedLetters = [];
@@ -163,6 +164,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       targetWord = "";
       currentImageUrl = "";
       currentImageStoragePath = "";
+      currentImageFuture = null;
       selectedLetters.clear();
       scrambledLetters.clear();
     });
@@ -202,6 +204,10 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     targetWord = current['word'] ?? '';
     currentImageUrl = current['imageUrl'] ?? '';
     currentImageStoragePath = current['imageStoragePath'] ?? '';
+    currentImageFuture = _getImageDownloadUrl(
+      storagePath: currentImageStoragePath,
+      fallbackUrl: currentImageUrl,
+    );
 
     attemptsForCurrentWord = 0;
     selectedLetters = [];
@@ -720,16 +726,17 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     );
   }
 
-  Future<String?> _getImageDownloadUrl() async {
+  Future<String?> _getImageDownloadUrl({
+    required String storagePath,
+    required String fallbackUrl,
+  }) async {
     try {
-      if (currentImageStoragePath.isNotEmpty) {
-        return await FirebaseStorage.instance
-            .ref(currentImageStoragePath)
-            .getDownloadURL();
+      if (storagePath.isNotEmpty) {
+        return await FirebaseStorage.instance.ref(storagePath).getDownloadURL();
       }
 
-      if (currentImageUrl.isNotEmpty) {
-        return currentImageUrl;
+      if (fallbackUrl.isNotEmpty) {
+        return fallbackUrl;
       }
 
       return null;
@@ -766,7 +773,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
             color: Colors.white.withOpacity(0.65),
             child: FutureBuilder<String?>(
               key: ValueKey(currentImageStoragePath + currentImageUrl),
-              future: _getImageDownloadUrl(),
+              future: currentImageFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
