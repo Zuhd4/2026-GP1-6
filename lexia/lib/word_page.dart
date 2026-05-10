@@ -21,6 +21,7 @@ class _WordPageState extends State<WordPage>
   List<Map<String, dynamic>> rules = [];
   bool isLoading = false;
   String? errorMessage;
+  String? _wordFieldError;
 
   late AnimationController _controllerAnim;
   late Animation<double> _fadeAnim;
@@ -45,11 +46,22 @@ class _WordPageState extends State<WordPage>
 
   Future<void> analyzeWord() async {
     final String word = _controller.text.trim();
-    if (word.isEmpty) return;
+
+    if (word.isEmpty) {
+      setState(() {
+        difficulty = "";
+        score = 0;
+        rules = [];
+        errorMessage = null;
+        _wordFieldError = "Please enter a word first.";
+      });
+      return;
+    }
 
     setState(() {
       isLoading = true;
       errorMessage = null;
+      _wordFieldError = null;
     });
 
     try {
@@ -250,6 +262,12 @@ class _WordPageState extends State<WordPage>
                     ),
                     child: TextField(
                       controller: _controller,
+                      onChanged: (value) {
+                        if (_wordFieldError != null &&
+                            value.trim().isNotEmpty) {
+                          setState(() => _wordFieldError = null);
+                        }
+                      },
                       style: GoogleFonts.montserrat(
                         fontSize: R.text(15),
                         fontWeight: FontWeight.w500,
@@ -266,7 +284,41 @@ class _WordPageState extends State<WordPage>
                           color: primaryPurple.withOpacity(0.65),
                           size: R.icon(22),
                         ),
-                        border: InputBorder.none,
+                        errorText: _wordFieldError,
+                        errorStyle: GoogleFonts.montserrat(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w500,
+                          fontSize: R.text(12),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(22)),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(22)),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(22)),
+                          borderSide: BorderSide(
+                            color: primaryPurple.withOpacity(0.45),
+                            width: 1.4,
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(22)),
+                          borderSide: const BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.3,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(R.radius(22)),
+                          borderSide: const BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.5,
+                          ),
+                        ),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: R.space(18),
                           vertical: R.space(18),
