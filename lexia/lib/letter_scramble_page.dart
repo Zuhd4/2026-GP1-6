@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -48,6 +49,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
   String targetWord = "";
   String currentImageUrl = "";
+  String currentImageStoragePath = "";
 
   List<String> scrambledLetters = [];
   List<String> selectedLetters = [];
@@ -123,7 +125,15 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                   .toString()
                   .trim();
 
-          return {'word': word, 'imageUrl': imageUrl};
+          final imageStoragePath = (data['image_storage_path'] ?? '')
+              .toString()
+              .trim();
+
+          return {
+            'word': word,
+            'imageUrl': imageUrl,
+            'imageStoragePath': imageStoragePath,
+          };
         })
         .where((item) {
           final word = item['word'] ?? '';
@@ -152,6 +162,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
       targetWord = "";
       currentImageUrl = "";
+      currentImageStoragePath = "";
       selectedLetters.clear();
       scrambledLetters.clear();
     });
@@ -190,6 +201,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
     targetWord = current['word'] ?? '';
     currentImageUrl = current['imageUrl'] ?? '';
+    currentImageStoragePath = current['imageStoragePath'] ?? '';
 
     attemptsForCurrentWord = 0;
     selectedLetters = [];
@@ -708,6 +720,25 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     );
   }
 
+  Future<String?> _getImageDownloadUrl() async {
+    try {
+      if (currentImageStoragePath.isNotEmpty) {
+        return await FirebaseStorage.instance
+            .ref(currentImageStoragePath)
+            .getDownloadURL();
+      }
+
+      if (currentImageUrl.isNotEmpty) {
+        return currentImageUrl;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint("Failed to get image URL: $e");
+      return null;
+    }
+  }
+
   Widget _buildRoundedImageFrame() {
     return Center(
       child: Container(
@@ -733,17 +764,34 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           borderRadius: BorderRadius.circular(R.radius(24)),
           child: Container(
             color: Colors.white.withOpacity(0.65),
-            child: currentImageUrl.isNotEmpty
-                ? Image.network(
-                    currentImageUrl,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _buildImagePlaceholder();
-                    },
-                  )
-                : _buildImagePlaceholder(),
+            child: FutureBuilder<String?>(
+              key: ValueKey(currentImageStoragePath + currentImageUrl),
+              future: _getImageDownloadUrl(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: primaryPurple),
+                  );
+                }
+
+                final imageUrl = snapshot.data;
+
+                if (imageUrl == null || imageUrl.isEmpty) {
+                  return _buildImagePlaceholder();
+                }
+
+                return Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint("Failed to display image: $error");
+                    return _buildImagePlaceholder();
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),
