@@ -16,6 +16,7 @@ class _AddChildPageState extends State<AddChildPage> {
   final TextEditingController _nameController = TextEditingController();
 
   String _selectedAvatar = 'assets/lexiaAv.png';
+  String? _nameError;
   bool _isSaving = false;
 
   static const Color textDark = Color(0xFF2D3142);
@@ -65,9 +66,19 @@ class _AddChildPageState extends State<AddChildPage> {
   Future<void> _createChild() async {
     final name = _nameController.text.trim();
 
-    if (name.isEmpty || _isSaving) return;
+    if (_isSaving) return;
 
-    setState(() => _isSaving = true);
+    if (name.isEmpty) {
+      setState(() {
+        _nameError = "Please enter your child's name";
+      });
+      return;
+    }
+
+    setState(() {
+      _nameError = null;
+      _isSaving = true;
+    });
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -237,6 +248,11 @@ class _AddChildPageState extends State<AddChildPage> {
 
                       TextField(
                         controller: _nameController,
+                        onChanged: (value) {
+                          if (_nameError != null && value.trim().isNotEmpty) {
+                            setState(() => _nameError = null);
+                          }
+                        },
                         style: GoogleFonts.montserrat(
                           fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
@@ -271,6 +287,26 @@ class _AddChildPageState extends State<AddChildPage> {
                             borderRadius: BorderRadius.circular(16.r),
                             borderSide: BorderSide(
                               color: primaryPurple.withOpacity(0.4),
+                              width: 1.5,
+                            ),
+                          ),
+                          errorText: _nameError,
+                          errorStyle: GoogleFonts.montserrat(
+                            fontSize: 11.sp,
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16.r),
+                            borderSide: const BorderSide(
+                              color: Colors.redAccent,
+                              width: 1.2,
+                            ),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16.r),
+                            borderSide: const BorderSide(
+                              color: Colors.redAccent,
                               width: 1.5,
                             ),
                           ),
