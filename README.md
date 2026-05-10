@@ -81,11 +81,4 @@ Make sure Flutter SDK, Android Studio, and Android Emulator are installed and co
 
 **Note**: The Word Analyzer backend is deployed on Render, so no local backend setup is required to run the mobile application.
 
---- 
 
-# Student Names: 
-
-* Norah Alshamsan, 444200817
-* Dana Alsalami, 443200945
-* Zuhd Ibrahim, 444201206
-* Layan Alhowaimel, 444200969
