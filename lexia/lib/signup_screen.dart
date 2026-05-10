@@ -158,13 +158,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       setState(() {
         switch (e.code) {
           case 'email-already-in-use':
-            generalError = "This email is already in use";
+            emailError = "This email is already in use";
             break;
           case 'invalid-email':
-            generalError = "Invalid email address";
+            emailError = "Invalid email";
             break;
           case 'weak-password':
-            generalError = "Password is too weak";
+            passwordError = "Password is too weak";
             break;
           case 'network-request-failed':
             generalError = "Network error. Please try again";
