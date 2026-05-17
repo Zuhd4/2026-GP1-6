@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:flutter/services.dart';
 import 'responsive_helper.dart';
 
 class WordPage extends StatefulWidget {
@@ -196,7 +196,7 @@ class _WordPageState extends State<WordPage>
 
     final double horizontalPad = R.pagePad;
     final double topMargin = R.safeTop + R.space(95);
-    final double bottomMargin = R.safeBottom + R.space(105);
+    final double bottomMargin = R.safeBottom + R.space(140);
 
     final appliedRules = rules.where((r) => r["applied"] == true).toList();
     final notAppliedRules = rules.where((r) => r["applied"] == false).toList();
@@ -262,6 +262,9 @@ class _WordPageState extends State<WordPage>
                     ),
                     child: TextField(
                       controller: _controller,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z ]')),
+                      ],
                       onChanged: (value) {
                         if (_wordFieldError != null &&
                             value.trim().isNotEmpty) {

@@ -218,15 +218,28 @@ class _MainWrapperState extends State<MainWrapper> {
   }
 
   Widget _buildFooter(double sw, MediaQueryData mq) {
+    final items = widget.isChildMode
+        ? [
+            {'icon': Icons.menu_book_rounded, 'label': 'Reading'},
+            {'icon': Icons.map_rounded, 'label': 'Map'},
+            {'icon': Icons.auto_stories_rounded, 'label': 'My Book'},
+          ]
+        : [
+            {'icon': Icons.menu_book_rounded, 'label': 'Books'},
+            {'icon': Icons.grid_view_rounded, 'label': 'Dashboard'},
+            {'icon': Icons.manage_search_rounded, 'label': 'Analyzer'},
+          ];
+
     return SafeArea(
+      top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(sw * 0.055, 0, sw * 0.055, 14),
+        padding: EdgeInsets.fromLTRB(sw * 0.055, 0, sw * 0.055, 10),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(35),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
-              height: 64,
+              height: 74,
               decoration: BoxDecoration(
                 color: const Color.fromRGBO(230, 217, 249, 1).withOpacity(0.4),
                 borderRadius: BorderRadius.circular(35),
@@ -235,43 +248,52 @@ class _MainWrapperState extends State<MainWrapper> {
                   width: 1.5,
                 ),
               ),
-              child: BottomNavigationBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                currentIndex: _selectedIndex,
-                onTap: (i) => setState(() => _selectedIndex = i),
-                selectedItemColor: primaryPurple,
-                unselectedItemColor: textDark.withOpacity(0.4),
-                type: BottomNavigationBarType.fixed,
-                items: widget.isChildMode
-                    ? const [
-                        BottomNavigationBarItem(
-                          icon: Icon(Icons.menu_book_rounded),
-                          label: 'Reading',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(items.length, (index) {
+                  final bool isSelected = _selectedIndex == index;
+                  final icon = items[index]['icon'] as IconData;
+                  final label = items[index]['label'] as String;
+
+                  return Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(30),
+                      onTap: () => setState(() => _selectedIndex = index),
+                      child: SizedBox(
+                        height: 62,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 22,
+                              color: isSelected
+                                  ? primaryPurple
+                                  : textDark.withOpacity(0.4),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? primaryPurple
+                                    : textDark.withOpacity(0.4),
+                              ),
+                            ),
+                          ],
                         ),
-                        BottomNavigationBarItem(
-                          icon: Icon(Icons.map_rounded),
-                          label: 'Map',
-                        ),
-                        BottomNavigationBarItem(
-                          icon: Icon(Icons.auto_stories_rounded),
-                          label: 'My Book',
-                        ),
-                      ]
-                    : const [
-                        BottomNavigationBarItem(
-                          icon: Icon(Icons.menu_book_rounded),
-                          label: 'Books',
-                        ),
-                        BottomNavigationBarItem(
-                          icon: Icon(Icons.grid_view_rounded),
-                          label: 'Dashboard',
-                        ),
-                        BottomNavigationBarItem(
-                          icon: Icon(Icons.manage_search_rounded),
-                          label: 'Analyzer',
-                        ),
-                      ],
+                      ),
+                    ),
+                  );
+                }),
               ),
             ),
           ),
