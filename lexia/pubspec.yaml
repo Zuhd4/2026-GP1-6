@@ -48,6 +48,12 @@ dependencies:
   flutter_lucide: ^1.8.2
   material: ^1.0.1
   firebase_storage: ^13.3.0
+
+  # OCR Scanner feature — camera/gallery capture + sharing scanned docs
+  image_picker: ^1.1.2
+  share_plus: ^10.1.2
+  google_mlkit_text_recognition: ^0.15.0
+  google_mlkit_language_id: ^0.13.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
