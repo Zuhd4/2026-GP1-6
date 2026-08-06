@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'app_typography.dart';
+
 class LevelCompletePage extends StatefulWidget {
   final int stars;
   final int level;
@@ -48,7 +50,6 @@ class _LevelCompletePageState extends State<LevelCompletePage>
   Future<void> _saveTrophy() async {
     if (_saved) return;
 
-    // ⭐ فقط إذا 3 نجوم
     if (widget.stars < 3) {
       _saved = true;
       return;
@@ -115,189 +116,209 @@ class _LevelCompletePageState extends State<LevelCompletePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ivoryWhite,
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, userSnap) {
+        final userData = userSnap.data?.data() ?? {};
+        final bool useOpenDyslexic = userData['useOpenDyslexicFont'] == true;
+
+        return Scaffold(
+          backgroundColor: ivoryWhite,
+          body: Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+                  ),
+                ),
               ),
-            ),
-          ),
-          _buildConfetti(),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                children: [
-                  const Spacer(),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.75, end: 1.0),
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.elasticOut,
-                    builder: (context, scale, child) {
-                      return Transform.scale(
-                        scale: scale,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(28),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(34),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 24,
-                                offset: const Offset(0, 10),
+              _buildConfetti(),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.75, end: 1.0),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.elasticOut,
+                        builder: (context, scale, child) {
+                          return Transform.scale(
+                            scale: scale,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(28),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(34),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Image.asset(
-                                "assets/e_happy.png",
-                                height: 145,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 120,
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      color: primaryPurple.withOpacity(0.08),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.celebration_rounded,
-                                      size: 62,
-                                      color: primaryPurple,
-                                    ),
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: 18),
-
-                              if (widget.stars == 3)
-                                const Icon(
-                                  Icons.emoji_events_rounded,
-                                  size: 70,
-                                  color: Colors.amber,
-                                ),
-
-                              if (widget.stars == 3) const SizedBox(height: 12),
-
-                              Text(
-                                widget.stars == 3
-                                    ? "You Got a Trophy!"
-                                    : "Level Complete!",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.fredoka(
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.bold,
-                                  color: textDark,
-                                ),
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              Text(
-                                "Amazing work!",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: textDark.withOpacity(0.65),
-                                ),
-                              ),
-
-                              const SizedBox(height: 18),
-
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(3, (index) {
-                                  return TweenAnimationBuilder<double>(
-                                    tween: Tween(begin: 0.0, end: 1.0),
-                                    duration: Duration(
-                                      milliseconds: 500 + (index * 150),
-                                    ),
-                                    curve: Curves.elasticOut,
-                                    builder: (context, value, child) {
-                                      return Transform.scale(
-                                        scale: value,
-                                        child: Icon(
-                                          index < widget.stars
-                                              ? Icons.star_rounded
-                                              : Icons.star_border_rounded,
-                                          size: 52,
-                                          color: index < widget.stars
-                                              ? Colors.amber
-                                              : Colors.grey.shade300,
+                              child: Column(
+                                children: [
+                                  Image.asset(
+                                    "assets/e_happy.png",
+                                    height: 145,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 120,
+                                        height: 120,
+                                        decoration: BoxDecoration(
+                                          color: primaryPurple.withOpacity(
+                                            0.08,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.celebration_rounded,
+                                          size: 62,
+                                          color: primaryPurple,
                                         ),
                                       );
                                     },
-                                  );
-                                }),
-                              ),
-
-                              if (_isSaving) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  widget.stars == 3
-                                      ? "Saving trophy..."
-                                      : "Saving progress...",
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: textDark.withOpacity(0.45),
                                   ),
-                                ),
-                              ],
-                            ],
+
+                                  const SizedBox(height: 18),
+
+                                  if (widget.stars == 3)
+                                    const Icon(
+                                      Icons.emoji_events_rounded,
+                                      size: 70,
+                                      color: Colors.amber,
+                                    ),
+
+                                  if (widget.stars == 3)
+                                    const SizedBox(height: 12),
+
+                                  Text(
+                                    widget.stars == 3
+                                        ? "You Got a Trophy!"
+                                        : "Level Complete!",
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.getStyle(
+                                      useOpenDyslexic: useOpenDyslexic,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: textDark,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  Text(
+                                    "Amazing work!",
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.getStyle(
+                                      useOpenDyslexic: useOpenDyslexic,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: textDark.withOpacity(0.65),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 18),
+
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: List.generate(3, (index) {
+                                      return TweenAnimationBuilder<double>(
+                                        tween: Tween(begin: 0.0, end: 1.0),
+                                        duration: Duration(
+                                          milliseconds: 500 + (index * 150),
+                                        ),
+                                        curve: Curves.elasticOut,
+                                        builder: (context, value, child) {
+                                          return Transform.scale(
+                                            scale: value,
+                                            child: Icon(
+                                              index < widget.stars
+                                                  ? Icons.star_rounded
+                                                  : Icons.star_border_rounded,
+                                              size: 52,
+                                              color: index < widget.stars
+                                                  ? Colors.amber
+                                                  : Colors.grey.shade300,
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    }),
+                                  ),
+
+                                  if (_isSaving) ...[
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      widget.stars == 3
+                                          ? "Saving trophy..."
+                                          : "Saving progress...",
+                                      style: AppTypography.getStyle(
+                                        useOpenDyslexic: useOpenDyslexic,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: textDark.withOpacity(0.45),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const Spacer(),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 58,
+                        child: ElevatedButton(
+                          onPressed: _isSaving
+                              ? null
+                              : () {
+                                  Navigator.pop(context, true);
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: green,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: green.withOpacity(0.45),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Text(
+                            "Continue",
+                            style: AppTypography.getStyle(
+                              useOpenDyslexic: useOpenDyslexic,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                  const Spacer(),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 58,
-                    child: ElevatedButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () {
-                              Navigator.pop(context, true);
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: green,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: green.withOpacity(0.45),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
                       ),
-                      child: Text(
-                        "Continue",
-                        style: GoogleFonts.montserrat(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

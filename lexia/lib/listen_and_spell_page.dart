@@ -2,31 +2,32 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_typography.dart';
-import 'widgets/lexia_popup.dart';
 import 'level_complete_page.dart';
 import 'responsive_helper.dart';
+import 'widgets/lexia_popup.dart';
 
-class LetterScramblePage extends StatefulWidget {
+class ListenAndSpellPage extends StatefulWidget {
   final int level;
   final String childId;
 
-  const LetterScramblePage({
+  const ListenAndSpellPage({
     super.key,
     required this.level,
     required this.childId,
   });
 
   @override
-  State<LetterScramblePage> createState() => _LetterScramblePageState();
+  State<ListenAndSpellPage> createState() => _ListenAndSpellPageState();
 }
 
-class _LetterScramblePageState extends State<LetterScramblePage> {
+class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FlutterTts _flutterTts = FlutterTts();
   final Random _random = Random();
 
   static const Color textDark = Color(0xFF2D3142);
@@ -41,7 +42,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   final int requiredCorrectToPass = 2;
 
   List<Map<String, String>> roundWords = [];
-  Set<String> previousRoundWords = {};
+  Set<String> usedWordsInSession = {};
 
   int currentWordIndex = 0;
   int attemptsForCurrentWord = 0;
@@ -49,37 +50,102 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   int correctWithoutHelp = 0;
 
   String targetWord = "";
-  String currentImageUrl = "";
-  String currentImageStoragePath = "";
-  Future<String?>? currentImageFuture;
-
-  List<String> scrambledLetters = [];
   List<String> selectedLetters = [];
 
   bool isLoading = true;
   bool isChecking = false;
+  bool isSpeaking = false;
   bool useOpenDyslexic = false;
   String? errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _initTts();
     loadNewRound();
   }
 
-  List<String> _buildScrambledLetters(String word) {
-    final letters = word.replaceAll(' ', '').split('');
-    if (letters.length <= 1) return letters;
+  Future<void> _initTts() async {
+    try {
+      await _flutterTts.awaitSpeakCompletion(true);
+      await _flutterTts.setQueueMode(0);
 
-    final shuffled = List<String>.from(letters);
-    int attempts = 0;
+      try {
+        final engines = await _flutterTts.getEngines;
+        if (engines is List && engines.contains("com.google.android.tts")) {
+          await _flutterTts.setEngine("com.google.android.tts");
+        }
+      } catch (e) {
+        debugPrint("Google TTS engine is unavailable: $e");
+      }
 
-    do {
-      shuffled.shuffle();
-      attempts++;
-    } while (shuffled.join() == word.replaceAll(' ', '') && attempts < 10);
+      await _flutterTts.setLanguage("en-US");
+      await _flutterTts.setVolume(1.0);
+      await _flutterTts.setPitch(1.0);
 
-    return shuffled;
+      final voices = await _flutterTts.getVoices;
+      if (voices is List) {
+        final englishVoices = voices.whereType<Map>().where((voice) {
+          final locale = (voice["locale"] ?? "")
+              .toString()
+              .replaceAll("_", "-")
+              .toLowerCase();
+          return locale == "en-us" || locale.startsWith("en-us-");
+        }).toList();
+
+        Map? selectedVoice;
+
+        for (final voice in englishVoices) {
+          final name = (voice["name"] ?? "").toString().toLowerCase();
+          final networkRequired =
+              voice["network_required"] == true ||
+              voice["networkRequired"] == true;
+
+          if (!networkRequired &&
+              !name.contains("low") &&
+              !name.contains("compact")) {
+            selectedVoice = voice;
+            break;
+          }
+        }
+
+        selectedVoice ??= englishVoices.isNotEmpty ? englishVoices.first : null;
+
+        if (selectedVoice != null) {
+          await _flutterTts.setVoice({
+            "name": selectedVoice["name"],
+            "locale": selectedVoice["locale"],
+          });
+        }
+      }
+
+      _flutterTts.setStartHandler(() {
+        if (mounted) {
+          setState(() => isSpeaking = true);
+        }
+      });
+
+      void finishSpeaking() {
+        if (mounted) {
+          setState(() => isSpeaking = false);
+        }
+      }
+
+      _flutterTts.setCompletionHandler(finishSpeaking);
+      _flutterTts.setCancelHandler(finishSpeaking);
+      _flutterTts.setErrorHandler((message) {
+        debugPrint("TTS error: $message");
+        finishSpeaking();
+      });
+    } catch (e) {
+      debugPrint("TTS initialization error: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    super.dispose();
   }
 
   Future<List<Map<String, String>>> _fetchRoundWords() async {
@@ -90,11 +156,8 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         .collection(collectionName)
         .where('status', isEqualTo: 'done')
         .where('validation_status', isEqualTo: 'done')
-        .where('image_status', isEqualTo: 'done')
-        .where('image_validation_status', isEqualTo: 'done')
         .where('is_safe', isEqualTo: true)
         .where('is_educational', isEqualTo: true)
-        .where('is_representable', isEqualTo: true)
         .where('level', isEqualTo: widget.level)
         .orderBy('shuffle_key')
         .startAt([randomValue])
@@ -106,47 +169,47 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           .collection(collectionName)
           .where('status', isEqualTo: 'done')
           .where('validation_status', isEqualTo: 'done')
-          .where('image_status', isEqualTo: 'done')
-          .where('image_validation_status', isEqualTo: 'done')
           .where('is_safe', isEqualTo: true)
           .where('is_educational', isEqualTo: true)
-          .where('is_representable', isEqualTo: true)
           .where('level', isEqualTo: widget.level)
           .orderBy('shuffle_key')
           .limit(30)
           .get();
     }
 
-    final words = snapshot.docs
+    final allFetchedDocs = snapshot.docs
         .map((doc) {
           final data = doc.data();
-
           final word = (data['word'] ?? '').toString().trim().toLowerCase();
-
-          final imageUrl =
-              (data['image_url'] ?? data['imageUrl'] ?? data['image'] ?? '')
-                  .toString()
-                  .trim();
-
-          final imageStoragePath = (data['image_storage_path'] ?? '')
-              .toString()
-              .trim();
-
-          return {
-            'word': word,
-            'imageUrl': imageUrl,
-            'imageStoragePath': imageStoragePath,
-          };
+          return {'word': word};
         })
-        .where((item) {
-          final word = item['word'] ?? '';
-          return word.isNotEmpty && !previousRoundWords.contains(word);
-        })
+        .where((item) => (item['word'] ?? '').isNotEmpty)
         .toList();
 
-    words.shuffle();
+    final unusedWords = allFetchedDocs
+        .where((item) => !usedWordsInSession.contains(item['word']))
+        .toList();
 
-    return words.take(totalWordsPerRound).toList();
+    List<Map<String, String>> selected = [];
+
+    if (unusedWords.length >= totalWordsPerRound) {
+      unusedWords.shuffle();
+      selected = unusedWords.take(totalWordsPerRound).toList();
+    } else {
+      selected.addAll(unusedWords);
+      final reused =
+          allFetchedDocs
+              .where((item) => usedWordsInSession.contains(item['word']))
+              .toList()
+            ..shuffle();
+
+      for (var w in reused) {
+        if (selected.length >= totalWordsPerRound) break;
+        selected.add(w);
+      }
+    }
+
+    return selected;
   }
 
   Future<void> loadNewRound() async {
@@ -158,17 +221,14 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       errorMessage = null;
 
       roundWords.clear();
+      usedWordsInSession.clear();
       currentWordIndex = 0;
       attemptsForCurrentWord = 0;
       stars = 0;
       correctWithoutHelp = 0;
 
       targetWord = "";
-      currentImageUrl = "";
-      currentImageStoragePath = "";
-      currentImageFuture = null;
       selectedLetters.clear();
-      scrambledLetters.clear();
     });
 
     try {
@@ -177,14 +237,19 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       if (fetchedWords.length < totalWordsPerRound) {
         if (!mounted) return;
         setState(() {
-          errorMessage =
-              "Not enough new words found for this level. Please add more words.";
+          errorMessage = "Not enough words found for this level.";
           isLoading = false;
         });
         return;
       }
 
       if (!mounted) return;
+
+      for (var item in fetchedWords) {
+        if (item['word'] != null) {
+          usedWordsInSession.add(item['word']!);
+        }
+      }
 
       setState(() {
         roundWords = fetchedWords;
@@ -204,64 +269,70 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     final current = roundWords[currentWordIndex];
 
     targetWord = current['word'] ?? '';
-    currentImageUrl = current['imageUrl'] ?? '';
-    currentImageStoragePath = current['imageStoragePath'] ?? '';
-    currentImageFuture = _getImageDownloadUrl(
-      storagePath: currentImageStoragePath,
-      fallbackUrl: currentImageUrl,
-    );
-
     attemptsForCurrentWord = 0;
     selectedLetters = [];
-    scrambledLetters = _buildScrambledLetters(targetWord);
   }
 
-  void onLetterTap(int index) {
+  Future<void> _speakWord({required bool slow}) async {
+    if (targetWord.isEmpty || isSpeaking) return;
+
+    try {
+      await _flutterTts.stop();
+      await _flutterTts.setVolume(1.0);
+      await _flutterTts.setPitch(1.0);
+
+      if (slow) {
+        await _flutterTts.setSpeechRate(0.15);
+      } else {
+        await _flutterTts.setSpeechRate(0.40);
+      }
+
+      await _flutterTts.speak(targetWord, focus: true);
+    } catch (e) {
+      debugPrint("TTS error for '$targetWord': $e");
+
+      if (mounted) {
+        setState(() {
+          isSpeaking = false;
+        });
+      }
+    }
+  }
+
+  void _onKeyTap(String letter) {
     if (isLoading || isChecking) return;
-    if (index < 0 || index >= scrambledLetters.length) return;
-    if (scrambledLetters[index].isEmpty) return;
     if (selectedLetters.length >= targetWord.length) return;
 
     setState(() {
-      selectedLetters.add(scrambledLetters[index]);
-      scrambledLetters[index] = "";
+      selectedLetters.add(letter);
     });
   }
 
-  void removeLastLetter() {
-    if (isLoading || isChecking) return;
-    if (selectedLetters.isEmpty) return;
-
+  void _removeLastLetter() {
+    if (isLoading || isChecking || selectedLetters.isEmpty) return;
     setState(() {
-      final lastLetter = selectedLetters.removeLast();
-      final emptyIndex = scrambledLetters.indexOf("");
-
-      if (emptyIndex != -1) {
-        scrambledLetters[emptyIndex] = lastLetter;
-      }
+      selectedLetters.removeLast();
     });
   }
 
-  void resetWord() {
+  void _resetWord() {
     if (isLoading || isChecking) return;
-    if (targetWord.isEmpty) return;
-
     setState(() {
       selectedLetters.clear();
-      scrambledLetters = _buildScrambledLetters(targetWord);
     });
   }
 
-  Future<void> checkAnswer() async {
+  Future<void> _checkAnswer() async {
     if (targetWord.isEmpty || isChecking || isLoading) return;
 
-    final userAnswer = selectedLetters.join();
-    final correctAnswer = targetWord.replaceAll(' ', '');
+    final userAnswer = selectedLetters.join().toLowerCase();
+    final correctAnswer = targetWord.replaceAll(' ', '').toLowerCase();
 
     if (userAnswer.length != correctAnswer.length) {
       await _showSimpleDialog(
-        title: "Complete the word first",
-        message: "Arrange all letters before checking.",
+        title: "Arrange all letters",
+        message:
+            "Arrange all letters to form the correct word before checking.",
         icon: Icons.edit_rounded,
         iconColor: primaryPurple,
       );
@@ -274,7 +345,9 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
     if (userAnswer == correctAnswer) {
       stars++;
-      correctWithoutHelp++;
+      if (attemptsForCurrentWord == 0) {
+        correctWithoutHelp++;
+      }
 
       await _showStarDialog();
       await _goToNextWordOrFinishRound();
@@ -284,7 +357,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       if (attemptsForCurrentWord >= maxAttemptsPerWord) {
         await _showSimpleDialog(
           title: "Good try!",
-          message: "The correct answer is: $targetWord",
+          message: "The correct spelling is: '${targetWord.toUpperCase()}'",
           icon: Icons.lightbulb_rounded,
           iconColor: Colors.amber,
         );
@@ -302,7 +375,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         if (!mounted) return;
         setState(() {
           selectedLetters.clear();
-          scrambledLetters = _buildScrambledLetters(targetWord);
           isChecking = false;
         });
       }
@@ -319,32 +391,23 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         isChecking = false;
       });
     } else {
-      previousRoundWords = roundWords
-          .map((item) => item['word'] ?? '')
-          .where((word) => word.isNotEmpty)
-          .toSet();
-
       await _finishRound();
     }
   }
 
-  Future<void> _saveLetterScrambleProgress() async {
+  Future<void> _saveListenAndSpellProgress() async {
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty || widget.childId.isEmpty) return;
 
-    if (uid.isEmpty || widget.childId.isEmpty) {
-      return;
-    }
-
-    final DocumentReference<Map<String, dynamic>> childRef = _firestore
+    final childRef = _firestore
         .collection('users')
         .doc(uid)
         .collection('children')
         .doc(widget.childId);
 
     final String levelKey = 'level_${widget.level}';
-
-    final DocumentSnapshot<Map<String, dynamic>> doc = await childRef.get();
-    final Map<String, dynamic>? data = doc.data();
+    final doc = await childRef.get();
+    final data = doc.data();
 
     final Map<String, dynamic> currentProgress = Map<String, dynamic>.from(
       data?['gameProgress'] ?? {},
@@ -354,19 +417,16 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       currentProgress[levelKey] ?? {},
     );
 
-    final Map<String, dynamic> oldLetterScramble = Map<String, dynamic>.from(
-      currentLevelProgress['letterScramble'] ?? {},
+    final Map<String, dynamic> oldGame = Map<String, dynamic>.from(
+      currentLevelProgress['listenAndSpell'] ?? {},
     );
 
-    final int oldBestStars =
-        ((oldLetterScramble['bestStars'] as num?)?.toInt() ?? 0);
-
+    final int oldBestStars = ((oldGame['bestStars'] as num?)?.toInt() ?? 0);
     final int oldCompletedCount =
-        ((oldLetterScramble['completedCount'] as num?)?.toInt() ?? 0);
-
+        ((oldGame['completedCount'] as num?)?.toInt() ?? 0);
     final int newBestStars = stars > oldBestStars ? stars : oldBestStars;
 
-    currentLevelProgress['letterScramble'] = {
+    currentLevelProgress['listenAndSpell'] = {
       'completed': true,
       'completedCount': oldCompletedCount + 1,
       'stars': stars,
@@ -392,9 +452,9 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       if (!mounted) return;
 
       try {
-        await _saveLetterScrambleProgress();
+        await _saveListenAndSpellProgress();
       } catch (e) {
-        debugPrint("Failed to save Letter Scramble progress: $e");
+        debugPrint("Failed to save progress: $e");
       }
 
       if (!mounted) return;
@@ -411,7 +471,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
       );
 
       if (!mounted) return;
-
       Navigator.pop(context, result ?? true);
     } else {
       await _showSimpleDialog(
@@ -426,31 +485,8 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     }
   }
 
-  String get currentAnswer {
-    if (targetWord.isEmpty) return "";
-
-    int selectedIndex = 0;
-    final List<String> display = [];
-
-    for (int i = 0; i < targetWord.length; i++) {
-      if (targetWord[i] == ' ') {
-        display.add('   ');
-      } else {
-        if (selectedIndex < selectedLetters.length) {
-          display.add(selectedLetters[selectedIndex]);
-          selectedIndex++;
-        } else {
-          display.add('_');
-        }
-      }
-    }
-
-    return display.join(' ');
-  }
-
   Future<void> _showStarDialog() async {
     if (!mounted) return;
-
     await LexiaPopup.showMessage(
       context: context,
       title: "Awesome!",
@@ -471,7 +507,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     required Color iconColor,
   }) async {
     if (!mounted) return;
-
     await LexiaPopup.showMessage(
       context: context,
       title: title,
@@ -485,10 +520,23 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     );
   }
 
+  String get currentAnswerDisplay {
+    if (targetWord.isEmpty) return "";
+    List<String> display = [];
+
+    for (int i = 0; i < targetWord.length; i++) {
+      if (i < selectedLetters.length) {
+        display.add(selectedLetters[i].toUpperCase());
+      } else {
+        display.add('_');
+      }
+    }
+    return display.join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     R.init(context);
-
     final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -523,7 +571,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                     ),
                     child: _buildHeader(context, useOpenDyslexic),
                   ),
-
                   Expanded(
                     child: isLoading
                         ? const Center(
@@ -532,10 +579,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                             ),
                           )
                         : errorMessage != null
-                        ? Padding(
-                            padding: EdgeInsets.all(R.space(20)),
-                            child: _buildErrorState(useOpenDyslexic),
-                          )
+                        ? _buildErrorState(useOpenDyslexic)
                         : Align(
                             alignment: Alignment.topCenter,
                             child: ConstrainedBox(
@@ -546,7 +590,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                                 physics: const BouncingScrollPhysics(),
                                 padding: EdgeInsets.fromLTRB(
                                   R.pagePad,
-                                  R.space(14),
+                                  R.space(10),
                                   R.pagePad,
                                   R.safeBottom + R.space(24),
                                 ),
@@ -554,12 +598,14 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                                   children: [
                                     _buildProgressHeader(useOpenDyslexic),
                                     SizedBox(height: R.space(14)),
-                                    _buildQuestionCard(useOpenDyslexic),
+                                    _buildAudioCard(useOpenDyslexic),
                                     SizedBox(height: R.space(18)),
-                                    _buildLetters(),
+                                    _buildSpellingDisplay(),
                                     SizedBox(height: R.space(18)),
-                                    _buildActionButtons(useOpenDyslexic),
+                                    _buildKeyboard(),
                                     SizedBox(height: R.space(16)),
+                                    _buildActionButtons(useOpenDyslexic),
+                                    SizedBox(height: R.space(14)),
                                     _buildCheckButton(useOpenDyslexic),
                                   ],
                                 ),
@@ -593,7 +639,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         Expanded(
           child: Center(
             child: Text(
-              "Letter Scramble",
+              "Listen and Spell",
               style: AppTypography.getStyle(
                 useOpenDyslexic: useOpenDyslexic,
                 fontSize: R.text(18),
@@ -634,6 +680,265 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     );
   }
 
+  Widget _buildAudioCard(bool useOpenDyslexic) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(R.space(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(R.radius(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.035),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: isSpeaking ? null : () => _speakWord(slow: false),
+                child: Container(
+                  width: R.icon(72),
+                  height: R.icon(72),
+                  decoration: BoxDecoration(
+                    color: isSpeaking
+                        ? primaryPurple.withOpacity(0.55)
+                        : primaryPurple,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryPurple.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    isSpeaking
+                        ? Icons.graphic_eq_rounded
+                        : Icons.volume_up_rounded,
+                    color: Colors.white,
+                    size: R.icon(36),
+                  ),
+                ),
+              ),
+              SizedBox(width: R.space(16)),
+              GestureDetector(
+                onTap: isSpeaking ? null : () => _speakWord(slow: true),
+                child: Container(
+                  width: R.icon(56),
+                  height: R.icon(56),
+                  decoration: BoxDecoration(
+                    color: primaryPurple.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.snooze_rounded,
+                    color: primaryPurple,
+                    size: R.icon(26),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: R.space(12)),
+          Text(
+            "Tap to listen to the word",
+            style: AppTypography.getStyle(
+              useOpenDyslexic: useOpenDyslexic,
+              fontSize: R.text(13),
+              fontWeight: FontWeight.w600,
+              color: textDark.withOpacity(0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpellingDisplay() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: R.space(16),
+        vertical: R.space(14),
+      ),
+      decoration: BoxDecoration(
+        color: primaryPurple.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(R.radius(20)),
+      ),
+      child: Center(
+        child: Text(
+          currentAnswerDisplay,
+          style: GoogleFonts.fredoka(
+            fontSize: R.text(22),
+            fontWeight: FontWeight.bold,
+            letterSpacing: R.space(2),
+            color: primaryPurple,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeyboard() {
+    const letters = [
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+      'g',
+      'h',
+      'i',
+      'j',
+      'k',
+      'l',
+      'm',
+      'n',
+      'o',
+      'p',
+      'q',
+      'r',
+      's',
+      't',
+      'u',
+      'v',
+      'w',
+      'x',
+      'y',
+      'z',
+    ];
+
+    return Wrap(
+      spacing: R.space(6),
+      runSpacing: R.space(6),
+      alignment: WrapAlignment.center,
+      children: letters.map((letter) {
+        return GestureDetector(
+          onTap: () => _onKeyTap(letter),
+          child: Container(
+            width: R.icon(38),
+            height: R.icon(38),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(R.radius(10)),
+              border: Border.all(color: primaryPurple.withOpacity(0.15)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                letter.toUpperCase(),
+                style: GoogleFonts.fredoka(
+                  fontSize: R.text(16),
+                  fontWeight: FontWeight.bold,
+                  color: textDark,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActionButtons(bool useOpenDyslexic) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: R.buttonH(48),
+            child: ElevatedButton.icon(
+              onPressed: _removeLastLetter,
+              icon: Icon(Icons.backspace_outlined, size: R.icon(18)),
+              label: Text(
+                "Delete",
+                style: AppTypography.getStyle(
+                  useOpenDyslexic: useOpenDyslexic,
+                  fontWeight: FontWeight.w600,
+                  fontSize: R.text(13),
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFFD94B43),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(R.radius(16)),
+                  side: BorderSide(color: Colors.black.withOpacity(0.05)),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: R.space(12)),
+        Expanded(
+          child: SizedBox(
+            height: R.buttonH(48),
+            child: ElevatedButton.icon(
+              onPressed: _resetWord,
+              icon: Icon(Icons.refresh_rounded, size: R.icon(18)),
+              label: Text(
+                "Reset",
+                style: AppTypography.getStyle(
+                  useOpenDyslexic: useOpenDyslexic,
+                  fontWeight: FontWeight.w600,
+                  fontSize: R.text(13),
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: primaryPurple,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(R.radius(16)),
+                  side: BorderSide(color: Colors.black.withOpacity(0.05)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCheckButton(bool useOpenDyslexic) {
+    return SizedBox(
+      width: double.infinity,
+      height: R.buttonH(56),
+      child: ElevatedButton(
+        onPressed: _checkAnswer,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: green,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(R.radius(20)),
+          ),
+        ),
+        child: Text(
+          "Check Answer",
+          style: AppTypography.getStyle(
+            useOpenDyslexic: useOpenDyslexic,
+            fontSize: R.text(16),
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildErrorState(bool useOpenDyslexic) {
     return Center(
       child: Column(
@@ -655,7 +960,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryPurple,
               foregroundColor: Colors.white,
-              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(R.radius(16)),
               ),
@@ -669,299 +973,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionCard(bool useOpenDyslexic) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(R.space(16)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(R.radius(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.035),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildRoundedImageFrame(),
-          SizedBox(height: R.space(16)),
-          Text(
-            "Arrange the letters to form the correct word",
-            textAlign: TextAlign.center,
-            style: AppTypography.getStyle(
-              useOpenDyslexic: useOpenDyslexic,
-              fontSize: R.text(15.5),
-              height: 1.35,
-              fontWeight: FontWeight.w700,
-              color: textDark,
-            ),
-          ),
-          SizedBox(height: R.space(8)),
-          Text(
-            "Attempt ${attemptsForCurrentWord + 1}/$maxAttemptsPerWord",
-            style: AppTypography.getStyle(
-              useOpenDyslexic: useOpenDyslexic,
-              fontSize: R.text(12),
-              fontWeight: FontWeight.w500,
-              color: textDark.withOpacity(0.38),
-            ),
-          ),
-          SizedBox(height: R.space(16)),
-          FractionallySizedBox(
-            widthFactor: 0.82,
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: R.space(10),
-                vertical: R.space(10),
-              ),
-              decoration: BoxDecoration(
-                color: primaryPurple.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(R.radius(16)),
-              ),
-              child: Center(
-                child: Text(
-                  currentAnswer,
-                  style: GoogleFonts.fredoka(
-                    fontSize: R.text(15),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: R.space(1.5),
-                    color: primaryPurple,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<String?> _getImageDownloadUrl({
-    required String storagePath,
-    required String fallbackUrl,
-  }) async {
-    try {
-      if (storagePath.isNotEmpty) {
-        return await FirebaseStorage.instance.ref(storagePath).getDownloadURL();
-      }
-
-      if (fallbackUrl.isNotEmpty) {
-        return fallbackUrl;
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint("Failed to get image URL: $e");
-      return null;
-    }
-  }
-
-  Widget _buildRoundedImageFrame() {
-    return Center(
-      child: Container(
-        width: R.icon(150),
-        height: R.icon(150),
-        padding: EdgeInsets.all(R.space(7)),
-        decoration: BoxDecoration(
-          color: softCream,
-          borderRadius: BorderRadius.circular(R.radius(30)),
-          border: Border.all(
-            color: primaryPurple.withOpacity(0.08),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: primaryPurple.withOpacity(0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(R.radius(24)),
-          child: Container(
-            color: Colors.white.withOpacity(0.65),
-            child: FutureBuilder<String?>(
-              key: ValueKey(currentImageStoragePath + currentImageUrl),
-              future: currentImageFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: primaryPurple),
-                  );
-                }
-
-                final imageUrl = snapshot.data;
-
-                if (imageUrl == null || imageUrl.isEmpty) {
-                  return _buildImagePlaceholder();
-                }
-
-                return Image.network(
-                  imageUrl,
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    debugPrint("Failed to display image: $error");
-                    return _buildImagePlaceholder();
-                  },
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Center(
-      child: Icon(
-        Icons.image_rounded,
-        size: R.icon(42),
-        color: primaryPurple.withOpacity(0.35),
-      ),
-    );
-  }
-
-  Widget _buildLetters() {
-    return Wrap(
-      spacing: R.space(10),
-      runSpacing: R.space(10),
-      alignment: WrapAlignment.center,
-      children: List.generate(scrambledLetters.length, (index) {
-        final letter = scrambledLetters[index];
-
-        return GestureDetector(
-          onTap: () => onLetterTap(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: R.icon(44),
-            height: R.icon(44),
-            decoration: BoxDecoration(
-              color: letter.isEmpty
-                  ? Colors.white.withOpacity(0.65)
-                  : primaryPurple,
-              borderRadius: BorderRadius.circular(R.radius(16)),
-              border: Border.all(
-                color: letter.isEmpty
-                    ? primaryPurple.withOpacity(0.08)
-                    : Colors.transparent,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.035),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                letter,
-                style: GoogleFonts.fredoka(
-                  fontSize: R.text(18),
-                  fontWeight: FontWeight.bold,
-                  color: letter.isEmpty ? Colors.transparent : Colors.white,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildActionButtons(bool useOpenDyslexic) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: R.buttonH(52),
-            child: ElevatedButton.icon(
-              onPressed: removeLastLetter,
-              icon: Icon(Icons.backspace_outlined, size: R.icon(19)),
-              label: Text(
-                "Delete",
-                style: AppTypography.getStyle(
-                  useOpenDyslexic: useOpenDyslexic,
-                  fontWeight: FontWeight.w600,
-                  fontSize: R.text(14),
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFFD94B43),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(R.radius(17)),
-                  side: BorderSide(color: Colors.black.withOpacity(0.05)),
-                ),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: R.space(10)),
-        Expanded(
-          child: SizedBox(
-            height: R.buttonH(52),
-            child: ElevatedButton.icon(
-              onPressed: resetWord,
-              icon: Icon(Icons.refresh_rounded, size: R.icon(19)),
-              label: Text(
-                "Reset",
-                style: AppTypography.getStyle(
-                  useOpenDyslexic: useOpenDyslexic,
-                  fontWeight: FontWeight.w600,
-                  fontSize: R.text(14),
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: primaryPurple,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(R.radius(17)),
-                  side: BorderSide(color: Colors.black.withOpacity(0.05)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCheckButton(bool useOpenDyslexic) {
-    return SizedBox(
-      width: double.infinity,
-      height: R.buttonH(58),
-      child: ElevatedButton(
-        onPressed: checkAnswer,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: green,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(R.radius(20)),
-          ),
-        ),
-        child: Text(
-          "Check Answer",
-          style: AppTypography.getStyle(
-            useOpenDyslexic: useOpenDyslexic,
-            fontSize: R.text(16),
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-        ),
       ),
     );
   }

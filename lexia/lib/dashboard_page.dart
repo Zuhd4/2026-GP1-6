@@ -192,7 +192,6 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
 
     for (int level = 1; level <= 6; level++) {
       final levelKey = 'level_$level';
-
       final levelProgress = Map<String, dynamic>.from(
         gameProgress[levelKey] ?? {},
       );
@@ -200,10 +199,19 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
       final letterScramble = Map<String, dynamic>.from(
         levelProgress['letterScramble'] ?? {},
       );
+      final wordMatching = Map<String, dynamic>.from(
+        levelProgress['wordMatching'] ?? {},
+      );
+      final listenAndSpell = Map<String, dynamic>.from(
+        levelProgress['listenAndSpell'] ?? {},
+      );
 
-      final bool completed = letterScramble['completed'] == true;
+      final bool levelFullyCompleted =
+          letterScramble['completed'] == true &&
+          wordMatching['completed'] == true &&
+          listenAndSpell['completed'] == true;
 
-      if (completed && level < 6) {
+      if (levelFullyCompleted && level < 6) {
         unlockedLevel = level + 1;
       }
     }
@@ -219,34 +227,50 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     return Map<String, dynamic>.from(gameProgress[levelKey] ?? {});
   }
 
-  Map<String, dynamic> _getLetterScrambleData(int level) {
+  Map<String, dynamic> _getGameData(int level, String gameKey) {
     final levelProgress = _getLevelProgress(level);
-    return Map<String, dynamic>.from(levelProgress['letterScramble'] ?? {});
+    return Map<String, dynamic>.from(levelProgress[gameKey] ?? {});
   }
 
-  bool _isLetterScrambleCompleted(int level) {
-    final letterData = _getLetterScrambleData(level);
-    return letterData['completed'] == true;
+  bool _isGameCompleted(int level, String gameKey) {
+    final gameData = _getGameData(level, gameKey);
+    return gameData['completed'] == true;
   }
 
-  int _bestStarsForLetterScramble(int level) {
-    final letterData = _getLetterScrambleData(level);
-    return ((letterData['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
+  int _bestStarsForGame(int level, String gameKey) {
+    final gameData = _getGameData(level, gameKey);
+    return ((gameData['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
   }
 
+  /// Calculates total trophies collected (levels where all 3 games achieved 3/3 stars)
   int _totalTrophiesCollected() {
-    final data = widget.doc.data() as Map<String, dynamic>;
-    return ((data['trophies'] as num?)?.toInt() ?? 0).clamp(0, 6);
+    int trophies = 0;
+    for (int level = 1; level <= 6; level++) {
+      if (_bestStarsForGame(level, 'letterScramble') == 3 &&
+          _bestStarsForGame(level, 'wordMatching') == 3 &&
+          _bestStarsForGame(level, 'listenAndSpell') == 3) {
+        trophies++;
+      }
+    }
+    return trophies.clamp(0, 6);
   }
 
   bool _isLevelLocked(int level) {
     if (level == 1) return false;
-    return !_isLetterScrambleCompleted(level - 1);
+    return !_isGameCompleted(level - 1, 'letterScramble') ||
+        !_isGameCompleted(level - 1, 'wordMatching') ||
+        !_isGameCompleted(level - 1, 'listenAndSpell');
   }
 
   double _levelProgressValue(int level) {
     if (_isLevelLocked(level)) return 0.0;
-    return _isLetterScrambleCompleted(level) ? 1.0 : 0.0;
+
+    int completedGamesCount = 0;
+    if (_isGameCompleted(level, 'letterScramble')) completedGamesCount++;
+    if (_isGameCompleted(level, 'wordMatching')) completedGamesCount++;
+    if (_isGameCompleted(level, 'listenAndSpell')) completedGamesCount++;
+
+    return completedGamesCount / 3.0;
   }
 
   Widget _avatarWidget(String? path, {double size = 44}) {
@@ -327,8 +351,31 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
     final int totalTrophies = _totalTrophiesCollected();
 
     final bool levelLocked = _isLevelLocked(displayedLevel);
-    final bool letterCompleted = _isLetterScrambleCompleted(displayedLevel);
-    final int letterStars = _bestStarsForLetterScramble(displayedLevel);
+
+    // Game Statuses
+    final bool letterCompleted = _isGameCompleted(
+      displayedLevel,
+      'letterScramble',
+    );
+    final int letterStars = _bestStarsForGame(displayedLevel, 'letterScramble');
+
+    final bool wordMatchingCompleted = _isGameCompleted(
+      displayedLevel,
+      'wordMatching',
+    );
+    final int wordMatchingStars = _bestStarsForGame(
+      displayedLevel,
+      'wordMatching',
+    );
+
+    final bool listenSpellCompleted = _isGameCompleted(
+      displayedLevel,
+      'listenAndSpell',
+    );
+    final int listenSpellStars = _bestStarsForGame(
+      displayedLevel,
+      'listenAndSpell',
+    );
 
     final double levelProgress = _levelProgressValue(displayedLevel);
 
@@ -477,22 +524,40 @@ class _ChildDashboardCardState extends State<_ChildDashboardCard> {
                   isCompleted: letterCompleted && !levelLocked,
                 ),
                 SizedBox(height: R.space(9)),
-                const _GameCard(
+                _GameCard(
                   title: 'Word Matching',
                   emoji: '✨',
-                  color: Color(0xFF5B96CA),
-                  score: '0/3',
-                  status: 'Locked',
-                  isLocked: true,
+                  color: const Color(0xFF5B96CA),
+                  score: levelLocked
+                      ? '0/3'
+                      : wordMatchingCompleted
+                      ? '$wordMatchingStars/3'
+                      : '0/3',
+                  status: levelLocked
+                      ? 'Locked'
+                      : wordMatchingCompleted
+                      ? 'Completed'
+                      : 'Not started',
+                  isLocked: levelLocked,
+                  isCompleted: wordMatchingCompleted && !levelLocked,
                 ),
                 SizedBox(height: R.space(9)),
-                const _GameCard(
+                _GameCard(
                   title: 'Listen and Spell',
                   emoji: '🎧',
-                  color: Color(0xFF59A685),
-                  score: '0/3',
-                  status: 'Locked',
-                  isLocked: true,
+                  color: const Color(0xFF59A685),
+                  score: levelLocked
+                      ? '0/3'
+                      : listenSpellCompleted
+                      ? '$listenSpellStars/3'
+                      : '0/3',
+                  status: levelLocked
+                      ? 'Locked'
+                      : listenSpellCompleted
+                      ? 'Completed'
+                      : 'Not started',
+                  isLocked: levelLocked,
+                  isCompleted: listenSpellCompleted && !levelLocked,
                 ),
               ],
             ),

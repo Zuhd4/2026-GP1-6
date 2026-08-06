@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../app_typography.dart';
 import '../games_selection_page.dart';
 
 class LevelNode extends StatelessWidget {
@@ -39,179 +42,199 @@ class LevelNode extends StatelessWidget {
     final isLocked = status == "locked";
     final isCompleted = status == "completed";
     final isCurrent = status == "current";
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    return Positioned(
-      left: position.dx,
-      top: position.dy,
-      child: GestureDetector(
-        onTap: () => _handleTap(context),
-        child: Column(
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, userSnap) {
+        final userData = userSnap.data?.data() ?? {};
+        final bool useOpenDyslexic = userData['useOpenDyslexicFont'] == true;
+
+        return Positioned(
+          left: position.dx,
+          top: position.dy,
+          child: GestureDetector(
+            onTap: () => _handleTap(context),
+            child: Column(
               children: [
-                if (isCurrent)
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: color.withOpacity(0.14),
-                    ),
-                  ),
-
-                if (isCurrent)
-                  Positioned(
-                    top: -33,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    if (isCurrent)
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withOpacity(0.14),
+                        ),
                       ),
+
+                    if (isCurrent)
+                      Positioned(
+                        top: -33,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.directions_car_filled_rounded,
+                                color: Color(0xFF6A5ACD),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "Go!",
+                                style: AppTypography.getStyle(
+                                  useOpenDyslexic: useOpenDyslexic,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF2D3142),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    Container(
+                      width: 76,
+                      height: 76,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
+                        color: isLocked ? Colors.grey.shade400 : color,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 8,
+                            color: isLocked
+                                ? Colors.black.withOpacity(0.08)
+                                : color.withOpacity(0.30),
+                            blurRadius: 16,
+                            offset: const Offset(0, 7),
                           ),
                         ],
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.directions_car_filled_rounded,
-                            color: Color(0xFF6A5ACD),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            "Go!",
-                            style: GoogleFonts.fredoka(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF2D3142),
-                            ),
-                          ),
-                        ],
+                      child: Center(
+                        child: isLocked
+                            ? const Icon(
+                                Icons.lock_rounded,
+                                color: Colors.white,
+                                size: 30,
+                              )
+                            : isCompleted
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: Colors.white,
+                                size: 34,
+                              )
+                            : Text(
+                                "$level",
+                                style: AppTypography.getStyle(
+                                  useOpenDyslexic: useOpenDyslexic,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 24,
+                                ),
+                              ),
                       ),
                     ),
-                  ),
+
+                    if (hasTrophy)
+                      Positioned(
+                        top: -9,
+                        right: -8,
+                        child: Container(
+                          width: 33,
+                          height: 33,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.amber,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.emoji_events_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
 
                 Container(
-                  width: 76,
-                  height: 76,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
-                    color: isLocked ? Colors.grey.shade400 : color,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
+                    color: Colors.white.withOpacity(0.94),
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: isLocked
-                            ? Colors.black.withOpacity(0.08)
-                            : color.withOpacity(0.30),
-                        blurRadius: 16,
-                        offset: const Offset(0, 7),
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: isLocked
-                        ? const Icon(
-                            Icons.lock_rounded,
-                            color: Colors.white,
-                            size: 30,
-                          )
-                        : isCompleted
-                        ? const Icon(
-                            Icons.check_rounded,
-                            color: Colors.white,
-                            size: 34,
-                          )
-                        : Text(
-                            "$level",
-                            style: GoogleFonts.fredoka(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 26,
-                            ),
-                          ),
-                  ),
-                ),
-
-                if (hasTrophy)
-                  Positioned(
-                    top: -9,
-                    right: -8,
-                    child: Container(
-                      width: 33,
-                      height: 33,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.amber,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withOpacity(0.35),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.emoji_events_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                  child: Text(
+                    "Level $level",
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: useOpenDyslexic,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isLocked ? Colors.grey : const Color(0xFF2D3142),
                     ),
                   ),
-              ],
-            ),
+                ),
 
-            const SizedBox(height: 8),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.94),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
+                if (!isLocked) ...[
+                  const SizedBox(height: 5),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(3, (index) {
+                      return Icon(
+                        index < stars
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        color: index < stars
+                            ? Colors.amber
+                            : Colors.grey.shade300,
+                        size: 17,
+                      );
+                    }),
                   ),
                 ],
-              ),
-              child: Text(
-                "Level $level",
-                style: GoogleFonts.fredoka(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isLocked ? Colors.grey : const Color(0xFF2D3142),
-                ),
-              ),
+              ],
             ),
-
-            if (!isLocked && stars > 0) ...[
-              const SizedBox(height: 5),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (index) {
-                  return Icon(
-                    index < stars
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    color: index < stars ? Colors.amber : Colors.grey.shade300,
-                    size: 17,
-                  );
-                }),
-              ),
-            ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

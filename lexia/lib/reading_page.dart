@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import 'app_typography.dart';
 import 'responsive_helper.dart';
 import 'widgets/lexia_popup.dart';
 
@@ -22,7 +24,10 @@ class ReadingPage extends StatelessWidget {
     {'name': 'Ocean', 'emoji': '🐠', 'color': Color(0xFFE0F7FA)},
   ];
 
-  void _showPopup({required BuildContext context}) {
+  void _showPopup({
+    required BuildContext context,
+    required bool useOpenDyslexic,
+  }) {
     LexiaPopup.showMessage(
       context: context,
       title: 'Coming Soon!',
@@ -30,6 +35,7 @@ class ReadingPage extends StatelessWidget {
       emoji: '🚀',
       buttonColor: primaryGreen,
       buttonText: 'Got it!',
+      useOpenDyslexic: useOpenDyslexic,
       barrierDismissible: false,
     );
   }
@@ -41,69 +47,87 @@ class ReadingPage extends StatelessWidget {
     final double horizontalPad = R.pagePad;
     final double topMargin = R.safeTop + R.space(95);
     final double bottomMargin = R.safeBottom + R.space(105);
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ivoryWhite, paleBlush, softCream, Colors.white],
-            stops: [0.0, 0.4, 0.7, 1.0],
-          ),
-        ),
-        child: R.pageWrap(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              horizontalPad,
-              topMargin,
-              horizontalPad,
-              bottomMargin,
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, userSnap) {
+        final userData = userSnap.data?.data() ?? {};
+        final bool useOpenDyslexic = userData['useOpenDyslexicFont'] == true;
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+                stops: [0.0, 0.4, 0.7, 1.0],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Library',
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(21),
-                    fontWeight: FontWeight.w500,
-                    color: textDark.withOpacity(0.9),
-                  ),
+            child: R.pageWrap(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPad,
+                  topMargin,
+                  horizontalPad,
+                  bottomMargin,
                 ),
-                SizedBox(height: R.space(2)),
-                Text(
-                  "✨ Unlock stories as you progress",
-                  style: GoogleFonts.montserrat(
-                    fontSize: R.text(12),
-                    color: Colors.black45,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                SizedBox(height: R.space(10)),
-
-                for (int i = 0; i < (stories.length / 2).ceil(); i++)
-                  _WoodenShelfRow(
-                    items: stories.sublist(
-                      i * 2,
-                      (i * 2 + 2) > stories.length
-                          ? stories.length
-                          : (i * 2 + 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My Library',
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
+                        fontSize: R.text(21),
+                        fontWeight: FontWeight.w500,
+                        color: textDark.withOpacity(0.9),
+                      ),
                     ),
-                    startIndex: i * 2,
-                    onStoryTap: (isLocked, name) {
-                      _showPopup(context: context);
-                    },
-                  ),
-              ],
+                    SizedBox(height: R.space(2)),
+                    Text(
+                      "✨ Unlock stories as you progress",
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
+                        fontSize: R.text(12),
+                        color: Colors.black45,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    SizedBox(height: R.space(10)),
+
+                    for (int i = 0; i < (stories.length / 2).ceil(); i++)
+                      _WoodenShelfRow(
+                        items: stories.sublist(
+                          i * 2,
+                          (i * 2 + 2) > stories.length
+                              ? stories.length
+                              : (i * 2 + 2),
+                        ),
+                        startIndex: i * 2,
+                        useOpenDyslexic: useOpenDyslexic,
+                        onStoryTap: (isLocked, name) {
+                          _showPopup(
+                            context: context,
+                            useOpenDyslexic: useOpenDyslexic,
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -111,11 +135,13 @@ class ReadingPage extends StatelessWidget {
 class _WoodenShelfRow extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final int startIndex;
+  final bool useOpenDyslexic;
   final Function(bool, String) onStoryTap;
 
   const _WoodenShelfRow({
     required this.items,
     required this.startIndex,
+    required this.useOpenDyslexic,
     required this.onStoryTap,
   });
 
@@ -166,6 +192,7 @@ class _WoodenShelfRow extends StatelessWidget {
                 return _LibraryBook(
                   data: items[index],
                   isLocked: locked,
+                  useOpenDyslexic: useOpenDyslexic,
                   onTap: () => onStoryTap(locked, items[index]['name']),
                 );
               }),
@@ -180,11 +207,13 @@ class _WoodenShelfRow extends StatelessWidget {
 class _LibraryBook extends StatelessWidget {
   final Map<String, dynamic> data;
   final bool isLocked;
+  final bool useOpenDyslexic;
   final VoidCallback onTap;
 
   const _LibraryBook({
     required this.data,
     required this.isLocked,
+    required this.useOpenDyslexic,
     required this.onTap,
   });
 
@@ -249,7 +278,8 @@ class _LibraryBook extends StatelessWidget {
           SizedBox(height: R.space(8)),
           Text(
             data['name'],
-            style: GoogleFonts.montserrat(
+            style: AppTypography.getStyle(
+              useOpenDyslexic: useOpenDyslexic,
               fontSize: R.text(11),
               fontWeight: FontWeight.w500,
               color: isLocked

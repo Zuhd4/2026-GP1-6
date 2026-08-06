@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../app_typography.dart';
 import '../responsive_helper.dart';
 
 class LexiaPopup {
@@ -18,9 +18,12 @@ class LexiaPopup {
     Color buttonColor = green,
     String buttonText = "Got it",
     bool barrierDismissible = true,
+    bool useOpenDyslexic = false,
     VoidCallback? onDone,
   }) async {
     R.init(context);
+
+    if (!context.mounted) return;
 
     await showDialog(
       context: context,
@@ -76,8 +79,9 @@ class LexiaPopup {
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.montserrat(
-                        fontSize: R.text(18),
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
+                        fontSize: R.text(17),
                         fontWeight: FontWeight.w600,
                         color: textDark,
                       ),
@@ -88,7 +92,8 @@ class LexiaPopup {
                     Text(
                       message,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.montserrat(
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
                         fontSize: R.text(12),
                         fontWeight: FontWeight.w400,
                         color: Colors.black45,
@@ -116,7 +121,8 @@ class LexiaPopup {
                         ),
                         child: Text(
                           buttonText,
-                          style: GoogleFonts.montserrat(
+                          style: AppTypography.getStyle(
+                            useOpenDyslexic: useOpenDyslexic,
                             fontSize: R.text(13),
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
@@ -143,8 +149,11 @@ class LexiaPopup {
     Color confirmColor = primaryPurple,
     IconData icon = Icons.help_outline_rounded,
     Color iconColor = primaryPurple,
+    bool useOpenDyslexic = false,
   }) async {
     R.init(context);
+
+    if (!context.mounted) return false;
 
     final result = await showDialog<bool>(
       context: context,
@@ -190,8 +199,9 @@ class LexiaPopup {
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.montserrat(
-                        fontSize: R.text(18),
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
+                        fontSize: R.text(17),
                         fontWeight: FontWeight.w600,
                         color: textDark,
                       ),
@@ -202,7 +212,8 @@ class LexiaPopup {
                     Text(
                       message,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.montserrat(
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
                         fontSize: R.text(12),
                         fontWeight: FontWeight.w400,
                         color: Colors.black45,
@@ -219,7 +230,8 @@ class LexiaPopup {
                             onPressed: () => Navigator.pop(context, false),
                             child: Text(
                               cancelText,
-                              style: GoogleFonts.montserrat(
+                              style: AppTypography.getStyle(
+                                useOpenDyslexic: useOpenDyslexic,
                                 fontSize: R.text(12),
                                 fontWeight: FontWeight.w500,
                                 color: Colors.black38,
@@ -247,7 +259,8 @@ class LexiaPopup {
                               ),
                               child: Text(
                                 confirmText,
-                                style: GoogleFonts.montserrat(
+                                style: AppTypography.getStyle(
+                                  useOpenDyslexic: useOpenDyslexic,
                                   fontSize: R.text(12),
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,

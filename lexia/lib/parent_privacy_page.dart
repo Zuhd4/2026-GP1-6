@@ -71,6 +71,155 @@ class ParentPrivacyPage extends StatelessWidget {
                 _header(context),
                 SizedBox(height: 20.h),
 
+                // ==========================================
+                // STEP 5: ACCESSIBILITY SECTION (OpenDyslexic)
+                // ==========================================
+                _sectionHeader("Accessibility"),
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .snapshots(),
+                  builder: (context, userSnap) {
+                    final userData = userSnap.data?.data() ?? {};
+                    final bool useOpenDyslexic =
+                        userData['useOpenDyslexicFont'] == true;
+
+                    return Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 14.h,
+                      ),
+                      decoration: _cardDecoration(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.r),
+                                decoration: BoxDecoration(
+                                  color: primaryPurple.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
+                                child: Icon(
+                                  Icons.accessibility_new_rounded,
+                                  color: primaryPurple.withOpacity(0.7),
+                                  size: 18.r,
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "OpenDyslexic Font",
+                                      style: GoogleFonts.montserrat(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: textDark,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2.h),
+                                    Text(
+                                      useOpenDyslexic
+                                          ? "Enabled for app interface"
+                                          : "Disabled (Standard font)",
+                                      style: GoogleFonts.montserrat(
+                                        fontSize: 10.sp,
+                                        color: Colors.black38,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              GestureDetector(
+                                onTap: () async {
+                                  final bool newValue = !useOpenDyslexic;
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(uid)
+                                      .set({
+                                        'useOpenDyslexicFont': newValue,
+                                        'updatedAt':
+                                            FieldValue.serverTimestamp(),
+                                      }, SetOptions(merge: true));
+
+                                  if (context.mounted) {
+                                    LexiaPopup.showMessage(
+                                      context: context,
+                                      title: newValue
+                                          ? "OpenDyslexic Font Active"
+                                          : "Standard Font Active",
+                                      message: newValue
+                                          ? "OpenDyslexic font is now active for app menus and instructions. Target game vocabulary words remain standard."
+                                          : "Standard font is now active across all screens.",
+                                      icon: Icons.font_download_rounded,
+                                      iconColor: primaryPurple,
+                                      buttonColor: primaryPurple,
+                                      buttonText: "Got it",
+                                    );
+                                  }
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 54.w,
+                                  height: 30.h,
+                                  padding: EdgeInsets.all(3.r),
+                                  decoration: BoxDecoration(
+                                    color: useOpenDyslexic
+                                        ? primaryPurple
+                                        : Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(30.r),
+                                  ),
+                                  child: AnimatedAlign(
+                                    duration: const Duration(milliseconds: 200),
+                                    alignment: useOpenDyslexic
+                                        ? Alignment.centerRight
+                                        : Alignment.centerLeft,
+                                    child: Container(
+                                      width: 24.r,
+                                      height: 24.r,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        useOpenDyslexic
+                                            ? Icons.check_rounded
+                                            : Icons.close_rounded,
+                                        size: 15.r,
+                                        color: useOpenDyslexic
+                                            ? primaryPurple
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 10.h),
+                          Text(
+                            "Note: OpenDyslexic enhances readability for menus and instructions. Target vocabulary words inside games remain unchanged for educational accuracy.",
+                            style: GoogleFonts.montserrat(
+                              fontSize: 10.sp,
+                              color: Colors.black45,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
+                SizedBox(height: 20.h),
+
                 _sectionHeader("Security"),
                 Container(
                   padding: EdgeInsets.symmetric(

@@ -3,7 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import 'app_typography.dart';
 import 'widgets/lexia_popup.dart';
 import 'change_pin_page.dart';
 
@@ -108,7 +109,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
     }
   }
 
-  Future<void> _toggleChildPinEnabled() async {
+  Future<void> _toggleChildPinEnabled(bool useOpenDyslexic) async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (uid.isEmpty) return;
 
@@ -147,7 +148,11 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
           SnackBar(
             content: Text(
               "Couldn't update PIN setting. Please try again.",
-              style: GoogleFonts.montserrat(fontSize: 13.sp),
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
+                fontSize: 13.sp,
+                color: Colors.white,
+              ),
             ),
             backgroundColor: Colors.redAccent,
           ),
@@ -176,7 +181,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
     });
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool useOpenDyslexic) {
     return Row(
       children: [
         SizedBox(
@@ -194,7 +199,8 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
           child: Center(
             child: Text(
               "Edit Profile",
-              style: GoogleFonts.montserrat(
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w500,
                 color: textDark,
@@ -220,7 +226,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
     return Image.asset(path, width: size, height: size, fit: BoxFit.cover);
   }
 
-  Future<void> _save() async {
+  Future<void> _save(bool useOpenDyslexic) async {
     final name = _nameController.text.trim();
 
     setState(() {
@@ -259,7 +265,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
           });
 
       if (mounted) {
-        _showSuccessDialog();
+        _showSuccessDialog(useOpenDyslexic);
       }
     } catch (e) {
       if (mounted) {
@@ -267,7 +273,11 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
           SnackBar(
             content: Text(
               "Oops! Something went wrong. Please try again.",
-              style: GoogleFonts.montserrat(fontSize: 13.sp),
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
+                fontSize: 13.sp,
+                color: Colors.white,
+              ),
             ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
@@ -282,7 +292,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(bool useOpenDyslexic) {
     LexiaPopup.showMessage(
       context: context,
       title: "Profile Updated!",
@@ -292,15 +302,17 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
       buttonColor: primaryPurple,
       buttonText: "Done",
       barrierDismissible: false,
+      useOpenDyslexic: useOpenDyslexic,
       onDone: () {
         Navigator.pop(context);
       },
     );
   }
 
-  Widget _sectionLabel(String label) => Text(
+  Widget _sectionLabel(String label, bool useOpenDyslexic) => Text(
     label,
-    style: GoogleFonts.montserrat(
+    style: AppTypography.getStyle(
+      useOpenDyslexic: useOpenDyslexic,
       fontSize: 12.sp,
       fontWeight: FontWeight.w500,
       color: textDark.withOpacity(0.4),
@@ -308,7 +320,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
     ),
   );
 
-  Widget _childPinCard() {
+  Widget _childPinCard(bool useOpenDyslexic) {
     final currentChildPin = _pinController.text.trim();
     final bool hasPin = currentChildPin.isNotEmpty;
 
@@ -324,7 +336,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 24.h),
-        _sectionLabel("Child PIN"),
+        _sectionLabel("Child PIN", useOpenDyslexic),
         SizedBox(height: 8.h),
 
         Container(
@@ -368,7 +380,8 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                       children: [
                         Text(
                           "Profile Lock",
-                          style: GoogleFonts.montserrat(
+                          style: AppTypography.getStyle(
+                            useOpenDyslexic: useOpenDyslexic,
                             fontSize: 10.sp,
                             color: Colors.black38,
                             fontWeight: FontWeight.w400,
@@ -377,7 +390,8 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                         SizedBox(height: 2.h),
                         Text(
                           statusText,
-                          style: GoogleFonts.montserrat(
+                          style: AppTypography.getStyle(
+                            useOpenDyslexic: useOpenDyslexic,
                             fontSize: 13.sp,
                             color: textDark,
                             fontWeight: FontWeight.w500,
@@ -388,7 +402,7 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                   ),
 
                   GestureDetector(
-                    onTap: _toggleChildPinEnabled,
+                    onTap: () => _toggleChildPinEnabled(useOpenDyslexic),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: 54.w,
@@ -445,7 +459,8 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
                     Expanded(
                       child: Text(
                         actionText,
-                        style: GoogleFonts.montserrat(
+                        style: AppTypography.getStyle(
+                          useOpenDyslexic: useOpenDyslexic,
                           fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
                           color: textDark,
@@ -469,270 +484,299 @@ class _ChildProfileSettingsPageState extends State<ChildProfileSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ivoryWhite, paleBlush, softCream, Colors.white],
-            stops: [0.0, 0.4, 0.7, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
-                child: _buildHeader(context),
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, userSnap) {
+        final userData = userSnap.data?.data() ?? {};
+        final bool useOpenDyslexic = userData['useOpenDyslexicFont'] == true;
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+                stops: [0.0, 0.4, 0.7, 1.0],
               ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 10.h,
+                    ),
+                    child: _buildHeader(context, useOpenDyslexic),
+                  ),
 
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(22.w, 8.h, 22.w, 32.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 90.r,
-                          height: 90.r,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(28.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: primaryPurple.withOpacity(0.12),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(22.w, 8.h, 22.w, 32.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 90.r,
+                              height: 90.r,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(28.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryPurple.withOpacity(0.12),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(28.r),
-                            child: _avatarWidget(_selectedAvatar, size: 90.r),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 24.h),
-
-                      _sectionLabel("Name"),
-                      SizedBox(height: 8.h),
-
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _nameController,
-                          maxLength: 12,
-                          style: GoogleFonts.montserrat(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w500,
-                            color: textDark,
-                          ),
-                          onChanged: (_) {
-                            if (_nameError != null) {
-                              setState(() => _nameError = null);
-                            }
-                          },
-                          decoration: InputDecoration(
-                            hintText: "Enter child's name",
-                            hintStyle: GoogleFonts.montserrat(
-                              fontSize: 13.sp,
-                              color: Colors.black26,
-                            ),
-                            counterText: "",
-                            errorText: _nameError,
-                            errorStyle: GoogleFonts.montserrat(
-                              fontSize: 10.sp,
-                              color: Colors.redAccent,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.person_outline_rounded,
-                              color: primaryPurple.withOpacity(0.6),
-                              size: 20.r,
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16.w,
-                              vertical: 16.h,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                              borderSide: BorderSide(
-                                color: primaryPurple.withOpacity(0.4),
-                                width: 1.5,
-                              ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                              borderSide: const BorderSide(
-                                color: Colors.redAccent,
-                                width: 1,
-                              ),
-                            ),
-                            focusedErrorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                              borderSide: const BorderSide(
-                                color: Colors.redAccent,
-                                width: 1.5,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(28.r),
+                                child: _avatarWidget(
+                                  _selectedAvatar,
+                                  size: 90.r,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
 
-                      if (_allowChildPin) _childPinCard(),
+                          SizedBox(height: 24.h),
 
-                      SizedBox(height: 24.h),
+                          _sectionLabel("Name", useOpenDyslexic),
+                          SizedBox(height: 8.h),
 
-                      _sectionLabel("Choose Avatar"),
-                      SizedBox(height: 12.h),
-
-                      Container(
-                        padding: EdgeInsets.all(16.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 15,
-                              offset: const Offset(0, 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 12.w,
-                                mainAxisSpacing: 12.h,
+                            child: TextField(
+                              controller: _nameController,
+                              maxLength: 12,
+                              style: AppTypography.getStyle(
+                                useOpenDyslexic: useOpenDyslexic,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                                color: textDark,
                               ),
-                          itemCount: _avatars.length,
-                          itemBuilder: (context, index) {
-                            final path = _avatars[index];
-                            final isSelected = _selectedAvatar == path;
-
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() => _selectedAvatar = path);
+                              onChanged: (_) {
+                                if (_nameError != null) {
+                                  setState(() => _nameError = null);
+                                }
                               },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? primaryPurple.withOpacity(0.08)
-                                      : const Color(0xFFF8F9FB),
+                              decoration: InputDecoration(
+                                hintText: "Enter child's name",
+                                hintStyle: AppTypography.getStyle(
+                                  useOpenDyslexic: useOpenDyslexic,
+                                  fontSize: 13.sp,
+                                  color: Colors.black26,
+                                ),
+                                counterText: "",
+                                errorText: _nameError,
+                                errorStyle: AppTypography.getStyle(
+                                  useOpenDyslexic: useOpenDyslexic,
+                                  fontSize: 10.sp,
+                                  color: Colors.redAccent,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.person_outline_rounded,
+                                  color: primaryPurple.withOpacity(0.6),
+                                  size: 20.r,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16.w,
+                                  vertical: 16.h,
+                                ),
+                                border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16.r),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? primaryPurple
-                                        : Colors.transparent,
-                                    width: 2,
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  borderSide: BorderSide(
+                                    color: primaryPurple.withOpacity(0.4),
+                                    width: 1.5,
                                   ),
                                 ),
-                                child: Stack(
-                                  children: [
-                                    Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(8.r),
-                                        child: _avatarWidget(path, size: 44.r),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          if (_allowChildPin) _childPinCard(useOpenDyslexic),
+
+                          SizedBox(height: 24.h),
+
+                          _sectionLabel("Choose Avatar", useOpenDyslexic),
+                          SizedBox(height: 12.h),
+
+                          Container(
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 4,
+                                    crossAxisSpacing: 12.w,
+                                    mainAxisSpacing: 12.h,
+                                  ),
+                              itemCount: _avatars.length,
+                              itemBuilder: (context, index) {
+                                final path = _avatars[index];
+                                final isSelected = _selectedAvatar == path;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() => _selectedAvatar = path);
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? primaryPurple.withOpacity(0.08)
+                                          : const Color(0xFFF8F9FB),
+                                      borderRadius: BorderRadius.circular(16.r),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? primaryPurple
+                                            : Colors.transparent,
+                                        width: 2,
                                       ),
                                     ),
-                                    if (isSelected)
-                                      Positioned(
-                                        top: 4.r,
-                                        right: 4.r,
-                                        child: Container(
-                                          width: 16.r,
-                                          height: 16.r,
-                                          decoration: const BoxDecoration(
-                                            color: primaryPurple,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.check_rounded,
-                                            color: Colors.white,
-                                            size: 10.r,
+                                    child: Stack(
+                                      children: [
+                                        Center(
+                                          child: Padding(
+                                            padding: EdgeInsets.all(8.r),
+                                            child: _avatarWidget(
+                                              path,
+                                              size: 44.r,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      SizedBox(height: 32.h),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54.h,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryPurple,
-                            foregroundColor: Colors.white,
-                            elevation: 4,
-                            shadowColor: primaryPurple.withOpacity(0.3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18.r),
+                                        if (isSelected)
+                                          Positioned(
+                                            top: 4.r,
+                                            right: 4.r,
+                                            child: Container(
+                                              width: 16.r,
+                                              height: 16.r,
+                                              decoration: const BoxDecoration(
+                                                color: primaryPurple,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.check_rounded,
+                                                color: Colors.white,
+                                                size: 10.r,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                          child: _isSaving
-                              ? SizedBox(
-                                  height: 20.r,
-                                  width: 20.r,
-                                  child: const CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  "Save Changes",
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 15.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+
+                          SizedBox(height: 32.h),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54.h,
+                            child: ElevatedButton(
+                              onPressed: _isSaving
+                                  ? null
+                                  : () => _save(useOpenDyslexic),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryPurple,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shadowColor: primaryPurple.withOpacity(0.3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.r),
                                 ),
-                        ),
+                              ),
+                              child: _isSaving
+                                  ? SizedBox(
+                                      height: 20.r,
+                                      width: 20.r,
+                                      child: const CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      "Save Changes",
+                                      style: AppTypography.getStyle(
+                                        useOpenDyslexic: useOpenDyslexic,
+                                        fontSize: 15.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

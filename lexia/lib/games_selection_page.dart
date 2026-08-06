@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'widgets/lexia_popup.dart';
+
+import 'app_typography.dart';
 import 'letter_scramble_page.dart';
 import 'responsive_helper.dart';
+import 'word_matching_page.dart';
+import 'listen_and_spell_page.dart';
 
 class GamesSelectionPage extends StatefulWidget {
   final int level;
@@ -32,6 +34,8 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   static const Color green = Color(0xFF59A685);
 
   bool letterScrambleCompleted = false;
+  bool wordMatchingCompleted = false;
+  bool listenAndSpellCompleted = false;
 
   String get _uid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -47,49 +51,80 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
 
   bool _readLetterScrambleCompleted(Map<String, dynamic>? data) {
     if (data == null) return false;
-
     final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
-
     final levelKey = 'level_${widget.level}';
-
     final levelProgress = Map<String, dynamic>.from(
       gameProgress[levelKey] ?? {},
     );
-
     final letterScramble = Map<String, dynamic>.from(
       levelProgress['letterScramble'] ?? {},
     );
-
     return letterScramble['completed'] == true;
   }
 
   int _readLetterScrambleBestStars(Map<String, dynamic>? data) {
     if (data == null) return 0;
-
     final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
-
     final levelKey = 'level_${widget.level}';
-
     final levelProgress = Map<String, dynamic>.from(
       gameProgress[levelKey] ?? {},
     );
-
     final letterScramble = Map<String, dynamic>.from(
       levelProgress['letterScramble'] ?? {},
     );
-
     return ((letterScramble['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
   }
 
-  void _showComingSoon(BuildContext context) {
-    LexiaPopup.showMessage(
-      context: context,
-      title: "Coming Soon!",
-      message: "This feature will be available soon!",
-      emoji: "🚀",
-      buttonColor: green.withOpacity(0.8),
-      buttonText: "Got it!",
+  bool _readWordMatchingCompleted(Map<String, dynamic>? data) {
+    if (data == null) return false;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+    final levelKey = 'level_${widget.level}';
+    final levelProgress = Map<String, dynamic>.from(
+      gameProgress[levelKey] ?? {},
     );
+    final wordMatching = Map<String, dynamic>.from(
+      levelProgress['wordMatching'] ?? {},
+    );
+    return wordMatching['completed'] == true;
+  }
+
+  int _readWordMatchingBestStars(Map<String, dynamic>? data) {
+    if (data == null) return 0;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+    final levelKey = 'level_${widget.level}';
+    final levelProgress = Map<String, dynamic>.from(
+      gameProgress[levelKey] ?? {},
+    );
+    final wordMatching = Map<String, dynamic>.from(
+      levelProgress['wordMatching'] ?? {},
+    );
+    return ((wordMatching['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
+  }
+
+  bool _readListenAndSpellCompleted(Map<String, dynamic>? data) {
+    if (data == null) return false;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+    final levelKey = 'level_${widget.level}';
+    final levelProgress = Map<String, dynamic>.from(
+      gameProgress[levelKey] ?? {},
+    );
+    final listenAndSpell = Map<String, dynamic>.from(
+      levelProgress['listenAndSpell'] ?? {},
+    );
+    return listenAndSpell['completed'] == true;
+  }
+
+  int _readListenAndSpellBestStars(Map<String, dynamic>? data) {
+    if (data == null) return 0;
+    final gameProgress = Map<String, dynamic>.from(data['gameProgress'] ?? {});
+    final levelKey = 'level_${widget.level}';
+    final levelProgress = Map<String, dynamic>.from(
+      gameProgress[levelKey] ?? {},
+    );
+    final listenAndSpell = Map<String, dynamic>.from(
+      levelProgress['listenAndSpell'] ?? {},
+    );
+    return ((listenAndSpell['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
   }
 
   Future<void> _openLetterScramble() async {
@@ -106,6 +141,41 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
     if (result == true) {
       setState(() {
         letterScrambleCompleted = true;
+      });
+    }
+  }
+
+  Future<void> _openWordMatching() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            WordMatchingPage(level: widget.level, childId: widget.childId),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result == true) {
+      setState(() {
+        wordMatchingCompleted = true;
+      });
+    }
+  }
+
+  Future<void> _openListenAndSpell() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ListenAndSpellPage(level: widget.level, childId: widget.childId),
+      ),
+    );
+
+    if (!mounted) return;
+    if (result == true) {
+      setState(() {
+        listenAndSpellCompleted = true;
       });
     }
   }
@@ -128,165 +198,208 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: childRef.snapshots(),
-      builder: (context, snapshot) {
-        final data = snapshot.data?.data();
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(_uid)
+          .snapshots(),
+      builder: (context, userSnap) {
+        final userData = userSnap.data?.data() ?? {};
+        final bool useOpenDyslexic = userData['useOpenDyslexicFont'] == true;
 
-        final bool firestoreCompleted = _readLetterScrambleCompleted(data);
-        final bool isLetterScrambleCompleted =
-            firestoreCompleted || letterScrambleCompleted;
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: childRef.snapshots(),
+          builder: (context, snapshot) {
+            final data = snapshot.data?.data();
 
-        final int bestStars = _readLetterScrambleBestStars(data);
+            final bool isLetterScrambleCompleted =
+                _readLetterScrambleCompleted(data) || letterScrambleCompleted;
+            final int lsBestStars = _readLetterScrambleBestStars(data);
 
-        return Scaffold(
-          backgroundColor: ivoryWhite,
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [ivoryWhite, paleBlush, softCream, Colors.white],
-                stops: [0.0, 0.4, 0.7, 1.0],
-              ),
-            ),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: R.maxContentWidth),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPad,
-                    topMargin,
-                    horizontalPad,
-                    bottomMargin,
+            final bool isWordMatchingCompleted =
+                _readWordMatchingCompleted(data) || wordMatchingCompleted;
+            final int wmBestStars = _readWordMatchingBestStars(data);
+
+            final bool isListenAndSpellCompleted =
+                _readListenAndSpellCompleted(data) || listenAndSpellCompleted;
+            final int lasBestStars = _readListenAndSpellBestStars(data);
+
+            return Scaffold(
+              backgroundColor: ivoryWhite,
+              body: Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+                    stops: [0.0, 0.4, 0.7, 1.0],
                   ),
-                  child: Column(
-                    children: [
-                      _buildTopBar(context),
-                      SizedBox(height: R.space(14)),
-
-                      Text(
-                        "Level ${widget.level} Games",
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.fredoka(
-                          fontSize: R.text(29),
-                          fontWeight: FontWeight.bold,
-                          color: primaryPurple,
-                          height: 1.05,
-                        ),
+                ),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: R.maxContentWidth),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPad,
+                        topMargin,
+                        horizontalPad,
+                        bottomMargin,
                       ),
+                      child: Column(
+                        children: [
+                          _buildTopBar(context, useOpenDyslexic),
+                          SizedBox(height: R.space(14)),
 
-                      SizedBox(height: R.space(5)),
+                          Text(
+                            "Level ${widget.level} Games",
+                            textAlign: TextAlign.center,
+                            style: AppTypography.getStyle(
+                              useOpenDyslexic: useOpenDyslexic,
+                              fontSize: R.text(26),
+                              fontWeight: FontWeight.bold,
+                              color: primaryPurple,
+                              height: 1.05,
+                            ),
+                          ),
 
-                      Text(
-                        "Choose a game to practice",
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.montserrat(
-                          fontSize: R.text(12),
-                          fontWeight: FontWeight.w500,
-                          color: textDark.withOpacity(0.55),
-                        ),
+                          SizedBox(height: R.space(5)),
+
+                          Text(
+                            "Choose a game to practice",
+                            textAlign: TextAlign.center,
+                            style: AppTypography.getStyle(
+                              useOpenDyslexic: useOpenDyslexic,
+                              fontSize: R.text(12),
+                              fontWeight: FontWeight.w500,
+                              color: textDark.withOpacity(0.55),
+                            ),
+                          ),
+
+                          SizedBox(height: R.space(18)),
+
+                          _buildCharacter(),
+
+                          SizedBox(height: R.space(20)),
+
+                          _GameCard(
+                            title: "Letter Scramble",
+                            subtitle: isLetterScrambleCompleted
+                                ? "Completed! Score: $lsBestStars/3 stars."
+                                : "Arrange the letters to form the correct word.",
+                            emoji: "🧩",
+                            color: coral,
+                            isLarge: true,
+                            buttonText: isLetterScrambleCompleted
+                                ? "Completed"
+                                : "Play",
+                            isCompleted: isLetterScrambleCompleted,
+                            useOpenDyslexic: useOpenDyslexic,
+                            onTap: _openLetterScramble,
+                          ),
+
+                          SizedBox(height: R.space(14)),
+
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final bool veryNarrow =
+                                  constraints.maxWidth < 330;
+
+                              if (veryNarrow) {
+                                return Column(
+                                  children: [
+                                    _GameCard(
+                                      title: "Listen and Spell",
+                                      subtitle: isListenAndSpellCompleted
+                                          ? "Score: $lasBestStars/3 stars."
+                                          : "Listen carefully and spell the word.",
+                                      emoji: "🎧",
+                                      color: green,
+                                      buttonText: isListenAndSpellCompleted
+                                          ? "Completed"
+                                          : "Play",
+                                      isLocked: false,
+                                      isCompleted: isListenAndSpellCompleted,
+                                      useOpenDyslexic: useOpenDyslexic,
+                                      onTap: _openListenAndSpell,
+                                    ),
+                                    SizedBox(height: R.space(12)),
+                                    _GameCard(
+                                      title: "Word Matching",
+                                      subtitle: isWordMatchingCompleted
+                                          ? "Score: $wmBestStars/3 stars."
+                                          : "Match the word with the picture.",
+                                      emoji: "✨",
+                                      color: blue,
+                                      buttonText: isWordMatchingCompleted
+                                          ? "Completed"
+                                          : "Play",
+                                      isLocked: false,
+                                      isCompleted: isWordMatchingCompleted,
+                                      useOpenDyslexic: useOpenDyslexic,
+                                      onTap: _openWordMatching,
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _GameCard(
+                                      title: "Listen\nand Spell",
+                                      subtitle: isListenAndSpellCompleted
+                                          ? "Score: $lasBestStars/3 stars."
+                                          : "Listen & spell.",
+                                      emoji: "🎧",
+                                      color: green,
+                                      buttonText: isListenAndSpellCompleted
+                                          ? "Completed"
+                                          : "Play",
+                                      isLocked: false,
+                                      isCompleted: isListenAndSpellCompleted,
+                                      useOpenDyslexic: useOpenDyslexic,
+                                      onTap: _openListenAndSpell,
+                                    ),
+                                  ),
+                                  SizedBox(width: R.space(12)),
+                                  Expanded(
+                                    child: _GameCard(
+                                      title: "Word\nMatching",
+                                      subtitle: isWordMatchingCompleted
+                                          ? "Score: $wmBestStars/3 stars."
+                                          : "Match word with picture.",
+                                      emoji: "✨",
+                                      color: blue,
+                                      buttonText: isWordMatchingCompleted
+                                          ? "Completed"
+                                          : "Play",
+                                      isLocked: false,
+                                      isCompleted: isWordMatchingCompleted,
+                                      useOpenDyslexic: useOpenDyslexic,
+                                      onTap: _openWordMatching,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
                       ),
-
-                      SizedBox(height: R.space(18)),
-
-                      _buildCharacter(),
-
-                      SizedBox(height: R.space(20)),
-
-                      _GameCard(
-                        title: "Letter Scramble",
-                        subtitle: isLetterScrambleCompleted
-                            ? "Completed! Best score: $bestStars/3 stars."
-                            : "Arrange the letters to form the correct word.",
-                        emoji: "🧩",
-                        color: coral,
-                        isLarge: true,
-                        buttonText: isLetterScrambleCompleted
-                            ? "Completed"
-                            : "Play",
-                        isCompleted: isLetterScrambleCompleted,
-                        onTap: _openLetterScramble,
-                      ),
-
-                      SizedBox(height: R.space(14)),
-
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final bool veryNarrow = constraints.maxWidth < 330;
-
-                          if (veryNarrow) {
-                            return Column(
-                              children: [
-                                _GameCard(
-                                  title: "Listen and Spell",
-                                  subtitle:
-                                      "Listen carefully and spell the word.",
-                                  emoji: "🎧",
-                                  color: green,
-                                  buttonText: "Coming soon",
-                                  isLocked: true,
-                                  onTap: () => _showComingSoon(context),
-                                ),
-                                SizedBox(height: R.space(12)),
-                                _GameCard(
-                                  title: "Word Matching",
-                                  subtitle: "Match the word with the picture.",
-                                  emoji: "✨",
-                                  color: blue,
-                                  buttonText: "Coming soon",
-                                  isLocked: true,
-                                  onTap: () => _showComingSoon(context),
-                                ),
-                              ],
-                            );
-                          }
-
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: _GameCard(
-                                  title: "Listen\nand Spell",
-                                  subtitle:
-                                      "Listen carefully and spell the word.",
-                                  emoji: "🎧",
-                                  color: green,
-                                  buttonText: "Play",
-                                  isLocked: true,
-                                  onTap: () => _showComingSoon(context),
-                                ),
-                              ),
-                              SizedBox(width: R.space(12)),
-                              Expanded(
-                                child: _GameCard(
-                                  title: "Word\nMatching",
-                                  subtitle: "Match the word with the picture.",
-                                  emoji: "✨",
-                                  color: blue,
-                                  buttonText: "Play",
-                                  isLocked: true,
-                                  onTap: () => _showComingSoon(context),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildTopBar(BuildContext context, bool useOpenDyslexic) {
     return Row(
       children: [
         SizedBox(
@@ -304,7 +417,8 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
           child: Center(
             child: Text(
               "Level ${widget.level} Games",
-              style: GoogleFonts.montserrat(
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
                 fontSize: R.text(18),
                 fontWeight: FontWeight.w500,
                 color: textDark,
@@ -343,6 +457,7 @@ class _GameCard extends StatelessWidget {
   final bool isLocked;
   final bool isLarge;
   final bool isCompleted;
+  final bool useOpenDyslexic;
   final VoidCallback onTap;
 
   const _GameCard({
@@ -355,6 +470,7 @@ class _GameCard extends StatelessWidget {
     this.isLocked = false,
     this.isLarge = false,
     this.isCompleted = false,
+    this.useOpenDyslexic = false,
   });
 
   @override
@@ -424,7 +540,7 @@ class _GameCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _titleText(fontSize: 20),
+              _titleText(fontSize: 18),
               SizedBox(height: R.space(5)),
               _subtitleText(),
               SizedBox(height: R.space(12)),
@@ -441,7 +557,7 @@ class _GameCard extends StatelessWidget {
       children: [
         _iconBox(46),
         SizedBox(height: R.space(8)),
-        _titleText(fontSize: 16, center: true),
+        _titleText(fontSize: 15, center: true),
         SizedBox(height: R.space(6)),
         _subtitleText(center: true),
         SizedBox(height: R.space(12)),
@@ -488,10 +604,11 @@ class _GameCard extends StatelessWidget {
       textAlign: center ? TextAlign.center : TextAlign.start,
       maxLines: isLarge ? 2 : 3,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.fredoka(
+      style: AppTypography.getStyle(
+        useOpenDyslexic: useOpenDyslexic,
         fontSize: R.text(fontSize),
         fontWeight: FontWeight.bold,
-        height: 1.05,
+        height: 1.1,
         color: color,
       ),
     );
@@ -503,7 +620,8 @@ class _GameCard extends StatelessWidget {
       textAlign: center ? TextAlign.center : TextAlign.start,
       maxLines: isLarge ? 2 : 3,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.montserrat(
+      style: AppTypography.getStyle(
+        useOpenDyslexic: useOpenDyslexic,
         fontSize: isLarge ? R.text(11.5) : R.text(10),
         fontWeight: FontWeight.w400,
         height: 1.3,
@@ -543,7 +661,8 @@ class _GameCard extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.montserrat(
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
                 fontSize: isLarge ? R.text(12.5) : R.text(10),
                 fontWeight: FontWeight.w700,
                 color: Colors.white,

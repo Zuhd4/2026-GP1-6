@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_typography.dart';
 import 'responsive_helper.dart';
 import 'widgets/trail_painter.dart';
 import 'widgets/level_node.dart';
@@ -32,32 +33,55 @@ class GamesPage extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .collection('children')
-          .doc(childId)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Colors.transparent,
-            body: Center(
-              child: CircularProgressIndicator(color: primaryPurple),
-            ),
-          );
-        }
+      builder: (context, parentSnap) {
+        final parentData = parentSnap.data?.data() ?? {};
+        final bool useOpenDyslexic = parentData['useOpenDyslexicFont'] == true;
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return _emptyMessage(context, "Child profile not found");
-        }
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('children')
+              .doc(childId)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                backgroundColor: Colors.transparent,
+                body: Center(
+                  child: CircularProgressIndicator(color: primaryPurple),
+                ),
+              );
+            }
 
-        final childDoc = snapshot.data!;
-        final childData = childDoc.data() ?? {};
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return _emptyMessage(
+                context,
+                "Child profile not found",
+                useOpenDyslexic,
+              );
+            }
 
-        return _GamesMapContent(childId: childDoc.id, childData: childData);
+            final childDoc = snapshot.data!;
+            final childData = childDoc.data() ?? {};
+
+            return _GamesMapContent(
+              childId: childDoc.id,
+              childData: childData,
+              useOpenDyslexic: useOpenDyslexic,
+            );
+          },
+        );
       },
     );
   }
 
-  Widget _emptyMessage(BuildContext context, String message) {
+  Widget _emptyMessage(
+    BuildContext context,
+    String message,
+    bool useOpenDyslexic,
+  ) {
     R.init(context);
 
     return Scaffold(
@@ -75,7 +99,8 @@ class GamesPage extends StatelessWidget {
         child: Center(
           child: Text(
             message,
-            style: GoogleFonts.montserrat(
+            style: AppTypography.getStyle(
+              useOpenDyslexic: useOpenDyslexic,
               fontSize: R.text(16),
               fontWeight: FontWeight.w600,
               color: textDark,
@@ -90,8 +115,13 @@ class GamesPage extends StatelessWidget {
 class _GamesMapContent extends StatefulWidget {
   final String childId;
   final Map<String, dynamic> childData;
+  final bool useOpenDyslexic;
 
-  const _GamesMapContent({required this.childId, required this.childData});
+  const _GamesMapContent({
+    required this.childId,
+    required this.childData,
+    required this.useOpenDyslexic,
+  });
 
   @override
   State<_GamesMapContent> createState() => _GamesMapContentState();
@@ -131,45 +161,61 @@ class _GamesMapContentState extends State<_GamesMapContent> {
     return ((game['bestStars'] as num?)?.toInt() ?? 0).clamp(0, 3);
   }
 
+  bool _isLevelFullyCompleted(int level) {
+    return _isGameCompleted(level, 'letterScramble') &&
+        _isGameCompleted(level, 'wordMatching') &&
+        _isGameCompleted(level, 'listenAndSpell');
+  }
+
+  int _levelAverageStars(int level) {
+    final sumStars =
+        _gameBestStars(level, 'letterScramble') +
+        _gameBestStars(level, 'wordMatching') +
+        _gameBestStars(level, 'listenAndSpell');
+
+    return (sumStars ~/ 3).clamp(0, 3);
+  }
+
   int get _totalStars {
     int total = 0;
 
     for (int level = 1; level <= 6; level++) {
       total += _gameBestStars(level, 'letterScramble');
+      total += _gameBestStars(level, 'wordMatching');
+      total += _gameBestStars(level, 'listenAndSpell');
     }
 
-    return total.clamp(0, 18);
+    return total;
+  }
+
+  bool _hasLevelTrophy(int level) {
+    return _gameBestStars(level, 'letterScramble') == 3 &&
+        _gameBestStars(level, 'wordMatching') == 3 &&
+        _gameBestStars(level, 'listenAndSpell') == 3;
   }
 
   int get _totalTrophies {
-    return ((childData['trophies'] as num?)?.toInt() ?? 0).clamp(0, 6);
-  }
+    int trophyCount = 0;
 
-  List<int> get _completedTrophyLevels {
-    final list = (childData['completedTrophyLevels'] as List?) ?? [];
+    for (int level = 1; level <= 6; level++) {
+      if (_hasLevelTrophy(level)) {
+        trophyCount++;
+      }
+    }
 
-    return list
-        .map((e) {
-          if (e is num) return e.toInt();
-          return int.tryParse(e.toString()) ?? 0;
-        })
-        .where((level) => level >= 1 && level <= 6)
-        .toList();
+    return trophyCount;
   }
 
   String _levelStatus(int level) {
     if (level == 1) {
-      return _isGameCompleted(1, 'letterScramble') ? "completed" : "current";
+      return _isLevelFullyCompleted(1) ? "completed" : "current";
     }
 
-    final previousLevelCompleted = _isGameCompleted(
-      level - 1,
-      'letterScramble',
-    );
+    final previousLevelCompleted = _isLevelFullyCompleted(level - 1);
 
     if (!previousLevelCompleted) return "locked";
 
-    final currentLevelCompleted = _isGameCompleted(level, 'letterScramble');
+    final currentLevelCompleted = _isLevelFullyCompleted(level);
 
     if (currentLevelCompleted) return "completed";
 
@@ -387,7 +433,7 @@ class _GamesMapContentState extends State<_GamesMapContent> {
                       Positioned(
                         top: topPadding + R.gameSpace(8),
                         left: R.gameSpace(12),
-                        child: _buildProgressCards(),
+                        child: _buildProgressCards(widget.useOpenDyslexic),
                       ),
                     ],
                   );
@@ -414,12 +460,12 @@ class _GamesMapContentState extends State<_GamesMapContent> {
       color: color,
       position: Offset(x, y + topPadding),
       childId: childId,
-      hasTrophy: _completedTrophyLevels.contains(level),
-      stars: _gameBestStars(level, 'letterScramble'),
+      hasTrophy: _hasLevelTrophy(level),
+      stars: _levelAverageStars(level),
     );
   }
 
-  Widget _buildProgressCards() {
+  Widget _buildProgressCards(bool useOpenDyslexic) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -429,6 +475,7 @@ class _GamesMapContentState extends State<_GamesMapContent> {
           title: "Trophies",
           value: "$_totalTrophies/6",
           bgColor: const Color(0xFFFFF8E1),
+          useOpenDyslexic: useOpenDyslexic,
         ),
         SizedBox(height: R.gameSpace(5)),
         _miniCard(
@@ -437,6 +484,7 @@ class _GamesMapContentState extends State<_GamesMapContent> {
           title: "Stars",
           value: "$_totalStars",
           bgColor: const Color(0xFFFFF3F7),
+          useOpenDyslexic: useOpenDyslexic,
         ),
       ],
     );
@@ -448,6 +496,7 @@ class _GamesMapContentState extends State<_GamesMapContent> {
     required String title,
     required String value,
     required Color bgColor,
+    required bool useOpenDyslexic,
   }) {
     return Container(
       width: R.gameSpace(95),
@@ -475,14 +524,15 @@ class _GamesMapContentState extends State<_GamesMapContent> {
             decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
             child: Icon(icon, color: iconColor, size: R.gameIcon(17)),
           ),
-          SizedBox(width: R.gameSpace(6)),
+          SizedBox(width: R.space(6)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   value,
-                  style: GoogleFonts.fredoka(
+                  style: AppTypography.getStyle(
+                    useOpenDyslexic: useOpenDyslexic,
                     fontSize: R.gameText(14),
                     fontWeight: FontWeight.bold,
                     color: textDark,
