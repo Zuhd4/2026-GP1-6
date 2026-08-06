@@ -40,7 +40,8 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
   final int totalRounds = 3;
   final int pairsPerRound = 3;
   final int maxAttemptsPerRound = 3;
-  final int requiredCorrectToPass = 2;
+  final int requiredCorrectToPass =
+      2; // Requires at least 2 stars/completed rounds
 
   List<Map<String, String>> poolOfWords = [];
   Set<String> usedWordsInSession = {};
@@ -468,7 +469,7 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
       'completedCount': oldCompletedCount + 1,
       'stars': stars,
       'bestStars': newBestStars,
-      'lastScore': correctWithoutHelp,
+      'lastScore': stars,
       'totalWords': totalRounds * pairsPerRound,
       'passedAt': FieldValue.serverTimestamp(),
     };
@@ -483,7 +484,8 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
   }
 
   Future<void> _finishRound() async {
-    final passed = correctWithoutHelp >= requiredCorrectToPass;
+    // Requires collecting at least 2 stars (2 completed rounds) to pass
+    final passed = stars >= requiredCorrectToPass;
 
     if (passed) {
       if (!mounted) return;
@@ -513,7 +515,7 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
       await _showSimpleDialog(
         title: "Try again",
         message:
-            "You got $correctWithoutHelp/3 correct without help. You need at least 2/3 to unlock the next level.",
+            "You earned $stars/3 stars. You need at least 2/3 stars to unlock the next level.",
         icon: Icons.lock_outline_rounded,
         iconColor: primaryPurple,
       );
