@@ -57,6 +57,9 @@ dependencies:
 
   # --- Listen & Spell Game ---
   flutter_tts: ^4.2.5        # Plays target words aloud
+  record: ^6.2.1
+  path_provider: ^2.1.6
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
