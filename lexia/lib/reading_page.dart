@@ -555,8 +555,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
       // Android Emulator:
       // 10.0.2.2 points to the Mac running the Flask server.
       final Uri uri = Uri.parse(
-        'http://192.168.100.175:5001/reading-assessment',
+        'https://lexia-asr-100861482313.me-central1.run.app/reading-assessment',
       );
+
       final request = http.MultipartRequest('POST', uri);
 
       // Story text from Firestore.
