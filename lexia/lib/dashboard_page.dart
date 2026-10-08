@@ -925,60 +925,20 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
   @override
   void initState() {
     super.initState();
-    selectedLevel = _initialSelectedLevel(widget.readingProgress);
+
+    // Always start with Book 1 selected.
+    selectedLevel = 1;
   }
 
   @override
   void didUpdateWidget(covariant _ReadingProgressSection oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final int oldSuggested = _initialSelectedLevel(oldWidget.readingProgress);
-    final int newSuggested = _initialSelectedLevel(widget.readingProgress);
-
-    // If the parent was looking at the latest active story and a new story
-    // becomes available, gently move the selection forward with the progress.
-    if (selectedLevel == oldSuggested && newSuggested > oldSuggested) {
-      selectedLevel = newSuggested;
-    }
-
+    // Keep whichever story the parent selected.
+    // Only reset if the value somehow becomes invalid.
     if (selectedLevel < 1 || selectedLevel > 6) {
-      selectedLevel = newSuggested;
+      selectedLevel = 1;
     }
-  }
-
-  static int _initialSelectedLevel(Map<String, dynamic> progress) {
-    double bestScoreForLevel(int level) {
-      final levelData = Map<String, dynamic>.from(
-        progress['level_$level'] ?? {},
-      );
-      final story = Map<String, dynamic>.from(levelData['storyReading'] ?? {});
-      return ((story['bestScore'] as num?)?.toDouble() ?? 0.0);
-    }
-
-    Map<String, dynamic> storyForLevel(int level) {
-      final levelData = Map<String, dynamic>.from(
-        progress['level_$level'] ?? {},
-      );
-      return Map<String, dynamic>.from(levelData['storyReading'] ?? {});
-    }
-
-    int latestRelevant = 1;
-
-    for (int level = 1; level <= 6; level++) {
-      final bool unlocked = level == 1 || bestScoreForLevel(level - 1) >= 50.0;
-      final story = storyForLevel(level);
-      final bool started =
-          story.isNotEmpty ||
-          Map<String, dynamic>.from(
-            story['currentPageResults'] ?? {},
-          ).isNotEmpty;
-
-      if (unlocked || started) {
-        latestRelevant = level;
-      }
-    }
-
-    return latestRelevant.clamp(1, 6);
   }
 
   Map<String, dynamic> _storyData(int level) {
@@ -991,11 +951,13 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
   double _bestScore(int level) {
     final story = _storyData(level);
+
     return ((story['bestScore'] as num?)?.toDouble() ?? 0.0);
   }
 
   bool _isUnlocked(int level) {
     if (level == 1) return true;
+
     return _bestScore(level - 1) >= 50.0;
   }
 
@@ -1015,6 +977,7 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
   int _totalPages(Map<String, dynamic> story) {
     final int saved = ((story['totalPages'] as num?)?.toInt() ?? 0);
+
     return saved > 0 ? saved : 3;
   }
 
@@ -1045,6 +1008,7 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
   @override
   Widget build(BuildContext context) {
     final int completedStories = _completedStoriesCount();
+
     final int unlockedStories = _unlockedStoriesCount();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -1052,6 +1016,7 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
           .collection('reading_books')
           .orderBy('level')
           .snapshots(),
+
       builder: (context, booksSnapshot) {
         final Map<String, Map<String, dynamic>> booksById = {
           for (final doc
@@ -1063,79 +1028,115 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
         return Container(
           margin: EdgeInsets.fromLTRB(
             R.space(14),
+
             R.space(2),
+
             R.space(14),
+
             R.space(2),
           ),
+
           padding: EdgeInsets.all(R.space(14)),
+
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
+
               end: Alignment.bottomRight,
+
               colors: [Color(0xFFF8FBF9), Color(0xFFFFFDFB)],
             ),
+
             borderRadius: BorderRadius.circular(R.radius(20)),
+
             border: Border.all(
               color: const Color(0xFF59A685).withOpacity(0.14),
             ),
           ),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+
             children: [
               Row(
                 children: [
                   Container(
                     width: R.icon(36),
+
                     height: R.icon(36),
+
                     decoration: BoxDecoration(
                       color: const Color(0xFF59A685).withOpacity(0.10),
+
                       borderRadius: BorderRadius.circular(R.radius(10)),
                     ),
+
                     child: Icon(
                       Icons.auto_stories_rounded,
+
                       color: const Color(0xFF59A685),
+
                       size: R.icon(20),
                     ),
                   ),
+
                   SizedBox(width: R.space(10)),
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+
                       children: [
                         Text(
                           'Reading Progress',
+
                           style: GoogleFonts.montserrat(
                             fontSize: R.text(14),
+
                             fontWeight: FontWeight.w600,
+
                             color: const Color(0xFF2D3142),
                           ),
                         ),
+
                         SizedBox(height: R.space(2)),
+
                         Text(
                           '$completedStories of 6 stories completed • $unlockedStories unlocked',
+
                           style: GoogleFonts.montserrat(
                             fontSize: R.text(9.5),
+
                             fontWeight: FontWeight.w400,
+
                             color: Colors.black45,
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: R.space(9),
+
                       vertical: R.space(5),
                     ),
+
                     decoration: BoxDecoration(
                       color: const Color(0xFF59A685).withOpacity(0.10),
+
                       borderRadius: BorderRadius.circular(R.radius(12)),
                     ),
+
                     child: Text(
                       '$completedStories/6',
+
                       style: GoogleFonts.montserrat(
                         fontSize: R.text(10.5),
+
                         fontWeight: FontWeight.w700,
+
                         color: const Color(0xFF59A685),
                       ),
                     ),
@@ -1147,10 +1148,14 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
               ClipRRect(
                 borderRadius: BorderRadius.circular(R.radius(10)),
+
                 child: LinearProgressIndicator(
                   value: completedStories / 6.0,
+
                   minHeight: R.space(7),
+
                   backgroundColor: const Color(0xFFEDF1EF),
+
                   color: const Color(0xFF59A685),
                 ),
               ),
@@ -1159,15 +1164,23 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
               SizedBox(
                 height: R.space(175),
+
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
+
                   physics: const BouncingScrollPhysics(),
+
                   itemCount: 6,
+
                   separatorBuilder: (_, __) => SizedBox(width: R.space(10)),
+
                   itemBuilder: (context, index) {
                     final int level = index + 1;
+
                     final story = _storyData(level);
+
                     final book = booksById['book_$level'] ?? {};
+
                     final bool unlocked = _isUnlocked(level);
 
                     final String title =
@@ -1179,11 +1192,17 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
                     return _ReadingBookProgressCard(
                       level: level,
+
                       title: title,
+
                       coverPath: coverPath,
+
                       storyData: story,
+
                       isLocked: !unlocked,
+
                       isSelected: selectedLevel == level,
+
                       onTap: () {
                         setState(() {
                           selectedLevel = level;
@@ -1198,8 +1217,11 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
               _ReadingStoryDetails(
                 level: selectedLevel,
+
                 storyData: _storyData(selectedLevel),
+
                 isLocked: !_isUnlocked(selectedLevel),
+
                 previousBestScore: selectedLevel == 1
                     ? null
                     : _bestScore(selectedLevel - 1),
@@ -1214,20 +1236,32 @@ class _ReadingProgressSectionState extends State<_ReadingProgressSection> {
 
 class _ReadingBookProgressCard extends StatelessWidget {
   final int level;
+
   final String title;
+
   final String coverPath;
+
   final Map<String, dynamic> storyData;
+
   final bool isLocked;
+
   final bool isSelected;
+
   final VoidCallback onTap;
 
   const _ReadingBookProgressCard({
     required this.level,
+
     required this.title,
+
     required this.coverPath,
+
     required this.storyData,
+
     required this.isLocked,
+
     required this.isSelected,
+
     required this.onTap,
   });
 
@@ -1244,6 +1278,7 @@ class _ReadingBookProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool completed = storyData['completed'] == true;
+
     final double bestScore =
         ((storyData['bestScore'] as num?)?.toDouble() ?? 0.0);
 
@@ -1255,63 +1290,84 @@ class _ReadingBookProgressCard extends StatelessWidget {
     final bool started = storyData.isNotEmpty && pagesDone > 0;
 
     String status;
+
     Color statusColor;
 
     if (isLocked) {
       status = 'Locked';
+
       statusColor = Colors.black38;
     } else if (completed) {
       status = bestScore >= 50 ? 'Passed' : 'Keep practicing';
+
       statusColor = bestScore >= 50
           ? const Color(0xFF59A685)
           : const Color(0xFFE3A13B);
     } else if (started) {
       status = '$pagesDone/$totalPages pages';
+
       statusColor = const Color(0xFF6A5ACD);
     } else {
       status = 'Not started';
+
       statusColor = Colors.black38;
     }
 
     return GestureDetector(
       onTap: onTap,
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
+
         width: R.icon(116),
+
         padding: EdgeInsets.all(R.space(7)),
+
         decoration: BoxDecoration(
           color: Colors.white,
+
           borderRadius: BorderRadius.circular(R.radius(16)),
+
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF59A685)
                 : Colors.black.withOpacity(0.05),
+
             width: isSelected ? 1.5 : 1,
           ),
+
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: const Color(0xFF59A685).withOpacity(0.10),
+
                     blurRadius: 12,
+
                     offset: const Offset(0, 4),
                   ),
                 ]
               : null,
         ),
+
         child: Column(
           children: [
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
+
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(R.radius(11)),
+
                     child: coverPath.isEmpty
                         ? Container(
                             color: const Color(0xFFF1F5F2),
+
                             child: Icon(
                               Icons.menu_book_rounded,
+
                               color: const Color(0xFF59A685).withOpacity(0.45),
+
                               size: R.icon(28),
                             ),
                           )
@@ -1321,6 +1377,7 @@ class _ReadingBookProgressCard extends StatelessWidget {
                   if (isLocked)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(R.radius(11)),
+
                       child: Container(color: Colors.white.withOpacity(0.58)),
                     ),
 
@@ -1328,20 +1385,28 @@ class _ReadingBookProgressCard extends StatelessWidget {
                     Center(
                       child: Container(
                         width: R.icon(34),
+
                         height: R.icon(34),
+
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.92),
+
                           shape: BoxShape.circle,
+
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.08),
+
                               blurRadius: 6,
                             ),
                           ],
                         ),
+
                         child: Icon(
                           Icons.lock_rounded,
+
                           color: const Color(0xFF2D3142).withOpacity(0.55),
+
                           size: R.icon(17),
                         ),
                       ),
@@ -1350,23 +1415,32 @@ class _ReadingBookProgressCard extends StatelessWidget {
                   if (!isLocked && completed)
                     Positioned(
                       top: R.space(5),
+
                       right: R.space(5),
+
                       child: Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: R.space(6),
+
                           vertical: R.space(3),
                         ),
+
                         decoration: BoxDecoration(
                           color: bestScore >= 50
                               ? const Color(0xFF59A685)
                               : const Color(0xFFE3A13B),
+
                           borderRadius: BorderRadius.circular(R.radius(10)),
                         ),
+
                         child: Text(
                           '${bestScore.round()}%',
+
                           style: GoogleFonts.montserrat(
                             fontSize: R.text(8.5),
+
                             fontWeight: FontWeight.w700,
+
                             color: Colors.white,
                           ),
                         ),
@@ -1376,21 +1450,30 @@ class _ReadingBookProgressCard extends StatelessWidget {
                   if (!isLocked && !completed && started)
                     Positioned(
                       top: R.space(5),
+
                       right: R.space(5),
+
                       child: Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: R.space(6),
+
                           vertical: R.space(3),
                         ),
+
                         decoration: BoxDecoration(
                           color: const Color(0xFF6A5ACD),
+
                           borderRadius: BorderRadius.circular(R.radius(10)),
                         ),
+
                         child: Text(
                           '$pagesDone/$totalPages',
+
                           style: GoogleFonts.montserrat(
                             fontSize: R.text(8.5),
+
                             fontWeight: FontWeight.w700,
+
                             color: Colors.white,
                           ),
                         ),
@@ -1404,12 +1487,18 @@ class _ReadingBookProgressCard extends StatelessWidget {
 
             Text(
               title,
+
               maxLines: 1,
+
               overflow: TextOverflow.ellipsis,
+
               textAlign: TextAlign.center,
+
               style: GoogleFonts.montserrat(
                 fontSize: R.text(9.5),
+
                 fontWeight: FontWeight.w600,
+
                 color: const Color(0xFF2D3142),
               ),
             ),
@@ -1418,11 +1507,16 @@ class _ReadingBookProgressCard extends StatelessWidget {
 
             Text(
               status,
+
               maxLines: 1,
+
               overflow: TextOverflow.ellipsis,
+
               style: GoogleFonts.montserrat(
                 fontSize: R.text(8.5),
+
                 fontWeight: FontWeight.w500,
+
                 color: statusColor,
               ),
             ),
@@ -1435,14 +1529,20 @@ class _ReadingBookProgressCard extends StatelessWidget {
 
 class _ReadingStoryDetails extends StatelessWidget {
   final int level;
+
   final Map<String, dynamic> storyData;
+
   final bool isLocked;
+
   final double? previousBestScore;
 
   const _ReadingStoryDetails({
     required this.level,
+
     required this.storyData,
+
     required this.isLocked,
+
     required this.previousBestScore,
   });
 
@@ -1463,6 +1563,7 @@ class _ReadingStoryDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool completed = storyData['completed'] == true;
+
     final double bestScore =
         ((storyData['bestScore'] as num?)?.toDouble() ?? 0.0);
 
@@ -1473,6 +1574,7 @@ class _ReadingStoryDetails extends StatelessWidget {
         .clamp(1, 99);
 
     final Map<String, dynamic> pages = _pageResults();
+
     final int pagesDone = pages.length.clamp(0, totalPages);
 
     final bool started = storyData.isNotEmpty && pagesDone > 0;
@@ -1484,46 +1586,68 @@ class _ReadingStoryDetails extends StatelessWidget {
 
       return Container(
         width: double.infinity,
+
         padding: EdgeInsets.all(R.space(13)),
+
         decoration: BoxDecoration(
           color: const Color(0xFFF5F5F7),
+
           borderRadius: BorderRadius.circular(R.radius(16)),
         ),
+
         child: Row(
           children: [
             Container(
               width: R.icon(38),
+
               height: R.icon(38),
+
               decoration: BoxDecoration(
                 color: Colors.white,
+
                 shape: BoxShape.circle,
               ),
+
               child: Icon(
                 Icons.lock_outline_rounded,
+
                 color: Colors.black38,
+
                 size: R.icon(19),
               ),
             ),
+
             SizedBox(width: R.space(10)),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+
                 children: [
                   Text(
                     'Story $level is locked',
+
                     style: GoogleFonts.montserrat(
                       fontSize: R.text(11.5),
+
                       fontWeight: FontWeight.w600,
+
                       color: const Color(0xFF2D3142),
                     ),
                   ),
+
                   SizedBox(height: R.space(3)),
+
                   Text(
                     'A best score of 50% or more on Story ${level - 1} unlocks it.$previousText',
+
                     style: GoogleFonts.montserrat(
                       fontSize: R.text(9.5),
+
                       fontWeight: FontWeight.w400,
+
                       color: Colors.black45,
+
                       height: 1.35,
                     ),
                   ),
@@ -1538,46 +1662,68 @@ class _ReadingStoryDetails extends StatelessWidget {
     if (!started && !completed) {
       return Container(
         width: double.infinity,
+
         padding: EdgeInsets.all(R.space(13)),
+
         decoration: BoxDecoration(
           color: const Color(0xFFF2F8F5),
+
           borderRadius: BorderRadius.circular(R.radius(16)),
         ),
+
         child: Row(
           children: [
             Container(
               width: R.icon(38),
+
               height: R.icon(38),
+
               decoration: BoxDecoration(
                 color: const Color(0xFF59A685).withOpacity(0.12),
+
                 shape: BoxShape.circle,
               ),
+
               child: Icon(
                 Icons.menu_book_rounded,
+
                 color: const Color(0xFF59A685),
+
                 size: R.icon(20),
               ),
             ),
+
             SizedBox(width: R.space(10)),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+
                 children: [
                   Text(
                     'Ready to read',
+
                     style: GoogleFonts.montserrat(
                       fontSize: R.text(11.5),
+
                       fontWeight: FontWeight.w600,
+
                       color: const Color(0xFF2D3142),
                     ),
                   ),
+
                   SizedBox(height: R.space(3)),
+
                   Text(
                     'This story is unlocked, but no reading result has been saved yet.',
+
                     style: GoogleFonts.montserrat(
                       fontSize: R.text(9.5),
+
                       fontWeight: FontWeight.w400,
+
                       color: Colors.black45,
+
                       height: 1.35,
                     ),
                   ),
@@ -1592,36 +1738,53 @@ class _ReadingStoryDetails extends StatelessWidget {
     if (!completed) {
       return Container(
         width: double.infinity,
+
         padding: EdgeInsets.all(R.space(13)),
+
         decoration: BoxDecoration(
           color: const Color(0xFFF5F3FC),
+
           borderRadius: BorderRadius.circular(R.radius(16)),
         ),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
             Row(
               children: [
                 Icon(
                   Icons.hourglass_bottom_rounded,
+
                   size: R.icon(17),
+
                   color: const Color(0xFF6A5ACD),
                 ),
+
                 SizedBox(width: R.space(6)),
+
                 Text(
                   'Reading in progress',
+
                   style: GoogleFonts.montserrat(
                     fontSize: R.text(11.5),
+
                     fontWeight: FontWeight.w600,
+
                     color: const Color(0xFF2D3142),
                   ),
                 ),
+
                 const Spacer(),
+
                 Text(
                   '$pagesDone/$totalPages pages',
+
                   style: GoogleFonts.montserrat(
                     fontSize: R.text(10),
+
                     fontWeight: FontWeight.w600,
+
                     color: const Color(0xFF6A5ACD),
                   ),
                 ),
@@ -1632,10 +1795,14 @@ class _ReadingStoryDetails extends StatelessWidget {
 
             ClipRRect(
               borderRadius: BorderRadius.circular(R.radius(8)),
+
               child: LinearProgressIndicator(
                 value: pagesDone / totalPages,
+
                 minHeight: R.space(6),
+
                 backgroundColor: const Color(0xFFE8E4F8),
+
                 color: const Color(0xFF6A5ACD),
               ),
             ),
@@ -1649,20 +1816,29 @@ class _ReadingStoryDetails extends StatelessWidget {
     }
 
     final int correct = _value('correct');
+
     final int substitutions = _value('substitutions');
+
     final int omissions = _value('omissions');
+
     final int additions = _value('additions');
 
     return Container(
       width: double.infinity,
+
       padding: EdgeInsets.all(R.space(13)),
+
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius: BorderRadius.circular(R.radius(16)),
+
         border: Border.all(color: const Color(0xFF59A685).withOpacity(0.16)),
       ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
           Row(
             children: [
@@ -1673,37 +1849,51 @@ class _ReadingStoryDetails extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+
                   children: [
                     Text(
                       bestScore >= 50 ? 'Story passed' : 'Keep practicing',
+
                       style: GoogleFonts.montserrat(
                         fontSize: R.text(12),
+
                         fontWeight: FontWeight.w600,
+
                         color: const Color(0xFF2D3142),
                       ),
                     ),
+
                     SizedBox(height: R.space(3)),
+
                     Text(
                       bestScore >= 50
                           ? (level < 6
                                 ? 'The next story is unlocked.'
                                 : 'All reading stories are complete.')
                           : 'A best score of 50% is needed to unlock the next story.',
+
                       style: GoogleFonts.montserrat(
                         fontSize: R.text(9.5),
+
                         color: Colors.black45,
+
                         height: 1.35,
                       ),
                     ),
+
                     if (completedCount > 0) ...[
                       SizedBox(height: R.space(5)),
+
                       Text(
                         completedCount == 1
                             ? 'Completed once'
                             : 'Completed $completedCount times',
+
                         style: GoogleFonts.montserrat(
                           fontSize: R.text(9),
+
                           fontWeight: FontWeight.w500,
+
                           color: const Color(0xFF59A685),
                         ),
                       ),
@@ -1721,39 +1911,61 @@ class _ReadingStoryDetails extends StatelessWidget {
               Expanded(
                 child: _ReadingMetric(
                   label: 'Correct',
+
                   value: correct,
+
                   icon: Icons.check_circle_rounded,
+
                   color: const Color(0xFF59A685),
+
                   background: const Color(0xFFEAF6F0),
                 ),
               ),
+
               SizedBox(width: R.space(7)),
+
               Expanded(
                 child: _ReadingMetric(
                   label: 'Changed',
+
                   value: substitutions,
+
                   icon: Icons.swap_horiz_rounded,
+
                   color: const Color(0xFFF0A24A),
+
                   background: const Color(0xFFFFF5E8),
                 ),
               ),
+
               SizedBox(width: R.space(7)),
+
               Expanded(
                 child: _ReadingMetric(
                   label: 'Missed',
+
                   value: omissions,
+
                   icon: Icons.remove_circle_outline_rounded,
+
                   color: const Color(0xFFE36E6E),
+
                   background: const Color(0xFFFFEEEE),
                 ),
               ),
+
               SizedBox(width: R.space(7)),
+
               Expanded(
                 child: _ReadingMetric(
                   label: 'Extra',
+
                   value: additions,
+
                   icon: Icons.add_circle_outline_rounded,
+
                   color: const Color(0xFF7789D8),
+
                   background: const Color(0xFFEEF1FF),
                 ),
               ),
@@ -1766,6 +1978,7 @@ class _ReadingStoryDetails extends StatelessWidget {
             pageResults: Map<String, dynamic>.from(
               storyData['pageResults'] ?? pages,
             ),
+
             totalPages: totalPages,
           ),
         ],
@@ -1785,30 +1998,43 @@ class _ReadingScoreRing extends StatelessWidget {
 
     return SizedBox(
       width: R.icon(66),
+
       height: R.icon(66),
+
       child: Stack(
         alignment: Alignment.center,
+
         children: [
           SizedBox(
             width: R.icon(62),
+
             height: R.icon(62),
+
             child: CircularProgressIndicator(
               value: safeScore / 100.0,
+
               strokeWidth: R.space(6),
+
               backgroundColor: const Color(0xFF59A685).withOpacity(0.12),
+
               valueColor: AlwaysStoppedAnimation<Color>(
                 safeScore >= 50
                     ? const Color(0xFF59A685)
                     : const Color(0xFFE3A13B),
               ),
+
               strokeCap: StrokeCap.round,
             ),
           ),
+
           Text(
             '${safeScore.round()}%',
+
             style: GoogleFonts.montserrat(
               fontSize: R.text(11),
+
               fontWeight: FontWeight.w700,
+
               color: safeScore >= 50
                   ? const Color(0xFF59A685)
                   : const Color(0xFFE3A13B),
@@ -1822,16 +2048,24 @@ class _ReadingScoreRing extends StatelessWidget {
 
 class _ReadingMetric extends StatelessWidget {
   final String label;
+
   final int value;
+
   final IconData icon;
+
   final Color color;
+
   final Color background;
 
   const _ReadingMetric({
     required this.label,
+
     required this.value,
+
     required this.icon,
+
     required this.color,
+
     required this.background,
   });
 
@@ -1840,32 +2074,48 @@ class _ReadingMetric extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: R.space(5),
+
         vertical: R.space(8),
       ),
+
       decoration: BoxDecoration(
         color: background,
+
         borderRadius: BorderRadius.circular(R.radius(11)),
       ),
+
       child: Column(
         children: [
           Icon(icon, size: R.icon(15), color: color),
+
           SizedBox(height: R.space(3)),
+
           Text(
             '$value',
+
             style: GoogleFonts.montserrat(
               fontSize: R.text(11),
+
               fontWeight: FontWeight.w700,
+
               color: const Color(0xFF2D3142),
             ),
           ),
+
           SizedBox(height: R.space(1)),
+
           Text(
             label,
+
             maxLines: 1,
+
             overflow: TextOverflow.ellipsis,
+
             style: GoogleFonts.montserrat(
               fontSize: R.text(7.5),
+
               fontWeight: FontWeight.w500,
+
               color: Colors.black45,
             ),
           ),
@@ -1877,10 +2127,12 @@ class _ReadingMetric extends StatelessWidget {
 
 class _ReadingPageScoreRow extends StatelessWidget {
   final Map<String, dynamic> pageResults;
+
   final int totalPages;
 
   const _ReadingPageScoreRow({
     required this.pageResults,
+
     required this.totalPages,
   });
 
@@ -1903,6 +2155,7 @@ class _ReadingPageScoreRow extends StatelessWidget {
     return Row(
       children: List.generate(totalPages, (index) {
         final int page = index + 1;
+
         final double? score = _scoreForPage(page);
 
         return Expanded(
@@ -1910,32 +2163,45 @@ class _ReadingPageScoreRow extends StatelessWidget {
             margin: EdgeInsets.only(
               right: index == totalPages - 1 ? 0 : R.space(6),
             ),
+
             padding: EdgeInsets.symmetric(
               horizontal: R.space(6),
+
               vertical: R.space(6),
             ),
+
             decoration: BoxDecoration(
               color: score == null
                   ? const Color(0xFFF5F5F7)
                   : const Color(0xFFF2F8F5),
+
               borderRadius: BorderRadius.circular(R.radius(9)),
             ),
+
             child: Column(
               children: [
                 Text(
                   'Page $page',
+
                   style: GoogleFonts.montserrat(
                     fontSize: R.text(7.5),
+
                     fontWeight: FontWeight.w500,
+
                     color: Colors.black45,
                   ),
                 ),
+
                 SizedBox(height: R.space(2)),
+
                 Text(
                   score == null ? '—' : '${score.round()}%',
+
                   style: GoogleFonts.montserrat(
                     fontSize: R.text(9.5),
+
                     fontWeight: FontWeight.w700,
+
                     color: score == null
                         ? Colors.black26
                         : const Color(0xFF59A685),
@@ -1959,16 +2225,21 @@ class _ReadingStorageCover extends StatelessWidget {
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
       future: FirebaseStorage.instance.ref(storagePath).getDownloadURL(),
+
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(
             color: const Color(0xFFF1F5F2),
+
             child: Center(
               child: SizedBox(
                 width: R.icon(16),
+
                 height: R.icon(16),
+
                 child: const CircularProgressIndicator(
                   strokeWidth: 2,
+
                   color: Color(0xFF59A685),
                 ),
               ),
@@ -1979,9 +2250,12 @@ class _ReadingStorageCover extends StatelessWidget {
         if (snapshot.hasError || !snapshot.hasData) {
           return Container(
             color: const Color(0xFFF1F5F2),
+
             child: Icon(
               Icons.menu_book_rounded,
+
               color: const Color(0xFF59A685).withOpacity(0.45),
+
               size: R.icon(26),
             ),
           );
@@ -1989,14 +2263,21 @@ class _ReadingStorageCover extends StatelessWidget {
 
         return Image.network(
           snapshot.data!,
+
           fit: BoxFit.cover,
+
           width: double.infinity,
+
           height: double.infinity,
+
           errorBuilder: (_, __, ___) => Container(
             color: const Color(0xFFF1F5F2),
+
             child: Icon(
               Icons.menu_book_rounded,
+
               color: const Color(0xFF59A685).withOpacity(0.45),
+
               size: R.icon(26),
             ),
           ),
