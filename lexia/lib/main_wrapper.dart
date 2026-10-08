@@ -110,7 +110,7 @@ class _MainWrapperState extends State<MainWrapper> {
       }
 
       currentPages = [
-        const ReadingPage(),
+        ReadingPage(childId: widget.childId!),
         GamesPage(childId: widget.childId!),
         const MyBookPage(),
       ];
