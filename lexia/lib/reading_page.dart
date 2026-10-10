@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -533,6 +536,20 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   // Saved page results are loaded from Firestore when the book opens.
   bool _isLoadingSavedProgress = true;
+
+  // Colors taken from the current story picture. They tint the whole
+  // reading screen so a small picture blends into a matching gradient.
+  Color _tintTop = ReadingPage.softCream;
+  Color _tintBottom = ReadingPage.softCream;
+
+  void _onPictureColors(Color top, Color bottom) {
+    if (!mounted) return;
+    if (top == _tintTop && bottom == _tintBottom) return;
+    setState(() {
+      _tintTop = top;
+      _tintBottom = bottom;
+    });
+  }
 
   @override
   void initState() {
@@ -1213,451 +1230,539 @@ class _BookReaderPageState extends State<BookReaderPage> {
     return Scaffold(
       backgroundColor: ReadingPage.softCream,
 
-      appBar: AppBar(
-        backgroundColor: ReadingPage.softCream,
-        elevation: 0,
-        centerTitle: true,
-
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          color: ReadingPage.textDark,
-          onPressed: _isRecording || _isAnalyzing
-              ? null
-              : () => Navigator.of(context).pop(),
-        ),
-
-        title: Text(
-          widget.title,
-          style: AppTypography.getStyle(
-            useOpenDyslexic: widget.useOpenDyslexic,
-            fontSize: R.text(16),
-            fontWeight: FontWeight.w600,
-            color: ReadingPage.textDark,
-          ),
-        ),
-      ),
-
-      body: _isLoadingSavedProgress
-          ? const Center(
-              child: CircularProgressIndicator(color: ReadingPage.primaryGreen),
-            )
-          : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('reading_books')
-                  .doc(widget.bookId)
-                  .collection('pages')
-                  .orderBy('page_number')
-                  .snapshots(),
-
-              builder: (context, pagesSnap) {
-                if (pagesSnap.connectionState == ConnectionState.waiting) {
-                  return const Center(
+      body: Stack(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [_tintTop, _tintTop, _tintBottom],
+                stops: [
+                  0.0,
+                  (MediaQuery.of(context).size.width *
+                          848 /
+                          1264 /
+                          MediaQuery.of(context).size.height)
+                      .clamp(0.1, 0.8)
+                      .toDouble(),
+                  1.0,
+                ],
+              ),
+            ),
+            child: _isLoadingSavedProgress
+                ? const Center(
                     child: CircularProgressIndicator(
                       color: ReadingPage.primaryGreen,
                     ),
-                  );
-                }
+                  )
+                : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('reading_books')
+                        .doc(widget.bookId)
+                        .collection('pages')
+                        .orderBy('page_number')
+                        .snapshots(),
 
-                if (pagesSnap.hasError) {
-                  return _ReaderMessage(
-                    message: 'Could not load the story pages.',
-                    useOpenDyslexic: widget.useOpenDyslexic,
-                  );
-                }
-
-                final pages = pagesSnap.data?.docs ?? [];
-
-                if (pages.isEmpty) {
-                  return _ReaderMessage(
-                    message: 'No pages were found for this book.',
-                    useOpenDyslexic: widget.useOpenDyslexic,
-                  );
-                }
-
-                final int safeCurrentPage = _currentPage.clamp(
-                  0,
-                  pages.length - 1,
-                );
-
-                final pageData = pages[safeCurrentPage].data();
-
-                final String text = (pageData['text'] ?? '').toString();
-
-                final String imagePath = (pageData['image_storage_path'] ?? '')
-                    .toString();
-
-                final Map<String, dynamic>? assessment =
-                    _assessmentByPage[safeCurrentPage];
-
-                final bool hasRecording =
-                    _recordingsByPage.containsKey(safeCurrentPage) ||
-                    assessment != null;
-
-                final bool currentPageAssessed = assessment != null;
-                final bool currentPageSaved = _savedPages.contains(
-                  safeCurrentPage,
-                );
-
-                final bool isLastPage = safeCurrentPage == pages.length - 1;
-
-                final bool allPagesReady = List.generate(
-                  pages.length,
-                  (index) =>
-                      _assessmentByPage.containsKey(index) &&
-                      _savedPages.contains(index),
-                ).every((value) => value);
-
-                return Column(
-                  children: [
-                    // =================================================
-                    // PAGE INDICATOR
-                    // =================================================
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        R.pagePad,
-                        R.space(6),
-                        R.pagePad,
-                        R.space(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          pages.length,
-                          (index) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: EdgeInsets.symmetric(
-                              horizontal: R.space(3),
-                            ),
-                            width: index == safeCurrentPage
-                                ? R.space(18)
-                                : R.space(7),
-                            height: R.space(7),
-                            decoration: BoxDecoration(
-                              color: index == safeCurrentPage
-                                  ? ReadingPage.primaryGreen
-                                  : ReadingPage.primaryGreen.withOpacity(0.25),
-                              borderRadius: BorderRadius.circular(R.radius(20)),
-                            ),
+                    builder: (context, pagesSnap) {
+                      if (pagesSnap.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: ReadingPage.primaryGreen,
                           ),
-                        ),
-                      ),
-                    ),
+                        );
+                      }
 
-                    // =================================================
-                    // STORY CONTENT
-                    // =================================================
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            AspectRatio(
-                              aspectRatio: 1264 / 848,
-                              child: imagePath.isEmpty
-                                  ? Container(
-                                      color: Colors.grey.shade100,
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.image_not_supported_outlined,
-                                          color: Colors.black26,
-                                        ),
-                                      ),
-                                    )
-                                  : _StorageImage(
-                                      key: ValueKey(imagePath),
-                                      storagePath: imagePath,
-                                      fit: BoxFit.cover,
-                                    ),
-                            ),
+                      if (pagesSnap.hasError) {
+                        return _ReaderMessage(
+                          message: 'Could not load the story pages.',
+                          useOpenDyslexic: widget.useOpenDyslexic,
+                        );
+                      }
 
-                            SizedBox(height: R.space(24)),
+                      final pages = pagesSnap.data?.docs ?? [];
 
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: R.pagePad + R.space(8),
-                              ),
-                              child: Text(
-                                text,
-                                textAlign: TextAlign.center,
-                                style: AppTypography.getStyle(
-                                  useOpenDyslexic: widget.useOpenDyslexic,
-                                  fontSize: R.text(22),
-                                  fontWeight: FontWeight.w500,
-                                  color: ReadingPage.textDark,
-                                  height: 1.45,
-                                ),
-                              ),
-                            ),
+                      if (pages.isEmpty) {
+                        return _ReaderMessage(
+                          message: 'No pages were found for this book.',
+                          useOpenDyslexic: widget.useOpenDyslexic,
+                        );
+                      }
 
-                            SizedBox(height: R.space(28)),
+                      final int safeCurrentPage = _currentPage.clamp(
+                        0,
+                        pages.length - 1,
+                      );
 
-                            // =================================================
-                            // RECORDING BUTTON
-                            // =================================================
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: R.pagePad,
-                              ),
-                              child: SizedBox(
-                                height: R.space(54),
-                                child: ElevatedButton.icon(
-                                  onPressed: _isAnalyzing
-                                      ? null
-                                      : () => _toggleRecording(text),
+                      final pageData = pages[safeCurrentPage].data();
 
-                                  icon: _isAnalyzing
-                                      ? SizedBox(
-                                          width: R.icon(18),
-                                          height: R.icon(18),
-                                          child:
-                                              const CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                        )
-                                      : Icon(
-                                          _isRecording
-                                              ? Icons.stop_circle_rounded
-                                              : Icons.mic_rounded,
-                                        ),
+                      final String text = (pageData['text'] ?? '').toString();
 
-                                  label: Text(
-                                    _isAnalyzing
-                                        ? 'Analyzing...'
-                                        : _isRecording
-                                        ? 'Stop Recording'
-                                        : hasRecording
-                                        ? 'Record Again'
-                                        : 'Start Recording',
-                                    style: AppTypography.getStyle(
-                                      useOpenDyslexic: widget.useOpenDyslexic,
-                                      fontSize: R.text(15),
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                      final String imagePath =
+                          (pageData['image_storage_path'] ?? '').toString();
 
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isRecording
-                                        ? Colors.redAccent
-                                        : ReadingPage.primaryGreen,
-                                    disabledBackgroundColor: ReadingPage
-                                        .primaryGreen
-                                        .withOpacity(0.55),
-                                    disabledForegroundColor: Colors.white,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        R.radius(18),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                      final Map<String, dynamic>? assessment =
+                          _assessmentByPage[safeCurrentPage];
 
-                            // =================================================
-                            // ANALYZING
-                            // =================================================
-                            if (_isAnalyzing) ...[
-                              SizedBox(height: R.space(10)),
+                      final bool hasRecording =
+                          _recordingsByPage.containsKey(safeCurrentPage) ||
+                          assessment != null;
 
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: R.icon(15),
-                                    height: R.icon(15),
-                                    child: const CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: ReadingPage.primaryGreen,
-                                    ),
-                                  ),
+                      final bool currentPageAssessed = assessment != null;
+                      final bool currentPageSaved = _savedPages.contains(
+                        safeCurrentPage,
+                      );
 
-                                  SizedBox(width: R.space(7)),
+                      final bool isLastPage =
+                          safeCurrentPage == pages.length - 1;
 
-                                  Text(
-                                    'Analyzing reading...',
-                                    style: AppTypography.getStyle(
-                                      useOpenDyslexic: widget.useOpenDyslexic,
-                                      fontSize: R.text(12),
-                                      fontWeight: FontWeight.w500,
-                                      color: ReadingPage.primaryGreen,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                      final bool allPagesReady = List.generate(
+                        pages.length,
+                        (index) =>
+                            _assessmentByPage.containsKey(index) &&
+                            _savedPages.contains(index),
+                      ).every((value) => value);
 
-                            // =================================================
-                            // RECORDING SAVED
-                            // =================================================
-                            if (assessment != null &&
-                                !_isRecording &&
-                                !_isAnalyzing) ...[
-                              SizedBox(height: R.space(10)),
-
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    currentPageSaved
-                                        ? Icons.check_circle_rounded
-                                        : Icons.cloud_off_rounded,
-                                    color: currentPageSaved
-                                        ? ReadingPage.primaryGreen
-                                        : Colors.redAccent,
-                                    size: R.icon(17),
-                                  ),
-
-                                  SizedBox(width: R.space(5)),
-
-                                  Text(
-                                    currentPageSaved
-                                        ? 'Result saved ✓'
-                                        : 'Result not saved — please record again',
-                                    style: AppTypography.getStyle(
-                                      useOpenDyslexic: widget.useOpenDyslexic,
-                                      fontSize: R.text(12),
-                                      fontWeight: FontWeight.w500,
-                                      color: currentPageSaved
-                                          ? ReadingPage.primaryGreen
-                                          : Colors.redAccent,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-
-                            // =================================================
-                            // DETAILED PAGE RESULT
-                            // =================================================
-                            if (assessment != null && !_isAnalyzing) ...[
-                              SizedBox(height: R.space(12)),
-
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: R.pagePad,
-                                ),
-                                child: _PageReadingResultCard(
-                                  assessment: assessment,
-                                  fallbackExpectedText: text,
-                                  useOpenDyslexic: widget.useOpenDyslexic,
-                                ),
-                              ),
-                            ],
-
-                            SizedBox(height: R.space(22)),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // =================================================
-                    // BACK / NEXT / FINISH
-                    // =================================================
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        R.pagePad,
-                        R.space(4),
-                        R.pagePad,
-                        R.safeBottom + R.space(14),
-                      ),
-                      child: Row(
+                      return Stack(
                         children: [
-                          // BACK
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed:
-                                  safeCurrentPage == 0 ||
-                                      _isRecording ||
-                                      _isAnalyzing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _currentPage = safeCurrentPage - 1;
-                                      });
-                                    },
+                          Column(
+                            children: [
+                              // =================================================
+                              // STORY CONTENT
+                              // =================================================
+                              Expanded(
+                                // The bottom of the scrolling content fades out softly,
+                                // so nothing is cut with a hard line above the buttons.
+                                child: ShaderMask(
+                                  blendMode: BlendMode.dstIn,
+                                  shaderCallback: (rect) {
+                                    final double fade = R.space(28);
+                                    return LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: const [
+                                        Colors.white,
+                                        Colors.white,
+                                        Colors.transparent,
+                                      ],
+                                      stops: [
+                                        0.0,
+                                        1.0 - (fade / rect.height),
+                                        1.0,
+                                      ],
+                                    ).createShader(rect);
+                                  },
+                                  child: SingleChildScrollView(
+                                    key: ValueKey(
+                                      'story_scroll_$safeCurrentPage',
+                                    ),
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        // =================================================
+                                        // STORY: PICTURE AT THE TOP + TEXT
+                                        // =================================================
+                                        _StoryScene(
+                                          key: ValueKey(
+                                            'story_scene_$safeCurrentPage',
+                                          ),
+                                          storagePath: imagePath,
+                                          text: text,
+                                          useOpenDyslexic:
+                                              widget.useOpenDyslexic,
+                                          onColors: _onPictureColors,
+                                        ),
 
-                              icon: const Icon(Icons.arrow_back_rounded),
+                                        SizedBox(height: R.space(28)),
 
-                              label: const Text('Back'),
+                                        // =================================================
+                                        // RECORDING BUTTON
+                                        // =================================================
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: R.pagePad,
+                                          ),
+                                          child: SizedBox(
+                                            height: R.space(54),
+                                            child: ElevatedButton.icon(
+                                              onPressed: _isAnalyzing
+                                                  ? null
+                                                  : () =>
+                                                        _toggleRecording(text),
 
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: ReadingPage.primaryGreen,
-                                side: BorderSide(
-                                  color: ReadingPage.primaryGreen.withOpacity(
-                                    0.45,
-                                  ),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  vertical: R.space(13),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    R.radius(18),
+                                              icon: _isAnalyzing
+                                                  ? SizedBox(
+                                                      width: R.icon(18),
+                                                      height: R.icon(18),
+                                                      child:
+                                                          const CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                            color: Colors.white,
+                                                          ),
+                                                    )
+                                                  : Icon(
+                                                      _isRecording
+                                                          ? Icons
+                                                                .stop_circle_rounded
+                                                          : Icons.mic_rounded,
+                                                    ),
+
+                                              label: Text(
+                                                _isAnalyzing
+                                                    ? 'Analyzing...'
+                                                    : _isRecording
+                                                    ? 'Stop Recording'
+                                                    : hasRecording
+                                                    ? 'Record Again'
+                                                    : 'Start Recording',
+                                                style: AppTypography.getStyle(
+                                                  useOpenDyslexic:
+                                                      widget.useOpenDyslexic,
+                                                  fontSize: R.text(15),
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: _isRecording
+                                                    ? Colors.redAccent
+                                                    : ReadingPage.primaryGreen,
+                                                disabledBackgroundColor:
+                                                    ReadingPage.primaryGreen
+                                                        .withOpacity(0.55),
+                                                disabledForegroundColor:
+                                                    Colors.white,
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        R.radius(18),
+                                                      ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+
+                                        // =================================================
+                                        // ANALYZING
+                                        // =================================================
+                                        if (_isAnalyzing) ...[
+                                          SizedBox(height: R.space(10)),
+
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              SizedBox(
+                                                width: R.icon(15),
+                                                height: R.icon(15),
+                                                child:
+                                                    const CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: ReadingPage
+                                                          .primaryGreen,
+                                                    ),
+                                              ),
+
+                                              SizedBox(width: R.space(7)),
+
+                                              Text(
+                                                'Analyzing reading...',
+                                                style: AppTypography.getStyle(
+                                                  useOpenDyslexic:
+                                                      widget.useOpenDyslexic,
+                                                  fontSize: R.text(12),
+                                                  fontWeight: FontWeight.w500,
+                                                  color:
+                                                      ReadingPage.primaryGreen,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+
+                                        // =================================================
+                                        // RECORDING SAVED
+                                        // =================================================
+                                        if (assessment != null &&
+                                            !_isRecording &&
+                                            !_isAnalyzing) ...[
+                                          SizedBox(height: R.space(10)),
+
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                currentPageSaved
+                                                    ? Icons.check_circle_rounded
+                                                    : Icons.cloud_off_rounded,
+                                                color: currentPageSaved
+                                                    ? ReadingPage.primaryGreen
+                                                    : Colors.redAccent,
+                                                size: R.icon(17),
+                                              ),
+
+                                              SizedBox(width: R.space(5)),
+
+                                              Text(
+                                                currentPageSaved
+                                                    ? 'Result saved ✓'
+                                                    : 'Result not saved — please record again',
+                                                style: AppTypography.getStyle(
+                                                  useOpenDyslexic:
+                                                      widget.useOpenDyslexic,
+                                                  fontSize: R.text(12),
+                                                  fontWeight: FontWeight.w500,
+                                                  color: currentPageSaved
+                                                      ? ReadingPage.primaryGreen
+                                                      : Colors.redAccent,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+
+                                        // =================================================
+                                        // DETAILED PAGE RESULT
+                                        // =================================================
+                                        if (assessment != null &&
+                                            !_isAnalyzing) ...[
+                                          SizedBox(height: R.space(12)),
+
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: R.pagePad,
+                                            ),
+                                            child: _PageReadingResultCard(
+                                              assessment: assessment,
+                                              fallbackExpectedText: text,
+                                              useOpenDyslexic:
+                                                  widget.useOpenDyslexic,
+                                            ),
+                                          ),
+                                        ],
+
+                                        SizedBox(height: R.space(22)),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+
+                              // =================================================
+                              // BACK / NEXT / FINISH (no background, only buttons)
+                              // =================================================
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  R.pagePad,
+                                  R.space(4),
+                                  R.pagePad,
+                                  R.safeBottom + R.space(14),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // BACK
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed:
+                                            safeCurrentPage == 0 ||
+                                                _isRecording ||
+                                                _isAnalyzing
+                                            ? null
+                                            : () {
+                                                setState(() {
+                                                  _currentPage =
+                                                      safeCurrentPage - 1;
+                                                });
+                                              },
+
+                                        icon: const Icon(
+                                          Icons.arrow_back_rounded,
+                                        ),
+
+                                        label: const Text('Back'),
+
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              ReadingPage.primaryGreen,
+                                          side: BorderSide(
+                                            color: ReadingPage.primaryGreen
+                                                .withOpacity(0.45),
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: R.space(13),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              R.radius(18),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(width: R.space(12)),
+
+                                    // NEXT / FINISH
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed:
+                                            _isRecording ||
+                                                _isAnalyzing ||
+                                                !currentPageAssessed ||
+                                                !currentPageSaved ||
+                                                (isLastPage && !allPagesReady)
+                                            ? null
+                                            : isLastPage
+                                            ? () => _finishBook(pages.length)
+                                            : () {
+                                                setState(() {
+                                                  _currentPage =
+                                                      safeCurrentPage + 1;
+                                                });
+                                              },
+
+                                        icon: Icon(
+                                          isLastPage
+                                              ? Icons.auto_awesome_rounded
+                                              : Icons.arrow_forward_rounded,
+                                        ),
+
+                                        label: Text(
+                                          isLastPage ? 'Finish Book' : 'Next',
+                                        ),
+
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              ReadingPage.primaryGreen,
+                                          foregroundColor: Colors.white,
+                                          disabledBackgroundColor: ReadingPage
+                                              .primaryGreen
+                                              .withOpacity(0.25),
+                                          disabledForegroundColor:
+                                              Colors.white70,
+                                          elevation: 0,
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: R.space(13),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              R.radius(18),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
 
-                          SizedBox(width: R.space(12)),
-
-                          // NEXT / FINISH
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed:
-                                  _isRecording ||
-                                      _isAnalyzing ||
-                                      !currentPageAssessed ||
-                                      !currentPageSaved ||
-                                      (isLastPage && !allPagesReady)
-                                  ? null
-                                  : isLastPage
-                                  ? () => _finishBook(pages.length)
-                                  : () {
-                                      setState(() {
-                                        _currentPage = safeCurrentPage + 1;
-                                      });
-                                    },
-
-                              icon: Icon(
-                                isLastPage
-                                    ? Icons.auto_awesome_rounded
-                                    : Icons.arrow_forward_rounded,
+                          // ---------------- PAGE CHIP ----------------
+                          Positioned(
+                            top: R.safeTop + R.space(10),
+                            right: R.pagePad,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: R.space(12),
+                                vertical: R.space(7),
                               ),
-
-                              label: Text(isLastPage ? 'Finish Book' : 'Next'),
-
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: ReadingPage.primaryGreen,
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: ReadingPage
-                                    .primaryGreen
-                                    .withOpacity(0.25),
-                                disabledForegroundColor: Colors.white70,
-                                elevation: 0,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: R.space(13),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(
+                                  R.radius(20),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    R.radius(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.12),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
                                   ),
-                                ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${safeCurrentPage + 1} / ${pages.length}',
+                                    style: AppTypography.getStyle(
+                                      useOpenDyslexic: widget.useOpenDyslexic,
+                                      fontSize: R.text(12),
+                                      fontWeight: FontWeight.w700,
+                                      color: ReadingPage.primaryGreen,
+                                    ),
+                                  ),
+                                  SizedBox(width: R.space(8)),
+                                  SizedBox(
+                                    width: R.space(36),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(
+                                        R.radius(10),
+                                      ),
+                                      child: LinearProgressIndicator(
+                                        value:
+                                            (safeCurrentPage + 1) /
+                                            pages.length,
+                                        minHeight: R.space(5),
+                                        backgroundColor: ReadingPage
+                                            .primaryGreen
+                                            .withOpacity(0.18),
+                                        valueColor:
+                                            const AlwaysStoppedAnimation<Color>(
+                                              ReadingPage.primaryGreen,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+                      );
+                    },
+                  ),
+          ),
+
+          // ---------------- FLOATING BACK BUTTON ----------------
+          Positioned(
+            top: R.safeTop + R.space(6),
+            left: R.pagePad - R.space(4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                iconSize: R.icon(18),
+                color: ReadingPage.textDark,
+                onPressed: _isRecording || _isAnalyzing
+                    ? null
+                    : () => Navigator.of(context).pop(),
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2078,14 +2183,12 @@ class BookResultPage extends StatefulWidget {
 }
 
 class _BookResultPageState extends State<BookResultPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  // One timeline for the whole page: every part appears in turn.
   late final AnimationController _controller;
 
-  late final Animation<double> _fadeAnimation;
-
-  late final Animation<double> _scaleAnimation;
-
-  late final Animation<Offset> _slideAnimation;
+  // Gentle never-ending breathing for the sparkles and the ring glow.
+  late final AnimationController _pulse;
 
   @override
   void initState() {
@@ -2093,30 +2196,19 @@ class _BookResultPageState extends State<BookResultPage>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
+      duration: const Duration(milliseconds: 2600),
+    )..forward();
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.88,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _controller.forward();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
@@ -2152,22 +2244,122 @@ class _BookResultPageState extends State<BookResultPage>
     return 'Good effort! Try reading the story again and keep practicing.';
   }
 
+  // Fresh green for good scores, warm amber otherwise (never harsh red).
+  List<Color> get _ringColors {
+    if (widget.score >= 75) {
+      return const [Color(0xFF3F9E78), Color(0xFF9BDDBE)];
+    }
+    return const [Color(0xFFEE9A3A), Color(0xFFF8D38E)];
+  }
+
+  List<Color> get _backgroundColors {
+    if (widget.score >= 75) {
+      return const [Color(0xFFE3F5EB), Color(0xFFFFFDFB), Color(0xFFFFF6F1)];
+    }
+    return const [Color(0xFFFFF0DB), Color(0xFFFFFDFB), Color(0xFFFFF6F1)];
+  }
+
+  double _t(double begin, double end, [Curve curve = Curves.easeOutCubic]) {
+    return Interval(begin, end, curve: curve).transform(_controller.value);
+  }
+
+  // Fade in and rise a little.
+  Widget _reveal({
+    required double begin,
+    required double end,
+    required Widget child,
+  }) {
+    return AnimatedBuilder(
+      animation: _controller,
+      child: child,
+      builder: (context, c) {
+        final double t = _t(begin, end);
+
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * R.space(24)),
+            child: c,
+          ),
+        );
+      },
+    );
+  }
+
+  // Fade in and pop with a little bounce.
+  Widget _pop({
+    required double begin,
+    required double end,
+    required Widget child,
+  }) {
+    return AnimatedBuilder(
+      animation: _controller,
+      child: child,
+      builder: (context, c) {
+        final double o = _t(begin, end, Curves.easeOut);
+        final double sc = 0.6 + 0.4 * _t(begin, end, Curves.easeOutBack);
+
+        return Opacity(
+          opacity: o.clamp(0.0, 1.0),
+          child: Transform.scale(scale: sc, child: c),
+        );
+      },
+    );
+  }
+
+  Widget _sparkle({
+    required IconData icon,
+    required double size,
+    required double begin,
+    required double phase,
+  }) {
+    return _pop(
+      begin: begin,
+      end: begin + 0.16,
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, _) {
+          final double wave = math.sin(_pulse.value * math.pi + phase);
+
+          return Transform.rotate(
+            angle: wave * 0.12,
+            child: Transform.scale(
+              scale: 1 + 0.10 * wave,
+              child: Icon(
+                icon,
+                size: size,
+                color: const Color(0xFFF1B74A),
+                shadows: [
+                  Shadow(
+                    color: const Color(0xFFF1B74A).withOpacity(0.45),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     R.init(context);
 
     final double safeScore = widget.score.clamp(0.0, 100.0);
+    final List<Color> ringColors = _ringColors;
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
 
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF3FAF6), Color(0xFFFFFDFB), Color(0xFFFFF7F4)],
+            colors: _backgroundColors,
           ),
         ),
 
@@ -2182,280 +2374,315 @@ class _BookResultPageState extends State<BookResultPage>
               R.space(24),
             ),
 
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-
-              child: SlideTransition(
-                position: _slideAnimation,
-
-                child: Column(
+            child: Column(
+              children: [
+                // --------------------------------------------
+                // DECORATIVE STARS
+                // --------------------------------------------
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // --------------------------------------------
-                    // DECORATIVE STARS
-                    // --------------------------------------------
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.auto_awesome_rounded,
-                          size: R.icon(18),
-                          color: const Color(0xFFF1B74A),
+                    _sparkle(
+                      icon: Icons.auto_awesome_rounded,
+                      size: R.icon(18),
+                      begin: 0.10,
+                      phase: 0.0,
+                    ),
+
+                    SizedBox(width: R.space(8)),
+
+                    _sparkle(
+                      icon: Icons.star_rounded,
+                      size: R.icon(30),
+                      begin: 0.00,
+                      phase: 1.2,
+                    ),
+
+                    SizedBox(width: R.space(8)),
+
+                    _sparkle(
+                      icon: Icons.auto_awesome_rounded,
+                      size: R.icon(18),
+                      begin: 0.16,
+                      phase: 2.4,
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: R.space(12)),
+
+                // --------------------------------------------
+                // TITLE
+                // --------------------------------------------
+                _reveal(
+                  begin: 0.06,
+                  end: 0.28,
+                  child: Column(
+                    children: [
+                      Text(
+                        'Story Complete!',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.getStyle(
+                          useOpenDyslexic: widget.useOpenDyslexic,
+                          fontSize: R.text(26),
+                          fontWeight: FontWeight.w700,
+                          color: ReadingPage.textDark,
                         ),
+                      ),
 
-                        SizedBox(width: R.space(8)),
+                      SizedBox(height: R.space(6)),
 
-                        Icon(
-                          Icons.star_rounded,
-                          size: R.icon(26),
-                          color: const Color(0xFFF1B74A),
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.getStyle(
+                          useOpenDyslexic: widget.useOpenDyslexic,
+                          fontSize: R.text(14),
+                          fontWeight: FontWeight.w500,
+                          color: ringColors[0].withOpacity(0.85),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                        SizedBox(width: R.space(8)),
+                SizedBox(height: R.space(22)),
 
-                        Icon(
-                          Icons.auto_awesome_rounded,
-                          size: R.icon(18),
-                          color: const Color(0xFFF1B74A),
+                // --------------------------------------------
+                // ANIMATED BOOK COVER
+                // --------------------------------------------
+                _pop(
+                  begin: 0.14,
+                  end: 0.42,
+                  child: Container(
+                    width: R.icon(118),
+                    height: R.space(154),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(R.radius(12)),
+                        bottomRight: Radius.circular(R.radius(12)),
+                        topLeft: Radius.circular(R.radius(4)),
+                        bottomLeft: Radius.circular(R.radius(4)),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: ringColors[0].withOpacity(0.30),
+                          blurRadius: 26,
+                          offset: const Offset(3, 12),
+                        ),
+                        BoxShadow(
+                          color: ReadingPage.textDark.withOpacity(0.10),
+                          blurRadius: 10,
+                          offset: const Offset(2, 4),
                         ),
                       ],
                     ),
 
-                    SizedBox(height: R.space(12)),
-
-                    // --------------------------------------------
-                    // TITLE
-                    // --------------------------------------------
-                    Text(
-                      'Story Complete!',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.getStyle(
-                        useOpenDyslexic: widget.useOpenDyslexic,
-                        fontSize: R.text(25),
-                        fontWeight: FontWeight.w700,
-                        color: ReadingPage.textDark,
-                      ),
-                    ),
-
-                    SizedBox(height: R.space(6)),
-
-                    Text(
-                      widget.title,
-                      textAlign: TextAlign.center,
-                      style: AppTypography.getStyle(
-                        useOpenDyslexic: widget.useOpenDyslexic,
-                        fontSize: R.text(14),
-                        fontWeight: FontWeight.w500,
-                        color: ReadingPage.textDark.withOpacity(0.55),
-                      ),
-                    ),
-
-                    SizedBox(height: R.space(22)),
-
-                    // --------------------------------------------
-                    // ANIMATED BOOK COVER
-                    // --------------------------------------------
-                    ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: Container(
-                        width: R.icon(118),
-                        height: R.space(154),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(R.radius(12)),
-                            bottomRight: Radius.circular(R.radius(12)),
-                            topLeft: Radius.circular(R.radius(4)),
-                            bottomLeft: Radius.circular(R.radius(4)),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (widget.coverPath.isNotEmpty)
+                          _StorageImage(
+                            storagePath: widget.coverPath,
+                            fit: BoxFit.cover,
+                          )
+                        else
+                          Center(
+                            child: Icon(
+                              Icons.menu_book_rounded,
+                              size: R.icon(45),
+                              color: ReadingPage.primaryGreen.withOpacity(0.35),
+                            ),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: ReadingPage.textDark.withOpacity(0.14),
-                              blurRadius: 18,
-                              offset: const Offset(3, 8),
-                            ),
-                          ],
-                        ),
 
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            if (widget.coverPath.isNotEmpty)
-                              _StorageImage(
-                                storagePath: widget.coverPath,
-                                fit: BoxFit.cover,
-                              )
-                            else
-                              Center(
-                                child: Icon(
-                                  Icons.menu_book_rounded,
-                                  size: R.icon(45),
-                                  color: ReadingPage.primaryGreen.withOpacity(
-                                    0.35,
-                                  ),
-                                ),
-                              ),
-
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                width: R.space(7),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.black.withOpacity(0.16),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            width: R.space(7),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withOpacity(0.16),
+                                  Colors.transparent,
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                  ),
+                ),
 
-                    SizedBox(height: R.space(26)),
+                SizedBox(height: R.space(26)),
 
-                    // --------------------------------------------
-                    // RESULT MESSAGE
-                    // --------------------------------------------
-                    Text(
-                      _resultTitle,
-                      textAlign: TextAlign.center,
-                      style: AppTypography.getStyle(
-                        useOpenDyslexic: widget.useOpenDyslexic,
-                        fontSize: R.text(20),
-                        fontWeight: FontWeight.w700,
-                        color: ReadingPage.textDark,
-                      ),
-                    ),
-
-                    SizedBox(height: R.space(8)),
-
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: R.space(14)),
-                      child: Text(
-                        _resultMessage,
+                // --------------------------------------------
+                // RESULT MESSAGE
+                // --------------------------------------------
+                _reveal(
+                  begin: 0.30,
+                  end: 0.54,
+                  child: Column(
+                    children: [
+                      Text(
+                        _resultTitle,
                         textAlign: TextAlign.center,
                         style: AppTypography.getStyle(
                           useOpenDyslexic: widget.useOpenDyslexic,
-                          fontSize: R.text(13),
-                          fontWeight: FontWeight.w400,
-                          color: ReadingPage.textDark.withOpacity(0.62),
-                          height: 1.45,
+                          fontSize: R.text(21),
+                          fontWeight: FontWeight.w700,
+                          color: ReadingPage.textDark,
                         ),
                       ),
-                    ),
 
-                    SizedBox(height: R.space(24)),
+                      SizedBox(height: R.space(8)),
 
-                    // --------------------------------------------
-                    // ANIMATED SCORE
-                    // --------------------------------------------
-                    TweenAnimationBuilder<double>(
-                      tween: Tween<double>(begin: 0, end: safeScore),
-                      duration: const Duration(milliseconds: 1400),
-                      curve: Curves.easeOutCubic,
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: R.space(14)),
+                        child: Text(
+                          _resultMessage,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.getStyle(
+                            useOpenDyslexic: widget.useOpenDyslexic,
+                            fontSize: R.text(13),
+                            fontWeight: FontWeight.w400,
+                            color: ReadingPage.textDark.withOpacity(0.62),
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                      builder: (context, value, child) {
-                        return SizedBox(
-                          width: R.icon(145),
-                          height: R.icon(145),
+                SizedBox(height: R.space(24)),
 
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              SizedBox(
-                                width: R.icon(135),
-                                height: R.icon(135),
-                                child: CircularProgressIndicator(
-                                  value: value / 100,
-                                  strokeWidth: R.space(10),
-                                  backgroundColor: ReadingPage.primaryGreen
-                                      .withOpacity(0.12),
-                                  valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                        ReadingPage.primaryGreen,
-                                      ),
-                                  strokeCap: StrokeCap.round,
-                                ),
-                              ),
+                // --------------------------------------------
+                // ANIMATED SCORE
+                // --------------------------------------------
+                _pop(
+                  begin: 0.34,
+                  end: 0.58,
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([_controller, _pulse]),
+                    builder: (context, _) {
+                      final double value = safeScore * _t(0.38, 0.88);
+                      final double glow = 0.16 + 0.07 * _pulse.value;
 
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '${value.round()}%',
-                                    style: AppTypography.getStyle(
-                                      useOpenDyslexic: widget.useOpenDyslexic,
-                                      fontSize: R.text(28),
-                                      fontWeight: FontWeight.w700,
-                                      color: ReadingPage.primaryGreen,
-                                    ),
-                                  ),
-
-                                  SizedBox(height: R.space(2)),
-
-                                  Text(
-                                    'Reading Score',
-                                    style: AppTypography.getStyle(
-                                      useOpenDyslexic: widget.useOpenDyslexic,
-                                      fontSize: R.text(10),
-                                      fontWeight: FontWeight.w500,
-                                      color: ReadingPage.textDark.withOpacity(
-                                        0.55,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                      return Container(
+                        width: R.icon(200),
+                        height: R.icon(200),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              ringColors[0].withOpacity(glow),
+                              ringColors[0].withOpacity(0.0),
                             ],
                           ),
-                        );
-                      },
-                    ),
-
-                    SizedBox(height: R.space(26)),
-
-                    // --------------------------------------------
-                    // READING SUMMARY CARD
-                    // --------------------------------------------
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(R.space(18)),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(R.radius(24)),
-                        border: Border.all(
-                          color: ReadingPage.primaryGreen.withOpacity(0.10),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ReadingPage.textDark.withOpacity(0.06),
-                            blurRadius: 20,
-                            offset: const Offset(0, 7),
-                          ),
-                        ],
-                      ),
+                        child: Center(
+                          child: SizedBox(
+                            width: R.icon(150),
+                            height: R.icon(150),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                CustomPaint(
+                                  size: Size.infinite,
+                                  painter: _ScoreRingPainter(
+                                    progress: value / 100,
+                                    strokeWidth: R.space(13),
+                                    colors: ringColors,
+                                    trackColor: ringColors[0].withOpacity(0.13),
+                                  ),
+                                ),
 
-                      child: Column(
-                        children: [
-                          Text(
-                            'Your Reading',
-                            style: AppTypography.getStyle(
-                              useOpenDyslexic: widget.useOpenDyslexic,
-                              fontSize: R.text(16),
-                              fontWeight: FontWeight.w700,
-                              color: ReadingPage.textDark,
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${value.round()}%',
+                                      style: AppTypography.getStyle(
+                                        useOpenDyslexic: widget.useOpenDyslexic,
+                                        fontSize: R.text(34),
+                                        fontWeight: FontWeight.w800,
+                                        color: ringColors[0],
+                                      ),
+                                    ),
+
+                                    SizedBox(height: R.space(2)),
+
+                                    Text(
+                                      'Reading Score',
+                                      style: AppTypography.getStyle(
+                                        useOpenDyslexic: widget.useOpenDyslexic,
+                                        fontSize: R.text(10),
+                                        fontWeight: FontWeight.w600,
+                                        color: ReadingPage.textDark.withOpacity(
+                                          0.55,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
 
-                          SizedBox(height: R.space(16)),
+                SizedBox(height: R.space(22)),
 
-                          Row(
-                            children: [
-                              Expanded(
+                // --------------------------------------------
+                // READING SUMMARY CARD
+                // --------------------------------------------
+                _reveal(
+                  begin: 0.56,
+                  end: 0.80,
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(R.space(18)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(R.radius(24)),
+                      border: Border.all(
+                        color: ringColors[0].withOpacity(0.14),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: ringColors[0].withOpacity(0.12),
+                          blurRadius: 24,
+                          offset: const Offset(0, 9),
+                        ),
+                      ],
+                    ),
+
+                    child: Column(
+                      children: [
+                        Text(
+                          'Your Reading',
+                          style: AppTypography.getStyle(
+                            useOpenDyslexic: widget.useOpenDyslexic,
+                            fontSize: R.text(16),
+                            fontWeight: FontWeight.w700,
+                            color: ReadingPage.textDark,
+                          ),
+                        ),
+
+                        SizedBox(height: R.space(16)),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _pop(
+                                begin: 0.62,
+                                end: 0.80,
                                 child: _ResultStatCard(
                                   icon: Icons.check_circle_rounded,
                                   label: 'Correct words',
@@ -2465,10 +2692,14 @@ class _BookResultPageState extends State<BookResultPage>
                                   backgroundColor: const Color(0xFFEAF6F0),
                                 ),
                               ),
+                            ),
 
-                              SizedBox(width: R.space(10)),
+                            SizedBox(width: R.space(10)),
 
-                              Expanded(
+                            Expanded(
+                              child: _pop(
+                                begin: 0.67,
+                                end: 0.85,
                                 child: _ResultStatCard(
                                   icon: Icons.swap_horiz_rounded,
                                   label: 'Changed words',
@@ -2478,14 +2709,18 @@ class _BookResultPageState extends State<BookResultPage>
                                   backgroundColor: const Color(0xFFFFF5E8),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
 
-                          SizedBox(height: R.space(10)),
+                        SizedBox(height: R.space(10)),
 
-                          Row(
-                            children: [
-                              Expanded(
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _pop(
+                                begin: 0.72,
+                                end: 0.90,
                                 child: _ResultStatCard(
                                   icon: Icons.remove_circle_outline_rounded,
                                   label: 'Missed words',
@@ -2495,10 +2730,14 @@ class _BookResultPageState extends State<BookResultPage>
                                   backgroundColor: const Color(0xFFFFEEEE),
                                 ),
                               ),
+                            ),
 
-                              SizedBox(width: R.space(10)),
+                            SizedBox(width: R.space(10)),
 
-                              Expanded(
+                            Expanded(
+                              child: _pop(
+                                begin: 0.77,
+                                end: 0.95,
                                 child: _ResultStatCard(
                                   icon: Icons.add_circle_outline_rounded,
                                   label: 'Extra words',
@@ -2508,123 +2747,185 @@ class _BookResultPageState extends State<BookResultPage>
                                   backgroundColor: const Color(0xFFEEF1FF),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
 
-                          SizedBox(height: R.space(15)),
+                        SizedBox(height: R.space(15)),
 
-                          Divider(
-                            color: ReadingPage.textDark.withOpacity(0.08),
-                          ),
+                        Divider(color: ReadingPage.textDark.withOpacity(0.08)),
 
-                          SizedBox(height: R.space(8)),
+                        SizedBox(height: R.space(8)),
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.menu_book_rounded,
-                                size: R.icon(17),
-                                color: ReadingPage.primaryGreen,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.menu_book_rounded,
+                              size: R.icon(17),
+                              color: ringColors[0],
+                            ),
+
+                            SizedBox(width: R.space(7)),
+
+                            Text(
+                              '${widget.expectedWords} words in this story',
+                              style: AppTypography.getStyle(
+                                useOpenDyslexic: widget.useOpenDyslexic,
+                                fontSize: R.text(12),
+                                fontWeight: FontWeight.w500,
+                                color: ReadingPage.textDark.withOpacity(0.58),
                               ),
-
-                              SizedBox(width: R.space(7)),
-
-                              Text(
-                                '${widget.expectedWords} words in this story',
-                                style: AppTypography.getStyle(
-                                  useOpenDyslexic: widget.useOpenDyslexic,
-                                  fontSize: R.text(12),
-                                  fontWeight: FontWeight.w500,
-                                  color: ReadingPage.textDark.withOpacity(0.58),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-
-                    SizedBox(height: R.space(24)),
-
-                    // --------------------------------------------
-                    // READ AGAIN
-                    // --------------------------------------------
-                    SizedBox(
-                      width: double.infinity,
-                      height: R.space(54),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop('again');
-                        },
-
-                        icon: const Icon(Icons.replay_rounded),
-
-                        label: Text(
-                          'Read Again',
-                          style: AppTypography.getStyle(
-                            useOpenDyslexic: widget.useOpenDyslexic,
-                            fontSize: R.text(15),
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ReadingPage.primaryGreen,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(R.radius(18)),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: R.space(10)),
-
-                    // --------------------------------------------
-                    // BACK TO LIBRARY
-                    // --------------------------------------------
-                    SizedBox(
-                      width: double.infinity,
-                      height: R.space(52),
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop('library');
-                        },
-
-                        icon: const Icon(Icons.local_library_rounded),
-
-                        label: Text(
-                          'Back to Library',
-                          style: AppTypography.getStyle(
-                            useOpenDyslexic: widget.useOpenDyslexic,
-                            fontSize: R.text(14),
-                            fontWeight: FontWeight.w600,
-                            color: ReadingPage.primaryGreen,
-                          ),
-                        ),
-
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: ReadingPage.primaryGreen,
-                          side: BorderSide(
-                            color: ReadingPage.primaryGreen.withOpacity(0.40),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(R.radius(18)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+
+                SizedBox(height: R.space(24)),
+
+                // --------------------------------------------
+                // READ AGAIN
+                // --------------------------------------------
+                _reveal(
+                  begin: 0.82,
+                  end: 0.96,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: R.space(54),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop('again');
+                      },
+
+                      icon: const Icon(Icons.replay_rounded),
+
+                      label: Text(
+                        'Read Again',
+                        style: AppTypography.getStyle(
+                          useOpenDyslexic: widget.useOpenDyslexic,
+                          fontSize: R.text(15),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ReadingPage.primaryGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(R.radius(18)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: R.space(10)),
+
+                // --------------------------------------------
+                // BACK TO LIBRARY
+                // --------------------------------------------
+                _reveal(
+                  begin: 0.88,
+                  end: 1.0,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: R.space(52),
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop('library');
+                      },
+
+                      icon: const Icon(Icons.local_library_rounded),
+
+                      label: Text(
+                        'Back to Library',
+                        style: AppTypography.getStyle(
+                          useOpenDyslexic: widget.useOpenDyslexic,
+                          fontSize: R.text(14),
+                          fontWeight: FontWeight.w600,
+                          color: ReadingPage.primaryGreen,
+                        ),
+                      ),
+
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ReadingPage.primaryGreen,
+                        side: BorderSide(
+                          color: ReadingPage.primaryGreen.withOpacity(0.40),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(R.radius(18)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+// ============================================================
+// SCORE RING PAINTER
+// ============================================================
+
+class _ScoreRingPainter extends CustomPainter {
+  final double progress;
+  final double strokeWidth;
+  final List<Color> colors;
+  final Color trackColor;
+
+  _ScoreRingPainter({
+    required this.progress,
+    required this.strokeWidth,
+    required this.colors,
+    required this.trackColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double radius = (math.min(size.width, size.height) - strokeWidth) / 2;
+    final Rect rect = Rect.fromCircle(center: center, radius: radius);
+
+    final Paint track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..color = trackColor;
+
+    canvas.drawCircle(center, radius, track);
+
+    final double sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
+
+    if (sweep <= 0) return;
+
+    final Paint arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: 0,
+        endAngle: 2 * math.pi,
+        colors: [colors[1], colors[0], colors[1]],
+        transform: const GradientRotation(-math.pi / 2),
+      ).createShader(rect);
+
+    canvas.drawArc(rect, -math.pi / 2, sweep, false, arc);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScoreRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.colors != colors ||
+        oldDelegate.trackColor != trackColor;
   }
 }
 
@@ -2692,6 +2993,255 @@ class _ResultStatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ============================================================
+// STORY SCENE (picture on top, colors from the picture, story text)
+// ============================================================
+
+class _StoryScene extends StatefulWidget {
+  final String storagePath;
+  final String text;
+  final bool useOpenDyslexic;
+  final void Function(Color top, Color bottom) onColors;
+
+  const _StoryScene({
+    super.key,
+    required this.storagePath,
+    required this.text,
+    required this.useOpenDyslexic,
+    required this.onColors,
+  });
+
+  @override
+  State<_StoryScene> createState() => _StorySceneState();
+}
+
+class _StorySceneState extends State<_StoryScene> {
+  // Remember the colors of pictures we already looked at.
+  static final Map<String, List<Color>> _colorCache = {};
+
+  String? _url;
+  bool _failed = false;
+
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final String path = widget.storagePath;
+    if (path.isEmpty) return;
+
+    final List<Color>? cached = _colorCache[path];
+
+    if (cached != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onColors(cached[0], cached[1]);
+      });
+    }
+
+    try {
+      final String url = await FirebaseStorage.instance
+          .ref(path)
+          .getDownloadURL();
+
+      if (!mounted) return;
+
+      setState(() => _url = url);
+
+      if (cached == null) _resolveColors(url, path);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  void _resolveColors(String url, String path) {
+    final stream = NetworkImage(url).resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+
+    listener = ImageStreamListener(
+      (info, _) {
+        stream.removeListener(listener);
+        _extractColors(info.image, path);
+      },
+      onError: (_, __) {
+        stream.removeListener(listener);
+      },
+    );
+
+    _stream = stream;
+    _listener = listener;
+    stream.addListener(listener);
+  }
+
+  Future<void> _extractColors(ui.Image image, String path) async {
+    try {
+      final ByteData? data = await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
+
+      if (data == null) return;
+
+      final int w = image.width;
+      final int h = image.height;
+
+      Color average(int y0, int y1, int step) {
+        double r = 0, g = 0, b = 0;
+        int n = 0;
+
+        for (int y = y0; y < y1; y += step) {
+          for (int x = 0; x < w; x += step) {
+            final int i = (y * w + x) * 4;
+            r += data.getUint8(i);
+            g += data.getUint8(i + 1);
+            b += data.getUint8(i + 2);
+            n++;
+          }
+        }
+
+        if (n == 0) return ReadingPage.softCream;
+
+        return Color.fromARGB(
+          255,
+          (r / n).round(),
+          (g / n).round(),
+          (b / n).round(),
+        );
+      }
+
+      // Bottom edge of the picture -> the color the picture melts into.
+      final Color edge = average((h * 0.88).floor(), h, 4);
+
+      // Whole picture -> the softer color further down the screen.
+      final Color overall = average(0, h, 12);
+
+      final Color top = Color.lerp(edge, Colors.white, 0.66)!;
+      final Color bottom = Color.lerp(overall, Colors.white, 0.86)!;
+
+      _colorCache[path] = [top, bottom];
+
+      if (mounted) widget.onColors(top, bottom);
+    } catch (e) {
+      debugPrint('Could not read picture colors: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    super.dispose();
+  }
+
+  Widget _picture() {
+    if (widget.storagePath.isEmpty || _failed) {
+      return const Center(
+        child: Icon(Icons.image_not_supported_outlined, color: Colors.black26),
+      );
+    }
+
+    if (_url == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: ReadingPage.primaryGreen,
+        ),
+      );
+    }
+
+    return Image.network(
+      _url!,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        return AnimatedOpacity(
+          opacity: frame == null ? 0 : 1,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOut,
+          child: child,
+        );
+      },
+      errorBuilder: (_, __, ___) => const Center(
+        child: Icon(Icons.broken_image_outlined, color: Colors.black26),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The picture keeps its real shape, so nothing is cropped.
+        final double imageHeight = constraints.maxWidth * 848 / 1264;
+        // Positive = text starts a little below the picture.
+        final double textGap = R.space(2);
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // ---------------- PICTURE (melts into the background) ----------------
+            SizedBox(
+              width: double.infinity,
+              height: imageHeight,
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (rect) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.white, Colors.white, Colors.transparent],
+                  stops: [0.0, 0.52, 1.0],
+                ).createShader(rect),
+                child: _picture(),
+              ),
+            ),
+
+            // ---------------- STORY TEXT ----------------
+            Padding(
+              padding: EdgeInsets.only(top: imageHeight + textGap),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, child) {
+                  return Opacity(
+                    opacity: v.clamp(0.0, 1.0),
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - v) * R.space(18)),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: R.pagePad + R.space(12),
+                  ),
+                  child: Text(
+                    widget.text,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: widget.useOpenDyslexic,
+                      fontSize: R.text(22),
+                      fontWeight: FontWeight.w500,
+                      color: ReadingPage.textDark,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
