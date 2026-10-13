@@ -1474,43 +1474,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                           ),
                                         ),
 
-                                        // =================================================
-                                        // ANALYZING
-                                        // =================================================
-                                        if (_isAnalyzing) ...[
-                                          SizedBox(height: R.space(10)),
 
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              SizedBox(
-                                                width: R.icon(15),
-                                                height: R.icon(15),
-                                                child:
-                                                    const CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: ReadingPage
-                                                          .primaryGreen,
-                                                    ),
-                                              ),
-
-                                              SizedBox(width: R.space(7)),
-
-                                              Text(
-                                                'Analyzing reading...',
-                                                style: AppTypography.getStyle(
-                                                  useOpenDyslexic:
-                                                      widget.useOpenDyslexic,
-                                                  fontSize: R.text(12),
-                                                  fontWeight: FontWeight.w500,
-                                                  color:
-                                                      ReadingPage.primaryGreen,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
 
                                         // =================================================
                                         // RECORDING SAVED
