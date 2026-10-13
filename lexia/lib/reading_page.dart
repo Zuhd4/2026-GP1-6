@@ -715,6 +715,19 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final Map<String, dynamic> currentPageResults = Map<String, dynamic>.from(
       storyReading['currentPageResults'] ?? storyReading['pageResults'] ?? {},
     );
+    // Prevent overwriting the highest saved page score.
+    final existingPage = currentPageResults['page_${pageIndex + 1}'];
+
+    if (existingPage is Map) {
+      final double oldScore =
+          (existingPage['pageScore'] as num?)?.toDouble() ?? -1.0;
+      final double newScore = (result['page_score'] as num?)?.toDouble() ?? 0.0;
+
+      if (newScore <= oldScore) {
+        debugPrint('✅ Keeping previous best score: $oldScore%');
+        return;
+      }
+    }
 
     currentPageResults['page_${pageIndex + 1}'] = {
       'pageScore': result['page_score'],
@@ -857,14 +870,27 @@ class _BookReaderPageState extends State<BookReaderPage> {
       final Map<String, dynamic> result = Map<String, dynamic>.from(decoded);
 
       if (!mounted) return;
+      // Compare the new score with the previous best score.
+      final Map<String, dynamic>? previousBest = _assessmentByPage[pageIndex];
+      final double newScore = (result['page_score'] as num?)?.toDouble() ?? 0.0;
+      final double previousScore =
+          (previousBest?['page_score'] as num?)?.toDouble() ?? -1.0;
+
+      // Only update if the new score is higher.
+      final bool improved = previousBest == null || newScore > previousScore;
+      final Map<String, dynamic> bestResult = improved ? result : previousBest;
 
       setState(() {
-        _assessmentByPage[pageIndex] = result;
-        _savedPages.remove(pageIndex);
+        _assessmentByPage[pageIndex] = bestResult;
+        if (improved) {
+          _savedPages.remove(pageIndex);
+        }
       });
 
       try {
-        await _savePageResult(pageIndex: pageIndex, result: result);
+        if (improved || !_savedPages.contains(pageIndex)) {
+          await _savePageResult(pageIndex: pageIndex, result: bestResult);
+        }
 
         if (mounted) {
           setState(() {
@@ -1081,11 +1107,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final double oldBestScore =
         ((oldStoryReading['bestScore'] as num?)?.toDouble() ?? 0.0);
 
-    final bool wasCompleted = oldStoryReading['completed'] == true;
-
     final double currentScore = (result['book_score'] as num).toDouble();
 
-    final bool isNewBest = !wasCompleted || currentScore > oldBestScore;
+    final bool isNewBest = currentScore > oldBestScore;
 
     final double bestScore = isNewBest ? currentScore : oldBestScore;
 
@@ -1196,11 +1220,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
     if (action == 'again') {
       setState(() {
         _currentPage = 0;
-
         _recordingsByPage.clear();
-
-        _assessmentByPage.clear();
-        _savedPages.clear();
+        // Keep the best saved page results available during rereading.
+        // New attempts will only replace them when the score improves.
       });
     }
 
@@ -3071,7 +3093,7 @@ class _StorySceneState extends State<_StoryScene> {
         stream.removeListener(listener);
         _extractColors(info.image, path);
       },
-      onError: (_, __) {
+      onError: (_, _) {
         stream.removeListener(listener);
       },
     );
@@ -3170,7 +3192,7 @@ class _StorySceneState extends State<_StoryScene> {
           child: child,
         );
       },
-      errorBuilder: (_, __, ___) => const Center(
+      errorBuilder: (_, _, _) => const Center(
         child: Icon(Icons.broken_image_outlined, color: Colors.black26),
       ),
     );
@@ -3285,7 +3307,7 @@ class _StorageImage extends StatelessWidget {
           fit: fit,
           width: double.infinity,
           height: double.infinity,
-          errorBuilder: (_, __, ___) => const Center(
+          errorBuilder: (_, _, _) => const Center(
             child: Icon(Icons.broken_image_outlined, color: Colors.black26),
           ),
         );
