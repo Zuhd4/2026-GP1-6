@@ -531,6 +531,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   final Map<int, Map<String, dynamic>> _assessmentByPage = {};
 
+  // Always show the most recent ASR response in the page result card.
+  // _assessmentByPage separately retains the BEST attempt for scoring/saving.
+  final Map<int, Map<String, dynamic>> _latestAssessmentByPage = {};
+
   // Tracks which page assessments are safely stored in Firestore.
   final Set<int> _savedPages = {};
 
@@ -665,6 +669,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
       setState(() {
         _assessmentByPage.addAll(loadedResults);
+        _latestAssessmentByPage.addAll(loadedResults);
         _savedPages.addAll(loadedResults.keys);
         _isLoadingSavedProgress = false;
       });
@@ -881,6 +886,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
       final Map<String, dynamic> bestResult = improved ? result : previousBest;
 
       setState(() {
+        // Show the exact CURRENT recording's score and recognized words,
+        // even if this attempt scored lower than an earlier recording.
+        _latestAssessmentByPage[pageIndex] = result;
+        // Only the highest-scoring attempt counts for progress and Firestore.
         _assessmentByPage[pageIndex] = bestResult;
         if (improved) {
           _savedPages.remove(pageIndex);
@@ -1327,7 +1336,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
                       final String imagePath =
                           (pageData['image_storage_path'] ?? '').toString();
 
+                      // Display latest attempt; retain best separately for scoring.
                       final Map<String, dynamic>? assessment =
+                          _latestAssessmentByPage[safeCurrentPage] ??
                           _assessmentByPage[safeCurrentPage];
 
                       final bool hasRecording =
