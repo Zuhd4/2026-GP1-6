@@ -1485,8 +1485,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                           ),
                                         ),
 
-
-
                                         // =================================================
                                         // RECORDING SAVED
                                         // =================================================
@@ -1587,7 +1585,15 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                           Icons.arrow_back_rounded,
                                         ),
 
-                                        label: const Text('Back'),
+                                        label: Text(
+                                          'Back',
+                                          style: AppTypography.getStyle(
+                                            useOpenDyslexic:
+                                                widget.useOpenDyslexic,
+                                            fontSize: R.text(14),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
 
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor:
@@ -1637,6 +1643,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
                                         label: Text(
                                           isLastPage ? 'Finish Book' : 'Next',
+                                          style: AppTypography.getStyle(
+                                            useOpenDyslexic:
+                                                widget.useOpenDyslexic,
+                                            fontSize: R.text(14),
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
 
                                         style: ElevatedButton.styleFrom(
@@ -3225,8 +3237,9 @@ class _StorySceneState extends State<_StoryScene> {
                   child: Text(
                     widget.text,
                     textAlign: TextAlign.center,
+                    // Keep the story sentence in the regular font.
                     style: AppTypography.getStyle(
-                      useOpenDyslexic: widget.useOpenDyslexic,
+                      useOpenDyslexic: false,
                       fontSize: R.text(22),
                       fontWeight: FontWeight.w500,
                       color: ReadingPage.textDark,
