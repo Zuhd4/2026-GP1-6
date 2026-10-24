@@ -1485,47 +1485,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                           ),
                                         ),
 
-                                        // =================================================
-                                        // RECORDING SAVED
-                                        // =================================================
-                                        if (assessment != null &&
-                                            !_isRecording &&
-                                            !_isAnalyzing) ...[
-                                          SizedBox(height: R.space(10)),
-
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                currentPageSaved
-                                                    ? Icons.check_circle_rounded
-                                                    : Icons.cloud_off_rounded,
-                                                color: currentPageSaved
-                                                    ? ReadingPage.primaryGreen
-                                                    : Colors.redAccent,
-                                                size: R.icon(17),
-                                              ),
-
-                                              SizedBox(width: R.space(5)),
-
-                                              Text(
-                                                currentPageSaved
-                                                    ? 'Result saved ✓'
-                                                    : 'Result not saved — please record again',
-                                                style: AppTypography.getStyle(
-                                                  useOpenDyslexic:
-                                                      widget.useOpenDyslexic,
-                                                  fontSize: R.text(12),
-                                                  fontWeight: FontWeight.w500,
-                                                  color: currentPageSaved
-                                                      ? ReadingPage.primaryGreen
-                                                      : Colors.redAccent,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                                        // (RECORDING SAVED widget removed)
 
                                         // =================================================
                                         // DETAILED PAGE RESULT
@@ -1585,15 +1545,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                           Icons.arrow_back_rounded,
                                         ),
 
-                                        label: Text(
-                                          'Back',
-                                          style: AppTypography.getStyle(
-                                            useOpenDyslexic:
-                                                widget.useOpenDyslexic,
-                                            fontSize: R.text(14),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
+                                        label: const Text('Back'),
 
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor:
@@ -1643,12 +1595,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
                                         label: Text(
                                           isLastPage ? 'Finish Book' : 'Next',
-                                          style: AppTypography.getStyle(
-                                            useOpenDyslexic:
-                                                widget.useOpenDyslexic,
-                                            fontSize: R.text(14),
-                                            fontWeight: FontWeight.w600,
-                                          ),
                                         ),
 
                                         style: ElevatedButton.styleFrom(
@@ -1748,26 +1694,13 @@ class _BookReaderPageState extends State<BookReaderPage> {
           Positioned(
             top: R.safeTop + R.space(6),
             left: R.pagePad - R.space(4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                iconSize: R.icon(18),
-                color: ReadingPage.textDark,
-                onPressed: _isRecording || _isAnalyzing
-                    ? null
-                    : () => Navigator.of(context).pop(),
-              ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              iconSize: R.icon(24),
+              color: ReadingPage.textDark,
+              onPressed: _isRecording || _isAnalyzing
+                  ? null
+                  : () => Navigator.of(context).pop(),
             ),
           ),
         ],
@@ -1804,38 +1737,13 @@ class _PageReadingResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double rawScore = _toDouble(assessment['page_score']);
-    final double score = rawScore < 0
-        ? 0.0
-        : rawScore > 100
-        ? 100.0
-        : rawScore;
-    final int correct = _toInt(assessment['correct']);
-    final int substitutions = _toInt(assessment['substitutions']);
-    final int omissions = _toInt(assessment['omissions']);
+    final double score = _toDouble(assessment['page_score']).clamp(0.0, 100.0);
     final int additions = _toInt(assessment['additions']);
-
-    final int expectedWords = correct + substitutions + omissions;
-
     final String expectedText =
         (assessment['expected_text'] ?? fallbackExpectedText).toString().trim();
-
     final String recognizedText = (assessment['recognized_text'] ?? '')
         .toString()
         .trim();
-
-    String feedback;
-
-    if (score >= 90) {
-      feedback = 'Excellent reading! You read this page very accurately.';
-    } else if (score >= 75) {
-      feedback = 'Great job! A little practice can make it even stronger.';
-    } else if (score >= 50) {
-      feedback =
-          'Good effort! Try the page again if you want to improve your score.';
-    } else {
-      feedback = 'Keep practicing! Reading the page again can help.';
-    }
 
     return Container(
       width: double.infinity,
@@ -1903,87 +1811,14 @@ class _PageReadingResultCard extends StatelessWidget {
               ),
             ],
           ),
-
-          SizedBox(height: R.space(12)),
-
-          Text(
-            feedback,
-            textAlign: TextAlign.center,
-            style: AppTypography.getStyle(
-              useOpenDyslexic: useOpenDyslexic,
-              fontSize: R.text(11.5),
-              fontWeight: FontWeight.w500,
-              color: ReadingPage.textDark.withOpacity(0.62),
-              height: 1.4,
-            ),
-          ),
-
           SizedBox(height: R.space(14)),
-
-          Row(
-            children: [
-              Expanded(
-                child: _PageResultStat(
-                  icon: Icons.check_circle_rounded,
-                  label: 'Correct words',
-                  value: correct,
-                  color: ReadingPage.primaryGreen,
-                  backgroundColor: const Color(0xFFEAF6F0),
-                  useOpenDyslexic: useOpenDyslexic,
-                ),
-              ),
-              SizedBox(width: R.space(8)),
-              Expanded(
-                child: _PageResultStat(
-                  icon: Icons.swap_horiz_rounded,
-                  label: 'Changed words',
-                  value: substitutions,
-                  color: const Color(0xFFF0A24A),
-                  backgroundColor: const Color(0xFFFFF5E8),
-                  useOpenDyslexic: useOpenDyslexic,
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: R.space(8)),
-
-          Row(
-            children: [
-              Expanded(
-                child: _PageResultStat(
-                  icon: Icons.remove_circle_outline_rounded,
-                  label: 'Missed words',
-                  value: omissions,
-                  color: const Color(0xFFE36E6E),
-                  backgroundColor: const Color(0xFFFFEEEE),
-                  useOpenDyslexic: useOpenDyslexic,
-                ),
-              ),
-              SizedBox(width: R.space(8)),
-              Expanded(
-                child: _PageResultStat(
-                  icon: Icons.add_circle_outline_rounded,
-                  label: 'Extra words',
-                  value: additions,
-                  color: const Color(0xFF7789D8),
-                  backgroundColor: const Color(0xFFEEF1FF),
-                  useOpenDyslexic: useOpenDyslexic,
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: R.space(14)),
-
           _ColoredStoryFeedback(
             expectedText: expectedText,
             recognizedText: recognizedText,
+            extraWords: additions,
             useOpenDyslexic: useOpenDyslexic,
           ),
-
           SizedBox(height: R.space(10)),
-
           _PageTextResultSection(
             icon: Icons.hearing_rounded,
             title: 'What Lexia Heard',
@@ -1992,87 +1827,58 @@ class _PageReadingResultCard extends StatelessWidget {
                 : recognizedText,
             useOpenDyslexic: useOpenDyslexic,
           ),
-
-          SizedBox(height: R.space(12)),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.text_fields_rounded,
-                size: R.icon(15),
-                color: ReadingPage.textDark.withOpacity(0.45),
-              ),
-              SizedBox(width: R.space(5)),
-              Flexible(
-                child: Text(
-                  '$correct correct out of $expectedWords expected words'
-                  '${additions > 0 ? ' • $additions extra spoken' : ''}',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.getStyle(
-                    useOpenDyslexic: useOpenDyslexic,
-                    fontSize: R.text(10.5),
-                    fontWeight: FontWeight.w500,
-                    color: ReadingPage.textDark.withOpacity(0.50),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: R.space(8)),
-
-          Text(
-            'You can record again or continue to the next page.',
-            textAlign: TextAlign.center,
-            style: AppTypography.getStyle(
-              useOpenDyslexic: useOpenDyslexic,
-              fontSize: R.text(10.5),
-              fontWeight: FontWeight.w500,
-              color: ReadingPage.primaryGreen,
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-// Feedback displayed for the most recent reading attempt (display only).
+// Display-only feedback for the most recent recording.
 class _ColoredStoryFeedback extends StatelessWidget {
   final String expectedText;
   final String recognizedText;
+  final int extraWords;
   final bool useOpenDyslexic;
 
   const _ColoredStoryFeedback({
     required this.expectedText,
     required this.recognizedText,
+    required this.extraWords,
     required this.useOpenDyslexic,
   });
 
-  static String _normalize(String word) => word
-      .toLowerCase()
-      .replaceAll(RegExp(r"[^a-z0-9']"), '');
+  static String _normalize(String word) =>
+      word.toLowerCase().replaceAll(RegExp(r"[^a-z0-9']"), '');
 
   List<int> _wordStatuses(List<String> expected, List<String> heard) {
     final int n = expected.length;
     final int m = heard.length;
     final dp = List.generate(n + 1, (_) => List<int>.filled(m + 1, 0));
-    for (int i = 0; i <= n; i++) { dp[i][0] = i; }
-    for (int j = 0; j <= m; j++) { dp[0][j] = j; }
+    for (int i = 0; i <= n; i++) {
+      dp[i][0] = i;
+    }
+    for (int j = 0; j <= m; j++) {
+      dp[0][j] = j;
+    }
     for (int i = 1; i <= n; i++) {
       for (int j = 1; j <= m; j++) {
-        final int cost = _normalize(expected[i - 1]) == _normalize(heard[j - 1]) ? 0 : 1;
-        dp[i][j] = math.min(dp[i - 1][j - 1] + cost,
-            math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1));
+        final int cost = _normalize(expected[i - 1]) == _normalize(heard[j - 1])
+            ? 0
+            : 1;
+        dp[i][j] = math.min(
+          dp[i - 1][j - 1] + cost,
+          math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
+        );
       }
     }
+    // 0 correct, 1 changed, 2 missed.
     final statuses = List<int>.filled(n, 2);
     int i = n;
     int j = m;
     while (i > 0 || j > 0) {
       if (i > 0 && j > 0) {
-        final bool same = _normalize(expected[i - 1]) == _normalize(heard[j - 1]);
+        final bool same =
+            _normalize(expected[i - 1]) == _normalize(heard[j - 1]);
         if (dp[i][j] == dp[i - 1][j - 1] + (same ? 0 : 1)) {
           statuses[i - 1] = same ? 0 : 1;
           i--;
@@ -2091,13 +1897,43 @@ class _ColoredStoryFeedback extends StatelessWidget {
     return statuses;
   }
 
+  Widget _legendItem(String label, Color color) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 5),
+      Text(
+        label,
+        style: TextStyle(fontSize: R.text(10), color: ReadingPage.textDark),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
-    final expected = expectedText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-    final heard = recognizedText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final expected = expectedText
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    final heard = recognizedText
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
     final statuses = _wordStatuses(expected, heard);
-    const backgroundColors = [Color(0xFFC5E2B9), Color(0xFFEBAEA5), Color(0xFFD3D3D3)];
-    const textColors = [Color(0xFF287442), Color(0xFFA62720), Color(0xFF515B5B)];
+    const backgrounds = [
+      Color(0xFFC5E2B9),
+      Color(0xFFEBAEA5),
+      Color(0xFFD3D3D3),
+    ];
+    const foregrounds = [
+      Color(0xFF287442),
+      Color(0xFFA62720),
+      Color(0xFF515B5B),
+    ];
 
     return Container(
       width: double.infinity,
@@ -2109,19 +1945,25 @@ class _ColoredStoryFeedback extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your Reading', style: AppTypography.getStyle(
-            useOpenDyslexic: useOpenDyslexic,
-            fontSize: R.text(13),
-            fontWeight: FontWeight.w700,
-            color: ReadingPage.textDark,
-          )),
+          Text(
+            'Your Reading',
+            style: AppTypography.getStyle(
+              useOpenDyslexic: useOpenDyslexic,
+              fontSize: R.text(13),
+              fontWeight: FontWeight.w700,
+              color: ReadingPage.textDark,
+            ),
+          ),
           SizedBox(height: R.space(10)),
           if (expected.isEmpty)
-            Text('No story text available.', style: AppTypography.getStyle(
-              useOpenDyslexic: useOpenDyslexic,
-              fontSize: R.text(12),
-              color: ReadingPage.textDark,
-            ))
+            Text(
+              'No story text available.',
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
+                fontSize: R.text(12),
+                color: ReadingPage.textDark,
+              ),
+            )
           else
             Wrap(
               spacing: R.space(7),
@@ -2129,27 +1971,54 @@ class _ColoredStoryFeedback extends StatelessWidget {
               children: [
                 for (int i = 0; i < expected.length; i++)
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: R.space(9), vertical: R.space(7)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: R.space(9),
+                      vertical: R.space(7),
+                    ),
                     decoration: BoxDecoration(
-                      color: backgroundColors[statuses[i]],
+                      color: backgrounds[statuses[i]],
                       borderRadius: BorderRadius.circular(R.radius(10)),
                     ),
-                    child: Text(expected[i], style: AppTypography.getStyle(
-                      useOpenDyslexic: useOpenDyslexic,
-                      fontSize: R.text(17),
-                      fontWeight: FontWeight.w700,
-                      color: textColors[statuses[i]],
-                    )),
+                    child: Text(
+                      expected[i],
+                      style: AppTypography.getStyle(
+                        useOpenDyslexic: useOpenDyslexic,
+                        fontSize: R.text(17),
+                        fontWeight: FontWeight.w700,
+                        color: foregrounds[statuses[i]],
+                      ),
+                    ),
                   ),
               ],
             ),
+          SizedBox(height: R.space(12)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.add_circle_outline_rounded,
+                size: R.icon(16),
+                color: const Color(0xFF7789D8),
+              ),
+              SizedBox(width: R.space(6)),
+              Text(
+                'Extra words: $extraWords',
+                style: AppTypography.getStyle(
+                  useOpenDyslexic: useOpenDyslexic,
+                  fontSize: R.text(12),
+                  fontWeight: FontWeight.w600,
+                  color: ReadingPage.textDark,
+                ),
+              ),
+            ],
+          ),
           SizedBox(height: R.space(12)),
           Wrap(
             spacing: R.space(13),
             runSpacing: R.space(6),
             children: [
               _legendItem('Correct', const Color(0xFF287442)),
-              _legendItem('Changed', const Color(0xFFA62720)),
+              _legendItem('Wrong', const Color(0xFFA62720)),
               _legendItem('Missed', const Color(0xFF747474)),
             ],
           ),
@@ -2157,17 +2026,6 @@ class _ColoredStoryFeedback extends StatelessWidget {
       ),
     );
   }
-
-  Widget _legendItem(String label, Color color) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(width: 9, height: 9, decoration: BoxDecoration(
-        color: color, shape: BoxShape.circle,
-      )),
-      const SizedBox(width: 5),
-      Text(label, style: TextStyle(fontSize: R.text(10), color: ReadingPage.textDark)),
-    ],
-  );
 }
 
 class _PageResultStat extends StatelessWidget {
