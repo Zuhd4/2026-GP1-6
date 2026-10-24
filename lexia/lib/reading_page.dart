@@ -1976,12 +1976,9 @@ class _PageReadingResultCard extends StatelessWidget {
 
           SizedBox(height: R.space(14)),
 
-          _PageTextResultSection(
-            icon: Icons.menu_book_rounded,
-            title: 'Story Text',
-            text: expectedText.isEmpty
-                ? 'No story text available.'
-                : expectedText,
+          _ColoredStoryFeedback(
+            expectedText: expectedText,
+            recognizedText: recognizedText,
             useOpenDyslexic: useOpenDyslexic,
           ),
 
@@ -2039,6 +2036,138 @@ class _PageReadingResultCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// Feedback displayed for the most recent reading attempt (display only).
+class _ColoredStoryFeedback extends StatelessWidget {
+  final String expectedText;
+  final String recognizedText;
+  final bool useOpenDyslexic;
+
+  const _ColoredStoryFeedback({
+    required this.expectedText,
+    required this.recognizedText,
+    required this.useOpenDyslexic,
+  });
+
+  static String _normalize(String word) => word
+      .toLowerCase()
+      .replaceAll(RegExp(r"[^a-z0-9']"), '');
+
+  List<int> _wordStatuses(List<String> expected, List<String> heard) {
+    final int n = expected.length;
+    final int m = heard.length;
+    final dp = List.generate(n + 1, (_) => List<int>.filled(m + 1, 0));
+    for (int i = 0; i <= n; i++) { dp[i][0] = i; }
+    for (int j = 0; j <= m; j++) { dp[0][j] = j; }
+    for (int i = 1; i <= n; i++) {
+      for (int j = 1; j <= m; j++) {
+        final int cost = _normalize(expected[i - 1]) == _normalize(heard[j - 1]) ? 0 : 1;
+        dp[i][j] = math.min(dp[i - 1][j - 1] + cost,
+            math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1));
+      }
+    }
+    final statuses = List<int>.filled(n, 2);
+    int i = n;
+    int j = m;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0) {
+        final bool same = _normalize(expected[i - 1]) == _normalize(heard[j - 1]);
+        if (dp[i][j] == dp[i - 1][j - 1] + (same ? 0 : 1)) {
+          statuses[i - 1] = same ? 0 : 1;
+          i--;
+          j--;
+          continue;
+        }
+      }
+      if (i > 0 && dp[i][j] == dp[i - 1][j] + 1) {
+        i--;
+      } else if (j > 0) {
+        j--;
+      } else {
+        i--;
+      }
+    }
+    return statuses;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final expected = expectedText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final heard = recognizedText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final statuses = _wordStatuses(expected, heard);
+    const backgroundColors = [Color(0xFFC5E2B9), Color(0xFFEBAEA5), Color(0xFFD3D3D3)];
+    const textColors = [Color(0xFF287442), Color(0xFFA62720), Color(0xFF515B5B)];
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(R.space(12)),
+      decoration: BoxDecoration(
+        color: ReadingPage.softCream.withOpacity(0.72),
+        borderRadius: BorderRadius.circular(R.radius(15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Your Reading', style: AppTypography.getStyle(
+            useOpenDyslexic: useOpenDyslexic,
+            fontSize: R.text(13),
+            fontWeight: FontWeight.w700,
+            color: ReadingPage.textDark,
+          )),
+          SizedBox(height: R.space(10)),
+          if (expected.isEmpty)
+            Text('No story text available.', style: AppTypography.getStyle(
+              useOpenDyslexic: useOpenDyslexic,
+              fontSize: R.text(12),
+              color: ReadingPage.textDark,
+            ))
+          else
+            Wrap(
+              spacing: R.space(7),
+              runSpacing: R.space(9),
+              children: [
+                for (int i = 0; i < expected.length; i++)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: R.space(9), vertical: R.space(7)),
+                    decoration: BoxDecoration(
+                      color: backgroundColors[statuses[i]],
+                      borderRadius: BorderRadius.circular(R.radius(10)),
+                    ),
+                    child: Text(expected[i], style: AppTypography.getStyle(
+                      useOpenDyslexic: useOpenDyslexic,
+                      fontSize: R.text(17),
+                      fontWeight: FontWeight.w700,
+                      color: textColors[statuses[i]],
+                    )),
+                  ),
+              ],
+            ),
+          SizedBox(height: R.space(12)),
+          Wrap(
+            spacing: R.space(13),
+            runSpacing: R.space(6),
+            children: [
+              _legendItem('Correct', const Color(0xFF287442)),
+              _legendItem('Changed', const Color(0xFFA62720)),
+              _legendItem('Missed', const Color(0xFF747474)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendItem(String label, Color color) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(width: 9, height: 9, decoration: BoxDecoration(
+        color: color, shape: BoxShape.circle,
+      )),
+      const SizedBox(width: 5),
+      Text(label, style: TextStyle(fontSize: R.text(10), color: ReadingPage.textDark)),
+    ],
+  );
 }
 
 class _PageResultStat extends StatelessWidget {
