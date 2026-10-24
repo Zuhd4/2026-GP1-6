@@ -737,10 +737,8 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
                     color: primaryPurple.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    Icons.snooze_rounded,
-                    color: primaryPurple,
-                    size: R.icon(26),
+                  child: Center(
+                    child: Text('🐢', style: TextStyle(fontSize: R.icon(31))),
                   ),
                 ),
               ),
@@ -814,42 +812,75 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
       'y',
       'z',
     ];
+    const rowColors = [
+      Color(0xFFFFE3E3), // soft pink
+      Color(0xFFFFE9C8), // soft peach
+      Color(0xFFDDF3E4), // soft mint
+      Color(0xFFDFE9FF), // soft blue
+    ];
 
-    return Wrap(
-      spacing: R.space(6),
-      runSpacing: R.space(6),
-      alignment: WrapAlignment.center,
-      children: letters.map((letter) {
-        return GestureDetector(
-          onTap: () => _onKeyTap(letter),
-          child: Container(
-            width: R.icon(38),
-            height: R.icon(38),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(R.radius(10)),
-              border: Border.all(color: primaryPurple.withOpacity(0.15)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                letter.toUpperCase(),
-                style: GoogleFonts.fredoka(
-                  fontSize: R.text(16),
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
-                ),
-              ),
-            ),
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const lettersPerRow = 7;
+        final spacing = R.space(6);
+        final keySize = min(
+          R.icon(48),
+          (constraints.maxWidth - spacing * (lettersPerRow - 1)) /
+              lettersPerRow,
         );
-      }).toList(),
+
+        return Column(
+          children: List.generate((letters.length / lettersPerRow).ceil(), (
+            rowIndex,
+          ) {
+            final start = rowIndex * lettersPerRow;
+            final rowLetters = letters.skip(start).take(lettersPerRow).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: rowIndex == 3 ? 0 : R.space(8)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: rowLetters.map((letter) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: spacing / 2),
+                    child: GestureDetector(
+                      onTap: () => _onKeyTap(letter),
+                      child: Container(
+                        width: keySize - spacing,
+                        height: R.icon(50),
+                        decoration: BoxDecoration(
+                          color: rowColors[rowIndex],
+                          borderRadius: BorderRadius.circular(R.radius(12)),
+                          border: Border.all(
+                            color: primaryPurple.withOpacity(0.12),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.035),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            letter.toUpperCase(),
+                            style: GoogleFonts.fredoka(
+                              fontSize: R.text(23),
+                              fontWeight: FontWeight.bold,
+                              color: textDark,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 

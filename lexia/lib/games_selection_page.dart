@@ -31,7 +31,8 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
 
   static const Color coral = Color.fromARGB(255, 230, 157, 153);
   static const Color blue = Color(0xFF5B96CA);
-  static const Color green = Color(0xFF59A685);
+  static const Color green = Color(0xFF59A685); // Used for completed state
+  static const Color listenPurple = Color(0xFF8B6FD6);
 
   bool letterScrambleCompleted = false;
   bool wordMatchingCompleted = false;
@@ -293,7 +294,7 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
                             color: coral,
                             isLarge: true,
                             buttonText: isLetterScrambleCompleted
-                                ? "Completed"
+                                ? "Play Again"
                                 : "Play",
                             isCompleted: isLetterScrambleCompleted,
                             useOpenDyslexic: useOpenDyslexic,
@@ -302,89 +303,38 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
 
                           SizedBox(height: R.space(14)),
 
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final bool veryNarrow =
-                                  constraints.maxWidth < 330;
+                          _GameCard(
+                            title: "Listen and Spell",
+                            subtitle: isListenAndSpellCompleted
+                                ? "Completed! Score: $lasBestStars/3 stars."
+                                : "Listen carefully and spell the word.",
+                            emoji: "🎧",
+                            color: listenPurple,
+                            isLarge: true,
+                            buttonText: isListenAndSpellCompleted
+                                ? "Play Again"
+                                : "Play",
+                            isCompleted: isListenAndSpellCompleted,
+                            useOpenDyslexic: useOpenDyslexic,
+                            onTap: _openListenAndSpell,
+                          ),
 
-                              if (veryNarrow) {
-                                return Column(
-                                  children: [
-                                    _GameCard(
-                                      title: "Listen and Spell",
-                                      subtitle: isListenAndSpellCompleted
-                                          ? "Score: $lasBestStars/3 stars."
-                                          : "Listen carefully and spell the word.",
-                                      emoji: "🎧",
-                                      color: green,
-                                      buttonText: isListenAndSpellCompleted
-                                          ? "Completed"
-                                          : "Play",
-                                      isLocked: false,
-                                      isCompleted: isListenAndSpellCompleted,
-                                      useOpenDyslexic: useOpenDyslexic,
-                                      onTap: _openListenAndSpell,
-                                    ),
-                                    SizedBox(height: R.space(12)),
-                                    _GameCard(
-                                      title: "Word Matching",
-                                      subtitle: isWordMatchingCompleted
-                                          ? "Score: $wmBestStars/3 stars."
-                                          : "Match the word with the picture.",
-                                      emoji: "✨",
-                                      color: blue,
-                                      buttonText: isWordMatchingCompleted
-                                          ? "Completed"
-                                          : "Play",
-                                      isLocked: false,
-                                      isCompleted: isWordMatchingCompleted,
-                                      useOpenDyslexic: useOpenDyslexic,
-                                      onTap: _openWordMatching,
-                                    ),
-                                  ],
-                                );
-                              }
+                          SizedBox(height: R.space(14)),
 
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: _GameCard(
-                                      title: "Listen\nand Spell",
-                                      subtitle: isListenAndSpellCompleted
-                                          ? "Score: $lasBestStars/3 stars."
-                                          : "Listen & spell.",
-                                      emoji: "🎧",
-                                      color: green,
-                                      buttonText: isListenAndSpellCompleted
-                                          ? "Completed"
-                                          : "Play",
-                                      isLocked: false,
-                                      isCompleted: isListenAndSpellCompleted,
-                                      useOpenDyslexic: useOpenDyslexic,
-                                      onTap: _openListenAndSpell,
-                                    ),
-                                  ),
-                                  SizedBox(width: R.space(12)),
-                                  Expanded(
-                                    child: _GameCard(
-                                      title: "Word\nMatching",
-                                      subtitle: isWordMatchingCompleted
-                                          ? "Score: $wmBestStars/3 stars."
-                                          : "Match word with picture.",
-                                      emoji: "✨",
-                                      color: blue,
-                                      buttonText: isWordMatchingCompleted
-                                          ? "Completed"
-                                          : "Play",
-                                      isLocked: false,
-                                      isCompleted: isWordMatchingCompleted,
-                                      useOpenDyslexic: useOpenDyslexic,
-                                      onTap: _openWordMatching,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
+                          _GameCard(
+                            title: "Word Matching",
+                            subtitle: isWordMatchingCompleted
+                                ? "Completed! Score: $wmBestStars/3 stars."
+                                : "Match the word with the picture.",
+                            emoji: "✨",
+                            color: blue,
+                            isLarge: true,
+                            buttonText: isWordMatchingCompleted
+                                ? "Play Again"
+                                : "Play",
+                            isCompleted: isWordMatchingCompleted,
+                            useOpenDyslexic: useOpenDyslexic,
+                            onTap: _openWordMatching,
                           ),
                         ],
                       ),
@@ -413,19 +363,7 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
             ),
           ),
         ),
-        Expanded(
-          child: Center(
-            child: Text(
-              "Level ${widget.level} Games",
-              style: AppTypography.getStyle(
-                useOpenDyslexic: useOpenDyslexic,
-                fontSize: R.text(18),
-                fontWeight: FontWeight.w500,
-                color: textDark,
-              ),
-            ),
-          ),
-        ),
+        const Expanded(child: SizedBox.shrink()),
         const SizedBox(width: 40),
       ],
     );
@@ -501,31 +439,6 @@ class _GameCard extends StatelessWidget {
             ),
             child: isLarge ? _largeLayout() : _smallLayout(),
           ),
-          if (isCompleted)
-            Positioned(
-              top: R.space(10),
-              right: R.space(10),
-              child: Container(
-                width: R.icon(28),
-                height: R.icon(28),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF59A685),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF59A685).withOpacity(0.22),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.check_rounded,
-                  size: R.icon(18),
-                  color: Colors.white,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -541,10 +454,30 @@ class _GameCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _titleText(fontSize: 18),
-              SizedBox(height: R.space(5)),
-              _subtitleText(),
+              // Removed: SizedBox(height: R.space(5)),
+              // Removed: _subtitleText(),
               SizedBox(height: R.space(12)),
-              _button(),
+              Row(
+                children: [
+                  Expanded(child: _button()),
+                  if (isCompleted) ...[
+                    SizedBox(width: R.space(8)),
+                    Container(
+                      width: R.icon(28),
+                      height: R.icon(28),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF59A685),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: R.icon(18),
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -558,8 +491,8 @@ class _GameCard extends StatelessWidget {
         _iconBox(46),
         SizedBox(height: R.space(8)),
         _titleText(fontSize: 15, center: true),
-        SizedBox(height: R.space(6)),
-        _subtitleText(center: true),
+        // Removed: SizedBox(height: R.space(6)),
+        // Removed: _subtitleText(center: true),
         SizedBox(height: R.space(12)),
         _button(),
       ],

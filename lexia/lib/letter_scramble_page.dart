@@ -729,7 +729,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
                 child: Text(
                   currentAnswer,
                   style: GoogleFonts.fredoka(
-                    fontSize: R.text(15),
+                    fontSize: R.text(22),
                     fontWeight: FontWeight.bold,
                     letterSpacing: R.space(1.5),
                     color: primaryPurple,
@@ -868,7 +868,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
               child: Text(
                 letter,
                 style: GoogleFonts.fredoka(
-                  fontSize: R.text(18),
+                  fontSize: R.text(25),
                   fontWeight: FontWeight.bold,
                   color: letter.isEmpty ? Colors.transparent : Colors.white,
                 ),
