@@ -685,42 +685,17 @@ class _BookReaderPageState extends State<BookReaderPage> {
         };
       }
 
-      // Restore an unfinished current attempt if the child left the book
-      // midway through it. Finished book runs are not treated as new attempts.
-      final resumedAttempt = <int, Map<String, dynamic>>{};
-      if (storyReading['attemptInProgress'] == true) {
-        final savedCurrent = Map<String, dynamic>.from(
-          storyReading['currentAttemptPageResults'] ?? {},
-        );
-        for (final entry in savedCurrent.entries) {
-          final pageNumber = int.tryParse(entry.key.replaceFirst('page_', ''));
-          if (pageNumber == null || entry.value is! Map) continue;
-          final saved = Map<String, dynamic>.from(entry.value as Map);
-          if (saved['earnedPoints'] is! num ||
-              saved['availablePoints'] is! num) continue;
-          resumedAttempt[pageNumber - 1] = {
-            'earned_points': saved['earnedPoints'],
-            'available_points': saved['availablePoints'],
-            'page_score': saved['pageScore'],
-            'correct': saved['correct'],
-            'substitutions': saved['substitutions'],
-            'omissions': saved['omissions'],
-            'additions': saved['additions'],
-            'expected_text': saved['expectedText'],
-            'recognized_text': saved['recognizedText'],
-            'alignment': saved['alignment'],
-          };
-        }
-      }
-
+      // Opening the book starts a NEW visit. Show each page's independently
+      // saved BEST result, not the last (possibly worse) unfinished recording.
+      // Latest recordings are visible only during the visit in which they were
+      // made. A new recording creates a fresh current attempt for Finish Book.
       if (!mounted) return;
 
       setState(() {
         _assessmentByPage.addAll(loadedResults);
-        _latestAssessmentByPage.addAll(loadedResults);
-        _latestAssessmentByPage.addAll(resumedAttempt);
-        _currentAttemptByPage.addAll(resumedAttempt);
-        _savedPages.addAll(resumedAttempt.keys);
+        _latestAssessmentByPage.clear();
+        _currentAttemptByPage.clear();
+        _savedPages.clear();
         _hasCompletedBook = storyReading['completed'] == true;
         _isLoadingSavedProgress = false;
       });
@@ -786,12 +761,22 @@ class _BookReaderPageState extends State<BookReaderPage> {
     // Remove duplicate/obsolete fields from older versions as the child
     // records new pages. Their values are no longer needed for comparisons.
     for (final key in <String>[
-      'lastAttemptPageResults', 'lastAttemptScore',
-      'lastAttemptEarnedPoints', 'lastAttemptAvailablePoints',
-      'pageResults', 'earnedPoints', 'availablePoints',
-      'correct', 'substitutions', 'omissions', 'additions',
-      'totalErrors', 'totalExpectedWords', 'bestCompletedAt',
-      'lastPageUpdated', 'totalPages',
+      'lastAttemptPageResults',
+      'lastAttemptScore',
+      'lastAttemptEarnedPoints',
+      'lastAttemptAvailablePoints',
+      'pageResults',
+      'earnedPoints',
+      'availablePoints',
+      'correct',
+      'substitutions',
+      'omissions',
+      'additions',
+      'totalErrors',
+      'totalExpectedWords',
+      'bestCompletedAt',
+      'lastPageUpdated',
+      'totalPages',
     ]) {
       story.remove(key);
     }
@@ -802,7 +787,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
     );
     final pageKey = 'page_${pageIndex + 1}';
     final previous = bestPages[pageKey];
-    final previousScore = previous is Map &&
+    final previousScore =
+        previous is Map &&
             previous['earnedPoints'] is num &&
             previous['availablePoints'] is num
         ? (previous['pageScore'] as num?)?.toDouble() ?? -1.0
@@ -817,8 +803,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     // from session state so old attempts cannot leak into a new book run.
     final attemptPages = <String, dynamic>{};
     for (final entry in _currentAttemptByPage.entries) {
-      attemptPages['page_${entry.key + 1}'] =
-          _pageForFirestore(entry.value);
+      attemptPages['page_${entry.key + 1}'] = _pageForFirestore(entry.value);
     }
 
     story['bookId'] = widget.bookId;
@@ -1145,7 +1130,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
       body: jsonEncode({'pages': pages}),
     );
     if (response.statusCode != 200) {
-      throw Exception('Book scoring failed (${response.statusCode}): ${response.body}');
+      throw Exception(
+        'Book scoring failed (${response.statusCode}): ${response.body}',
+      );
     }
     final decoded = jsonDecode(response.body);
     if (decoded is! Map || decoded['book_score_percent'] is! num) {
@@ -1213,7 +1200,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final double currentScore = (result['book_score'] as num).toDouble();
 
     // The first completed weighted book is a new baseline, even if it is 0%.
-    final bool isNewBest = !sameScoringVersion ||
+    final bool isNewBest =
+        !sameScoringVersion ||
         oldStoryReading['bestScore'] is! num ||
         currentScore > oldBestScore;
 
@@ -1298,9 +1286,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
     } catch (e) {
       debugPrint('❌ Unable to finish book: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not finish book: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not finish book: $e')));
       }
       return;
     } finally {
@@ -1451,8 +1439,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
                           _recordingsByPage.containsKey(safeCurrentPage) ||
                           assessment != null;
 
-                      final bool currentPageAssessed =
-                          _currentAttemptByPage.containsKey(safeCurrentPage);
+                      final bool currentPageAssessed = _currentAttemptByPage
+                          .containsKey(safeCurrentPage);
                       final bool currentPageSaved = _savedPages.contains(
                         safeCurrentPage,
                       );
@@ -1460,8 +1448,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
                       final bool isLastPage =
                           safeCurrentPage == pages.length - 1;
 
-                      final bool allPagesReady =
-                          _hasAllBookPageResults(pages.length);
+                      final bool allPagesReady = _hasAllBookPageResults(
+                        pages.length,
+                      );
 
                       return Stack(
                         children: [
@@ -1633,7 +1622,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                     if (safeCurrentPage > 0) ...[
                                       Expanded(
                                         child: OutlinedButton.icon(
-                                          onPressed: _isRecording ||
+                                          onPressed:
+                                              _isRecording ||
                                                   _isAnalyzing ||
                                                   _isFinishingBook
                                               ? null
@@ -1658,9 +1648,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                               vertical: R.space(13),
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(
-                                                R.radius(18),
-                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    R.radius(18),
+                                                  ),
                                             ),
                                           ),
                                         ),
@@ -1682,8 +1673,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                                 (isLastPage
                                                     ? !allPagesReady
                                                     : (!_hasCompletedBook &&
-                                                        (!currentPageAssessed ||
-                                                            !currentPageSaved)))
+                                                          !(_assessmentByPage
+                                                                  .containsKey(
+                                                                    safeCurrentPage,
+                                                                  ) ||
+                                                              (currentPageAssessed &&
+                                                                  currentPageSaved))))
                                             ? null
                                             : isLastPage
                                             ? () => _finishBook(pages.length)
@@ -2804,12 +2799,12 @@ class _BookResultPageState extends State<BookResultPage>
                                 begin: 0.67,
                                 end: 0.85,
                                 child: _ResultStatCard(
-                                  icon: Icons.swap_horiz_rounded,
-                                  label: 'Changed words',
+                                  icon: Icons.cancel_rounded,
+                                  label: 'Wrong words',
                                   value: widget.substitutions,
                                   useOpenDyslexic: widget.useOpenDyslexic,
-                                  iconColor: const Color(0xFFF0A24A),
-                                  backgroundColor: const Color(0xFFFFF5E8),
+                                  iconColor: const Color(0xFFA62720),
+                                  backgroundColor: const Color(0xFFFFE9E6),
                                 ),
                               ),
                             ),
@@ -2829,8 +2824,8 @@ class _BookResultPageState extends State<BookResultPage>
                                   label: 'Missed words',
                                   value: widget.omissions,
                                   useOpenDyslexic: widget.useOpenDyslexic,
-                                  iconColor: const Color(0xFFE36E6E),
-                                  backgroundColor: const Color(0xFFFFEEEE),
+                                  iconColor: const Color(0xFF747474),
+                                  backgroundColor: const Color(0xFFF0F0F0),
                                 ),
                               ),
                             ),
