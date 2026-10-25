@@ -526,20 +526,29 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   bool _isRecording = false;
   bool _isAnalyzing = false;
+  bool _isFinishingBook = false;
 
   final Map<int, String> _recordingsByPage = {};
 
   final Map<int, Map<String, dynamic>> _assessmentByPage = {};
 
-  // Always show the most recent ASR response in the page result card.
-  // _assessmentByPage separately retains the BEST attempt for scoring/saving.
+  // UI: the latest actual recording, even if its score is lower.
+  // Book scoring / persistence: independent best recording of each page.
+  // Never replace the best page result with a worse latest attempt.
   final Map<int, Map<String, dynamic>> _latestAssessmentByPage = {};
+
+  // This book run ONLY: latest recordings override historical best pages
+  // for Finish Book; untouched pages use their best saved records.
+  final Map<int, Map<String, dynamic>> _currentAttemptByPage = {};
 
   // Tracks which page assessments are safely stored in Firestore.
   final Set<int> _savedPages = {};
 
   // Saved page results are loaded from Firestore when the book opens.
   bool _isLoadingSavedProgress = true;
+
+  // A completed book can be browsed without making another recording.
+  bool _hasCompletedBook = false;
 
   // Colors taken from the current story picture. They tint the whole
   // reading screen so a small picture blends into a matching gradient.
@@ -653,7 +662,18 @@ class _BookReaderPageState extends State<BookReaderPage> {
           entry.value as Map,
         );
 
+        // Legacy results do not contain weighted points. They cannot be
+        // safely aggregated with the new scoring method; rerecord that page.
+        if (saved['earnedPoints'] is! num ||
+            saved['availablePoints'] is! num ||
+            (saved['availablePoints'] as num) <= 0) {
+          debugPrint('Page $pageNumber needs a new weighted assessment.');
+          continue;
+        }
+
         loadedResults[pageNumber - 1] = {
+          'earned_points': saved['earnedPoints'],
+          'available_points': saved['availablePoints'],
           'page_score': saved['pageScore'],
           'correct': saved['correct'],
           'substitutions': saved['substitutions'],
@@ -665,12 +685,43 @@ class _BookReaderPageState extends State<BookReaderPage> {
         };
       }
 
+      // Restore an unfinished current attempt if the child left the book
+      // midway through it. Finished book runs are not treated as new attempts.
+      final resumedAttempt = <int, Map<String, dynamic>>{};
+      if (storyReading['attemptInProgress'] == true) {
+        final savedCurrent = Map<String, dynamic>.from(
+          storyReading['currentAttemptPageResults'] ?? {},
+        );
+        for (final entry in savedCurrent.entries) {
+          final pageNumber = int.tryParse(entry.key.replaceFirst('page_', ''));
+          if (pageNumber == null || entry.value is! Map) continue;
+          final saved = Map<String, dynamic>.from(entry.value as Map);
+          if (saved['earnedPoints'] is! num ||
+              saved['availablePoints'] is! num) continue;
+          resumedAttempt[pageNumber - 1] = {
+            'earned_points': saved['earnedPoints'],
+            'available_points': saved['availablePoints'],
+            'page_score': saved['pageScore'],
+            'correct': saved['correct'],
+            'substitutions': saved['substitutions'],
+            'omissions': saved['omissions'],
+            'additions': saved['additions'],
+            'expected_text': saved['expectedText'],
+            'recognized_text': saved['recognizedText'],
+            'alignment': saved['alignment'],
+          };
+        }
+      }
+
       if (!mounted) return;
 
       setState(() {
         _assessmentByPage.addAll(loadedResults);
         _latestAssessmentByPage.addAll(loadedResults);
-        _savedPages.addAll(loadedResults.keys);
+        _latestAssessmentByPage.addAll(resumedAttempt);
+        _currentAttemptByPage.addAll(resumedAttempt);
+        _savedPages.addAll(resumedAttempt.keys);
+        _hasCompletedBook = storyReading['completed'] == true;
         _isLoadingSavedProgress = false;
       });
 
@@ -690,52 +741,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
   // SAVE ONE PAGE RESULT IMMEDIATELY
   // ==========================================================
 
-  Future<void> _savePageResult({
-    required int pageIndex,
-    required Map<String, dynamic> result,
-  }) async {
-    final childRef = _childRef;
-
-    if (childRef == null) {
-      throw Exception('Child profile not found.');
-    }
-
-    final String levelKey = 'level_${widget.level}';
-
-    final doc = await childRef.get();
-    final data = doc.data();
-
-    final Map<String, dynamic> currentProgress = Map<String, dynamic>.from(
-      data?['readingProgress'] ?? {},
-    );
-
-    final Map<String, dynamic> currentLevelProgress = Map<String, dynamic>.from(
-      currentProgress[levelKey] ?? {},
-    );
-
-    final Map<String, dynamic> storyReading = Map<String, dynamic>.from(
-      currentLevelProgress['storyReading'] ?? {},
-    );
-
-    final Map<String, dynamic> currentPageResults = Map<String, dynamic>.from(
-      storyReading['currentPageResults'] ?? storyReading['pageResults'] ?? {},
-    );
-    // Prevent overwriting the highest saved page score.
-    final existingPage = currentPageResults['page_${pageIndex + 1}'];
-
-    if (existingPage is Map) {
-      final double oldScore =
-          (existingPage['pageScore'] as num?)?.toDouble() ?? -1.0;
-      final double newScore = (result['page_score'] as num?)?.toDouble() ?? 0.0;
-
-      if (newScore <= oldScore) {
-        debugPrint('✅ Keeping previous best score: $oldScore%');
-        return;
-      }
-    }
-
-    currentPageResults['page_${pageIndex + 1}'] = {
+  Map<String, dynamic> _pageForFirestore(Map<String, dynamic> result) {
+    return {
       'pageScore': result['page_score'],
+      'earnedPoints': result['earned_points'],
+      'availablePoints': result['available_points'],
       'correct': result['correct'],
       'substitutions': result['substitutions'],
       'omissions': result['omissions'],
@@ -745,27 +755,91 @@ class _BookReaderPageState extends State<BookReaderPage> {
       'alignment': result['alignment'],
       'savedAt': FieldValue.serverTimestamp(),
     };
+  }
 
-    storyReading['bookId'] = widget.bookId;
-    storyReading['bookTitle'] = widget.title;
-    storyReading['currentPageResults'] = currentPageResults;
-    storyReading['lastPageUpdated'] = pageIndex + 1;
-    storyReading['updatedAt'] = FieldValue.serverTimestamp();
+  // Save EVERY current recording, including a worse one. Independently keep
+  // the highest ever page result in currentPageResults.
+  Future<void> _savePageResult({
+    required int pageIndex,
+    required Map<String, dynamic> result,
+  }) async {
+    final childRef = _childRef;
+    if (childRef == null) throw StateError('Child profile not found.');
 
-    if (!storyReading.containsKey('completed')) {
-      storyReading['completed'] = false;
+    final levelKey = 'level_${widget.level}';
+    final doc = await childRef.get();
+    final data = doc.data();
+    final progress = Map<String, dynamic>.from(data?['readingProgress'] ?? {});
+    final level = Map<String, dynamic>.from(progress[levelKey] ?? {});
+    final story = Map<String, dynamic>.from(level['storyReading'] ?? {});
+
+    // For older children, migrate their saved page records before removing
+    // the redundant best-book snapshot.
+    if (story['currentPageResults'] is! Map ||
+        (story['currentPageResults'] as Map).isEmpty) {
+      final legacyPages = story['pageResults'];
+      if (legacyPages is Map) {
+        story['currentPageResults'] = Map<String, dynamic>.from(legacyPages);
+      }
     }
 
-    currentLevelProgress['storyReading'] = storyReading;
-    currentLevelProgress['updatedAt'] = FieldValue.serverTimestamp();
-    currentProgress[levelKey] = currentLevelProgress;
+    // Remove duplicate/obsolete fields from older versions as the child
+    // records new pages. Their values are no longer needed for comparisons.
+    for (final key in <String>[
+      'lastAttemptPageResults', 'lastAttemptScore',
+      'lastAttemptEarnedPoints', 'lastAttemptAvailablePoints',
+      'pageResults', 'earnedPoints', 'availablePoints',
+      'correct', 'substitutions', 'omissions', 'additions',
+      'totalErrors', 'totalExpectedWords', 'bestCompletedAt',
+      'lastPageUpdated', 'totalPages',
+    ]) {
+      story.remove(key);
+    }
 
-    await childRef.set({
-      'readingProgress': currentProgress,
+    // Best page records: never downgrade them because of a lower retry.
+    final bestPages = Map<String, dynamic>.from(
+      story['currentPageResults'] ?? {},
+    );
+    final pageKey = 'page_${pageIndex + 1}';
+    final previous = bestPages[pageKey];
+    final previousScore = previous is Map &&
+            previous['earnedPoints'] is num &&
+            previous['availablePoints'] is num
+        ? (previous['pageScore'] as num?)?.toDouble() ?? -1.0
+        : -1.0;
+    final best = _assessmentByPage[pageIndex]!;
+    final bestScore = (best['page_score'] as num).toDouble();
+    if (bestScore > previousScore) {
+      bestPages[pageKey] = _pageForFirestore(best);
+    }
+
+    // Current attempt is separate from the best-page storage. Reconstruct
+    // from session state so old attempts cannot leak into a new book run.
+    final attemptPages = <String, dynamic>{};
+    for (final entry in _currentAttemptByPage.entries) {
+      attemptPages['page_${entry.key + 1}'] =
+          _pageForFirestore(entry.value);
+    }
+
+    story['bookId'] = widget.bookId;
+    story['bookTitle'] = widget.title;
+    story['currentPageResults'] = bestPages;
+    story['currentAttemptPageResults'] = attemptPages;
+    story['attemptInProgress'] = true;
+    story['updatedAt'] = FieldValue.serverTimestamp();
+    story.putIfAbsent('completed', () => false);
+    level['storyReading'] = story;
+    level['updatedAt'] = FieldValue.serverTimestamp();
+    progress[levelKey] = level;
+
+    // Replace the story map instead of deeply merging it. This prevents
+    // deprecated Firestore keys from returning after migration.
+    await childRef.update({
+      'readingProgress.$levelKey.storyReading': story,
+      'readingProgress.$levelKey.updatedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    debugPrint('✅ Page ${pageIndex + 1} result saved to Firestore');
+    });
+    debugPrint('Saved latest Page ${pageIndex + 1} AND best page separately');
   }
 
   // ==========================================================
@@ -875,39 +949,28 @@ class _BookReaderPageState extends State<BookReaderPage> {
       final Map<String, dynamic> result = Map<String, dynamic>.from(decoded);
 
       if (!mounted) return;
-      // Compare the new score with the previous best score.
-      final Map<String, dynamic>? previousBest = _assessmentByPage[pageIndex];
-      final double newScore = (result['page_score'] as num?)?.toDouble() ?? 0.0;
-      final double previousScore =
+      // New attempt is always displayed and always participates in the
+      // CURRENT book score, even when it is below a previous best.
+      final previousBest = _assessmentByPage[pageIndex];
+      final newScore = (result['page_score'] as num).toDouble();
+      final previousScore =
           (previousBest?['page_score'] as num?)?.toDouble() ?? -1.0;
-
-      // Only update if the new score is higher.
-      final bool improved = previousBest == null || newScore > previousScore;
-      final Map<String, dynamic> bestResult = improved ? result : previousBest;
+      final improved = previousBest == null || newScore > previousScore;
 
       setState(() {
-        // Show the exact CURRENT recording's score and recognized words,
-        // even if this attempt scored lower than an earlier recording.
         _latestAssessmentByPage[pageIndex] = result;
-        // Only the highest-scoring attempt counts for progress and Firestore.
-        _assessmentByPage[pageIndex] = bestResult;
-        if (improved) {
-          _savedPages.remove(pageIndex);
-        }
+        _currentAttemptByPage[pageIndex] = result;
+        if (improved) _assessmentByPage[pageIndex] = result;
+        _savedPages.remove(pageIndex);
       });
 
       try {
-        if (improved || !_savedPages.contains(pageIndex)) {
-          await _savePageResult(pageIndex: pageIndex, result: bestResult);
-        }
-
-        if (mounted) {
-          setState(() {
-            _savedPages.add(pageIndex);
-          });
-        }
+        // Persist a lower current attempt too; it must not disappear from
+        // Firestore just because the child scored higher before.
+        await _savePageResult(pageIndex: pageIndex, result: result);
+        if (mounted) setState(() => _savedPages.add(pageIndex));
       } catch (e) {
-        debugPrint('❌ Failed to save Page ${pageIndex + 1}: $e');
+        debugPrint('Failed to save latest Page ${pageIndex + 1}: $e');
       }
 
       if (!mounted) return;
@@ -1015,14 +1078,29 @@ class _BookReaderPageState extends State<BookReaderPage> {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  Map<String, dynamic>? _calculateBookResult(int totalPages) {
-    // Make sure every page has been analyzed.
-    for (int i = 0; i < totalPages; i++) {
-      if (!_assessmentByPage.containsKey(i)) {
-        return null;
-      }
+  // On Finish Book, use this visit's recording for a page if one exists.
+  // Otherwise use the independently saved BEST result for that page.
+  Map<String, dynamic>? _pageUsedForFinish(int index) =>
+      _currentAttemptByPage[index] ?? _assessmentByPage[index];
+
+  bool _hasAllBookPageResults(int totalPages) =>
+      totalPages == 3 &&
+      List.generate(totalPages, (index) {
+        final page = _pageUsedForFinish(index);
+        return page != null &&
+            page['earned_points'] is num &&
+            page['available_points'] is num &&
+            (page['available_points'] as num) > 0 &&
+            (!_currentAttemptByPage.containsKey(index) ||
+                _savedPages.contains(index));
+      }).every((ready) => ready);
+
+  Future<Map<String, dynamic>> _calculateBookResult(int totalPages) async {
+    if (totalPages != 3) {
+      throw StateError('A book assessment requires exactly three pages.');
     }
 
+    final List<Map<String, dynamic>> pages = [];
     int totalCorrect = 0;
     int totalSubstitutions = 0;
     int totalOmissions = 0;
@@ -1030,52 +1108,64 @@ class _BookReaderPageState extends State<BookReaderPage> {
     int totalExpectedWords = 0;
 
     for (int i = 0; i < totalPages; i++) {
-      final result = _assessmentByPage[i]!;
+      final page = _pageUsedForFinish(i);
+      if (page == null ||
+          page['earned_points'] is! num ||
+          page['available_points'] is! num) {
+        throw StateError('Page ${i + 1} needs a weighted assessment.');
+      }
+      final double available = (page['available_points'] as num).toDouble();
+      final double earned = (page['earned_points'] as num).toDouble();
+      if (available <= 0 || earned < 0 || earned > available) {
+        throw StateError('Invalid weighted points for page ${i + 1}.');
+      }
 
-      final int correct = _resultInt(result, 'correct');
-
-      final int substitutions = _resultInt(result, 'substitutions');
-
-      final int omissions = _resultInt(result, 'omissions');
-
-      final int additions = _resultInt(result, 'additions');
-
+      pages.add({
+        'page_number': i + 1,
+        'earned_points': earned,
+        'available_points': available,
+      });
+      final correct = _resultInt(page, 'correct');
+      final substitutions = _resultInt(page, 'substitutions');
+      final omissions = _resultInt(page, 'omissions');
       totalCorrect += correct;
-
       totalSubstitutions += substitutions;
-
       totalOmissions += omissions;
-
-      totalAdditions += additions;
-
-      // Expected words =
-      // correct + substituted + omitted.
-      //
-      // Additions are spoken extra words,
-      // so they are errors but they are not
-      // part of the expected story length.
+      totalAdditions += _resultInt(page, 'additions');
       totalExpectedWords += correct + substitutions + omissions;
     }
 
-    final int totalErrors =
-        totalSubstitutions + totalOmissions + totalAdditions;
-
-    double bookScore = 0.0;
-
-    if (totalExpectedWords > 0) {
-      bookScore = 100 * (1 - (totalErrors / totalExpectedWords));
-
-      bookScore = bookScore.clamp(0.0, 100.0);
+    // Let the deployed Python score_book() do the aggregation.
+    final uri = Uri.parse(
+      'https://lexia-asr-100861482313.me-central1.run.app/book-assessment',
+    );
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'pages': pages}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Book scoring failed (${response.statusCode}): ${response.body}');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map || decoded['book_score_percent'] is! num) {
+      throw const FormatException('Invalid book assessment response.');
+    }
+    final bookScore = (decoded['book_score_percent'] as num).toDouble();
+    if (!bookScore.isFinite || bookScore < 0 || bookScore > 100) {
+      throw const FormatException('Invalid book percentage.');
     }
 
     return {
       'book_score': bookScore,
+      'earned_points': decoded['earned_points'],
+      'available_points': decoded['available_points'],
       'correct': totalCorrect,
       'substitutions': totalSubstitutions,
       'omissions': totalOmissions,
       'additions': totalAdditions,
       'expected_words': totalExpectedWords,
-      'total_errors': totalErrors,
+      'total_errors': totalSubstitutions + totalOmissions + totalAdditions,
     };
   }
 
@@ -1113,97 +1203,108 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final int oldCompletedCount =
         ((oldStoryReading['completedCount'] as num?)?.toInt() ?? 0);
 
-    final double oldBestScore =
-        ((oldStoryReading['bestScore'] as num?)?.toDouble() ?? 0.0);
+    // A historical unweighted best score must not be compared with weighted_v1.
+    final bool sameScoringVersion =
+        oldStoryReading['scoringVersion'] == 'weighted_v1';
+    final double oldBestScore = sameScoringVersion
+        ? ((oldStoryReading['bestScore'] as num?)?.toDouble() ?? 0.0)
+        : 0.0;
 
     final double currentScore = (result['book_score'] as num).toDouble();
 
-    final bool isNewBest = currentScore > oldBestScore;
+    // The first completed weighted book is a new baseline, even if it is 0%.
+    final bool isNewBest = !sameScoringVersion ||
+        oldStoryReading['bestScore'] is! num ||
+        currentScore > oldBestScore;
 
     final double bestScore = isNewBest ? currentScore : oldBestScore;
 
-    final Map<String, dynamic> currentAttemptPages = {};
+    // Keep only the fields needed for scoring and progress. Old redundant
+    // snapshots and counters are intentionally excluded during migration.
+    final Map<String, dynamic> updatedStoryReading = {};
 
-    for (int i = 0; i < totalPages; i++) {
-      final Map<String, dynamic> page = _assessmentByPage[i]!;
-
-      currentAttemptPages['page_${i + 1}'] = {
-        'pageScore': page['page_score'],
-        'correct': page['correct'],
-        'substitutions': page['substitutions'],
-        'omissions': page['omissions'],
-        'additions': page['additions'],
-        'expectedText': page['expected_text'],
-        'recognizedText': page['recognized_text'],
-        'alignment': page['alignment'],
-        'savedAt': FieldValue.serverTimestamp(),
-      };
+    if (!sameScoringVersion && oldStoryReading['bestScore'] is num) {
+      updatedStoryReading['legacyBestScore'] = oldStoryReading['bestScore'];
     }
-
-    // Start by preserving everything that already exists.
-    final Map<String, dynamic> updatedStoryReading = Map<String, dynamic>.from(
-      oldStoryReading,
-    );
-
     updatedStoryReading['completed'] = true;
+    updatedStoryReading['scoringVersion'] = 'weighted_v1';
+    // Always save the latest completed score; bestScore is never reduced.
+    updatedStoryReading['lastScore'] = double.parse(
+      currentScore.toStringAsFixed(2),
+    );
     updatedStoryReading['completedCount'] = oldCompletedCount + 1;
     updatedStoryReading['bookId'] = widget.bookId;
     updatedStoryReading['bookTitle'] = widget.title;
     updatedStoryReading['bestScore'] = double.parse(
       bestScore.toStringAsFixed(2),
     );
-    updatedStoryReading['totalPages'] = totalPages;
     updatedStoryReading['lastCompletedAt'] = FieldValue.serverTimestamp();
     updatedStoryReading['updatedAt'] = FieldValue.serverTimestamp();
 
-    if (isNewBest) {
-      // Only replace the main saved result when this attempt is better.
-      updatedStoryReading['lastScore'] = double.parse(
-        currentScore.toStringAsFixed(2),
-      );
-      updatedStoryReading['correct'] = result['correct'];
-      updatedStoryReading['substitutions'] = result['substitutions'];
-      updatedStoryReading['omissions'] = result['omissions'];
-      updatedStoryReading['additions'] = result['additions'];
-      updatedStoryReading['totalErrors'] = result['total_errors'];
-      updatedStoryReading['totalExpectedWords'] = result['expected_words'];
-      updatedStoryReading['pageResults'] = currentAttemptPages;
-      updatedStoryReading['bestCompletedAt'] = FieldValue.serverTimestamp();
-    }
-
-    // After finishing, use the BEST saved pages as the pages shown next
-    // time the child opens the book. A lower reread never replaces them.
-    final Map<String, dynamic> bestPages = Map<String, dynamic>.from(
-      updatedStoryReading['pageResults'] ?? currentAttemptPages,
+    // Keep independent best pages separate from this completed attempt.
+    // A lower reread must never overwrite a higher individual page record.
+    final bestPageRecords = Map<String, dynamic>.from(
+      oldStoryReading['currentPageResults'] ?? {},
     );
+    for (int i = 0; i < totalPages; i++) {
+      final best = _assessmentByPage[i];
+      if (best == null) continue;
+      final key = 'page_${i + 1}';
+      final old = bestPageRecords[key];
+      final oldScore = old is Map && old['earnedPoints'] is num
+          ? (old['pageScore'] as num?)?.toDouble() ?? -1.0
+          : -1.0;
+      if ((best['page_score'] as num).toDouble() > oldScore) {
+        bestPageRecords[key] = _pageForFirestore(best);
+      }
+    }
+    updatedStoryReading['currentPageResults'] = bestPageRecords;
 
-    updatedStoryReading['currentPageResults'] = bestPages;
+    // Finished attempts need no page snapshot: the latest book percentage
+    // is in lastScore, and best individual pages remain in currentPageResults.
+    // A future recording creates a fresh temporary current attempt.
+    updatedStoryReading['attemptInProgress'] = false;
 
     currentLevelProgress['storyReading'] = updatedStoryReading;
     currentLevelProgress['updatedAt'] = FieldValue.serverTimestamp();
     currentProgress[levelKey] = currentLevelProgress;
 
-    await childRef.set({
-      'readingProgress': currentProgress,
+    // Replace the whole story map so old lastAttempt*/pageResults fields
+    // are actually deleted, rather than left behind by a deep merge.
+    await childRef.update({
+      'readingProgress.$levelKey.storyReading': updatedStoryReading,
+      'readingProgress.$levelKey.updatedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    });
   }
 
+  // Finish Book always uses the current recording when present, or the
+  // best saved page result when that page was not rerecorded this visit.
   Future<void> _finishBook(int totalPages) async {
-    final result = _calculateBookResult(totalPages);
-
-    if (result == null) {
-      return;
-    }
-
-    // Save the completed book result in the selected child's document.
+    if (_isFinishingBook) return;
+    setState(() => _isFinishingBook = true);
+    late final Map<String, dynamic> result;
     try {
-      await _saveReadingProgress(result: result, totalPages: totalPages);
-      debugPrint('✅ Reading progress saved to Firestore');
+      result = await _calculateBookResult(totalPages);
+      // Visiting a completed book without any new recording is just a view:
+      // calculate from the best page results but do not count a new attempt.
+      if (_currentAttemptByPage.isNotEmpty) {
+        await _saveReadingProgress(result: result, totalPages: totalPages);
+        debugPrint('✅ Current/mixed weighted book result saved to Firestore');
+      } else {
+        debugPrint('✅ Showing book score from saved best pages');
+      }
+      if (mounted) setState(() => _hasCompletedBook = true);
     } catch (e) {
-      debugPrint('❌ Failed to save reading progress: $e');
-
+      debugPrint('❌ Unable to finish book: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not finish book: $e')),
+        );
+      }
       return;
+    } finally {
+      if (mounted) setState(() => _isFinishingBook = false);
     }
 
     if (!mounted) return;
@@ -1230,6 +1331,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
       setState(() {
         _currentPage = 0;
         _recordingsByPage.clear();
+        // Drop on-screen LAST attempts when starting again. The best saved
+        // result is still in _assessmentByPage and will appear until rerecorded.
+        _latestAssessmentByPage.clear();
+        _currentAttemptByPage.clear();
+        _savedPages.clear();
         // Keep the best saved page results available during rereading.
         // New attempts will only replace them when the score improves.
       });
@@ -1345,7 +1451,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
                           _recordingsByPage.containsKey(safeCurrentPage) ||
                           assessment != null;
 
-                      final bool currentPageAssessed = assessment != null;
+                      final bool currentPageAssessed =
+                          _currentAttemptByPage.containsKey(safeCurrentPage);
                       final bool currentPageSaved = _savedPages.contains(
                         safeCurrentPage,
                       );
@@ -1353,12 +1460,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
                       final bool isLastPage =
                           safeCurrentPage == pages.length - 1;
 
-                      final bool allPagesReady = List.generate(
-                        pages.length,
-                        (index) =>
-                            _assessmentByPage.containsKey(index) &&
-                            _savedPages.contains(index),
-                      ).every((value) => value);
+                      final bool allPagesReady =
+                          _hasAllBookPageResults(pages.length);
 
                       return Stack(
                         children: [
@@ -1526,47 +1629,48 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    // BACK
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed:
-                                            safeCurrentPage == 0 ||
-                                                _isRecording ||
-                                                _isAnalyzing
-                                            ? null
-                                            : () {
-                                                setState(() {
-                                                  _currentPage =
-                                                      safeCurrentPage - 1;
-                                                });
-                                              },
-
-                                        icon: const Icon(
-                                          Icons.arrow_back_rounded,
-                                        ),
-
-                                        label: const Text('Back'),
-
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor:
-                                              ReadingPage.primaryGreen,
-                                          side: BorderSide(
-                                            color: ReadingPage.primaryGreen
-                                                .withOpacity(0.45),
+                                    // There is no previous story page on Page 1.
+                                    if (safeCurrentPage > 0) ...[
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: _isRecording ||
+                                                  _isAnalyzing ||
+                                                  _isFinishingBook
+                                              ? null
+                                              : () {
+                                                  setState(() {
+                                                    _currentPage =
+                                                        safeCurrentPage - 1;
+                                                  });
+                                                },
+                                          icon: const Icon(
+                                            Icons.arrow_back_rounded,
                                           ),
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: R.space(13),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              R.radius(18),
+                                          label: const Text('Back'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor:
+                                                ReadingPage.primaryGreen,
+                                            side: BorderSide(
+                                              color: ReadingPage.primaryGreen
+                                                  .withOpacity(0.45),
+                                            ),
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: R.space(13),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(
+                                                R.radius(18),
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-
-                                    SizedBox(width: R.space(12)),
+                                      SizedBox(width: R.space(12)),
+                                    ] else ...[
+                                      // Preserve the same half-row width as on later pages.
+                                      const Expanded(child: SizedBox.shrink()),
+                                      SizedBox(width: R.space(12)),
+                                    ],
 
                                     // NEXT / FINISH
                                     Expanded(
@@ -1574,9 +1678,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                         onPressed:
                                             _isRecording ||
                                                 _isAnalyzing ||
-                                                !currentPageAssessed ||
-                                                !currentPageSaved ||
-                                                (isLastPage && !allPagesReady)
+                                                _isFinishingBook ||
+                                                (isLastPage
+                                                    ? !allPagesReady
+                                                    : (!_hasCompletedBook &&
+                                                        (!currentPageAssessed ||
+                                                            !currentPageSaved)))
                                             ? null
                                             : isLastPage
                                             ? () => _finishBook(pages.length)

@@ -1,0 +1,427 @@
+{
+  "a": {
+    "total_score": 1,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "all": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "at": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "begin": {
+    "total_score": 8,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "brings": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "can": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "chocolate": {
+    "total_score": 13,
+    "difficulty": "Hard",
+    "weight": 2.0
+  },
+  "comes": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "cookie": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "cow": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "ellie": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "fairy": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "falls": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "family": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "fire": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "flies": {
+    "total_score": 8,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "fly": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "frog": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "funny": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "gives": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "glow": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "green": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "has": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "hat": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "he": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "her": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "high": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "him": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "his": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "home": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "hot": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "hug": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "in": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "is": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "it": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "kim": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "kit": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "kitchen": {
+    "total_score": 13,
+    "difficulty": "Hard",
+    "weight": 2.0
+  },
+  "laughs": {
+    "total_score": 8,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "leaf": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "leo": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "lifts": {
+    "total_score": 8,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "magic": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "makes": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "man": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "mo": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "mom": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "moon": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "nana": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "near": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "nina": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "on": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "out": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "over": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "rain": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "runs": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "sees": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "she": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "shelf": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "silver": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "sings": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "sister": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "sits": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "smiles": {
+    "total_score": 8,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "so": {
+    "total_score": 2,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "spots": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "stays": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "story": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "sun": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "tells": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "the": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "then": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "tiny": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "to": {
+    "total_score": 3,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "town": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "very": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "wakes": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "warm": {
+    "total_score": 4,
+    "difficulty": "Easy",
+    "weight": 1.0
+  },
+  "water": {
+    "total_score": 7,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "waves": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "wears": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "while": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "whole": {
+    "total_score": 9,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "wings": {
+    "total_score": 6,
+    "difficulty": "Medium",
+    "weight": 1.5
+  },
+  "with": {
+    "total_score": 5,
+    "difficulty": "Easy",
+    "weight": 1.0
+  }
+}

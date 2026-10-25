@@ -4,6 +4,10 @@ import tempfile
 
 import librosa
 import torch
+from lexia_reading_scoring import (
+    score_page as weighted_score_page,
+    score_book,
+)
 
 from flask import Flask, request, jsonify
 from transformers import (
@@ -320,113 +324,6 @@ def align_words(
 
 
 # ============================================================
-# PAGE SCORE
-# ============================================================
-
-def score_page(
-    expected_text,
-    recognized_text,
-):
-
-    alignment = align_words(
-        expected_text,
-        recognized_text,
-    )
-
-
-    # --------------------------------------------------------
-    # COUNT WORD TYPES
-    # --------------------------------------------------------
-
-    correct = sum(
-        x["type"] == "correct"
-        for x in alignment
-    )
-
-    substitutions = sum(
-        x["type"] == "substitution"
-        for x in alignment
-    )
-
-    omissions = sum(
-        x["type"] == "omission"
-        for x in alignment
-    )
-
-    additions = sum(
-        x["type"] == "addition"
-        for x in alignment
-    )
-
-
-    expected_words = len(
-        normalize_text(
-            expected_text
-        ).split()
-    )
-
-
-    errors = (
-        substitutions
-        + omissions
-        + additions
-    )
-
-
-    # --------------------------------------------------------
-    # SCORE
-    # --------------------------------------------------------
-
-    if expected_words > 0:
-
-        score = (
-            1
-            - errors / expected_words
-        ) * 100
-
-    else:
-
-        score = 0
-
-
-    # Keep score between 0 and 100.
-    score = max(
-        0,
-        min(
-            100,
-            score,
-        ),
-    )
-
-
-    return {
-        "score":
-            round(
-                score,
-                2,
-            ),
-
-        "correct":
-            correct,
-
-        "substitutions":
-            substitutions,
-
-        "omissions":
-            omissions,
-
-        "additions":
-            additions,
-
-        "expected_words":
-            expected_words,
-
-        "alignment":
-            alignment,
-    }
-
-
-# ============================================================
 # TRANSCRIBE AUDIO
 # ============================================================
 
@@ -590,26 +487,65 @@ def reading_assessment():
             recognized_text,
         )
 
-
         # ----------------------------------------------------
-        # READING ASSESSMENT
+        # NEW WEIGHTED READING ASSESSMENT
         # ----------------------------------------------------
 
-        result = score_page(
-            expected_text,
-            recognized_text,
+        result = weighted_score_page(
+            reference_text=expected_text,
+            recognized_text=recognized_text,
+            insertion_penalty=0.5,
+            ignore_immediate_repetitions=True,
         )
 
+        page_score = result["page_score_percent"]
 
         print(
-            "Score:",
-            result["score"],
+            "New Weighted Page Score:",
+            page_score,
         )
 
+        print(
+            "Reading Errors:",
+            result["counts"],
+        )
 
-        # ----------------------------------------------------
+        print(
+            "Ignored Repetitions:",
+            result["ignored_immediate_repetitions"],
+        )
+
+               # ----------------------------------------------------
         # SEND RESULT TO FLUTTER
         # ----------------------------------------------------
+
+        counts = result["counts"]
+
+        alignment = []
+
+        for item in result["alignment"]:
+
+            operation = item["operation"]
+
+            # Repeated words are ignored
+            if operation == "repetition":
+                continue
+
+            # Convert new names to Flutter's old names
+            if operation == "deletion":
+                operation = "omission"
+
+            elif operation == "insertion":
+                operation = "addition"
+
+            alignment.append({
+                "type": operation,
+                "expected": item["expected"],
+                "recognized": item["recognized"],
+                "difficulty": item["difficulty"],
+                "weight": item["weight"],
+                "earned": item["earned"],
+            })
 
         return jsonify({
 
@@ -620,35 +556,55 @@ def reading_assessment():
                 recognized_text,
 
             "page_score":
-                result["score"],
+                page_score,
 
             "correct":
-                result["correct"],
+                counts["correct"],
 
             "substitutions":
-                result[
-                    "substitutions"
-                ],
+                counts["substitution"],
 
             "omissions":
-                result[
-                    "omissions"
-                ],
+                counts["deletion"],
 
             "additions":
-                result[
-                    "additions"
-                ],
+                counts["insertion"],
 
             "expected_words":
-                result[
-                    "expected_words"
-                ],
+                sum(
+                    counts[key]
+                    for key in (
+                        "correct",
+                        "substitution",
+                        "deletion",
+                    )
+                ),
 
             "alignment":
-                result[
-                    "alignment"
-                ],
+                alignment,
+
+            # Additional weighted scoring information
+
+"weighted_correct_points":
+    result["weighted_correct_points"],
+
+"weighted_total_points":
+    result["weighted_total_points"],
+
+# Final earned points after insertion penalties
+"earned_points":
+    result["earned_points"],
+
+# Maximum available points for this page
+"available_points":
+    result["available_points"],
+
+"insertion_penalty":
+    result["insertion_penalty_per_word"],
+
+"ignored_repetitions":
+    result["ignored_immediate_repetitions"],
+
         })
 
 
@@ -678,6 +634,76 @@ def reading_assessment():
             os.remove(
                 temp_path
             )
+
+
+# ============================================================
+# FINAL BOOK ASSESSMENT API
+# ============================================================
+
+@app.route("/book-assessment", methods=["POST"])
+def book_assessment():
+
+    try:
+        data = request.get_json(silent=True)
+
+        if not isinstance(data, dict):
+            return jsonify({
+                "error": "A JSON object is required."
+            }), 400
+
+        pages = data.get("pages")
+
+        if not isinstance(pages, list) or len(pages) != 3:
+            return jsonify({
+                "error": "Exactly three page results are required."
+            }), 400
+
+        # Require one result for each page: 1, 2, and 3
+        if not all(
+            isinstance(page, dict)
+            and type(page.get("page_number")) is int
+            for page in pages
+        ):
+            return jsonify({
+                "error": "Each page must have a valid page_number."
+            }), 400
+
+        page_numbers = [page["page_number"] for page in pages]
+
+        if sorted(page_numbers) != [1, 2, 3]:
+            return jsonify({
+                "error": "Pages 1, 2, and 3 must each appear once."
+            }), 400
+
+        # Arrange pages in their correct order
+        pages = sorted(
+            pages,
+            key=lambda page: page["page_number"]
+        )
+
+        # Calculate the final book score using the
+        # shared scoring module.
+        result = score_book(pages)
+
+        print(
+            "Final Book Score:",
+            result["book_score_percent"]
+        )
+
+        return jsonify(result), 200
+
+    except (ValueError, TypeError) as e:
+        return jsonify({
+            "error": str(e)
+        }), 400
+
+    except Exception as e:
+        print("Book assessment error:", str(e))
+
+        return jsonify({
+            "error": "Unable to calculate book assessment."
+        }), 500
+
 
 
 # ============================================================

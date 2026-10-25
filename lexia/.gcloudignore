@@ -1,4 +1,7 @@
+
 *
 !asr_server.py
+!lexia_reading_scoring.py
+!word_weights.json
 !requirements.txt
 !Dockerfile

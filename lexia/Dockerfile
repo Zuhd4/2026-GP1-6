@@ -11,6 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY asr_server.py .
+COPY lexia_reading_scoring.py .
+COPY word_weights.json .
 
 ENV PORT=8080
 
