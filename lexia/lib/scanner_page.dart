@@ -198,6 +198,7 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   bool _isProcessing = false;
+  bool _isPreparingDocument = false;
   bool _isSendingToChild = false;
 
   final String _sendingChildName = '';
@@ -719,42 +720,14 @@ class _ScannerPageState extends State<ScannerPage> {
   // DOCUMENT NAMING
   // ============================================================
 
-  Future<String?> _askDocumentName(String suggestedName) async {
-    final controller = TextEditingController(text: suggestedName);
-
+  Future<String?> _askDocumentName(String suggestedName) {
+    if (!mounted) return Future.value(null);
+    R.init(context);
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Name your document'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 60,
-          decoration: const InputDecoration(labelText: 'Document name'),
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              Navigator.pop(dialogContext, value.trim());
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = controller.text.trim();
-
-              if (name.isNotEmpty) {
-                Navigator.pop(dialogContext, name);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) =>
+          _DocumentNameDialog(suggestedName: suggestedName),
     );
   }
 
@@ -862,12 +835,14 @@ class _ScannerPageState extends State<ScannerPage> {
         scannedAt: doc.scannedAt,
         extractedText: doc.extractedText,
       );
+      setState(() => _isPreparingDocument = true);
       try {
         await _saveParentDocument(namedDoc);
       } catch (error, stackTrace) {
         debugPrint('SAVE PARENT DOCUMENT ERROR: $error');
         debugPrintStack(stackTrace: stackTrace);
         if (mounted) {
+          setState(() => _isPreparingDocument = false);
           LexiaPopup.showMessage(
             context: context,
             title: 'Could not save document',
@@ -882,13 +857,14 @@ class _ScannerPageState extends State<ScannerPage> {
       if (!mounted) return;
       setState(() {
         _documents.insert(0, namedDoc);
+        _isPreparingDocument = false;
       });
       // Open Analyzer automatically.
       _openResult(namedDoc);
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => _isProcessing = false);
+      setState(() { _isProcessing = false; _isPreparingDocument = false; });
 
       LexiaPopup.showMessage(
         context: context,
@@ -1046,193 +1022,246 @@ class _ScannerPageState extends State<ScannerPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ivoryWhite, paleBlush, softCream, Colors.white],
-            stops: [0.0, 0.4, 0.7, 1.0],
-          ),
-        ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(
-            horizontalPad,
-            topMargin,
-            horizontalPad,
-            bottomMargin,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Books',
-                style: GoogleFonts.montserrat(
-                  fontSize: R.text(21),
-                  fontWeight: FontWeight.w500,
-                  color: textDark.withOpacity(0.9),
-                ),
+      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+                stops: [0.0, 0.4, 0.7, 1.0],
               ),
-
-              SizedBox(height: R.space(2)),
-
-              Text(
-                'Scan or upload any text image',
-                style: GoogleFonts.montserrat(
-                  fontSize: R.text(12),
-                  color: Colors.black45,
-                  fontWeight: FontWeight.w400,
-                ),
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPad,
+                topMargin,
+                horizontalPad,
+                bottomMargin,
               ),
-
-              SizedBox(height: R.space(28)),
-
-              // ==================================================
-              // SCAN / UPLOAD CARD
-              // ==================================================
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(R.radius(22)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.025),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Books',
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(21),
+                      fontWeight: FontWeight.w500,
+                      color: textDark.withOpacity(0.9),
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: R.space(14),
-                        vertical: R.space(24),
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFBF8FF), Color(0xFFF5FAFF)],
+                  ),
+
+                  SizedBox(height: R.space(2)),
+
+                  Text(
+                    'Scan or upload any text image',
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(12),
+                      color: Colors.black45,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+
+                  SizedBox(height: R.space(28)),
+
+                  // ==================================================
+                  // SCAN / UPLOAD CARD
+                  // ==================================================
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(R.radius(22)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.025),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(R.radius(22)),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: R.icon(62),
-                            height: R.icon(62),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: _isProcessing
-                                ? Padding(
-                                    padding: EdgeInsets.all(R.space(18)),
-                                    child: const CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: primaryPurple,
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.document_scanner_rounded,
-                                    color: primaryPurple,
-                                    size: R.icon(30),
-                                  ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: R.space(14),
+                            vertical: R.space(24),
                           ),
-                          SizedBox(width: R.space(14)),
-                          Expanded(
-                            child: Text(
-                              _isProcessing
-                                  ? 'Reading your\npage…'
-                                  : 'Scan or upload\nan image',
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFBF8FF), Color(0xFFF5FAFF)],
+                            ),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(R.radius(22)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: R.icon(62),
+                                height: R.icon(62),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: _isProcessing
+                                    ? Padding(
+                                        padding: EdgeInsets.all(R.space(18)),
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: primaryPurple,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.document_scanner_rounded,
+                                        color: primaryPurple,
+                                        size: R.icon(30),
+                                      ),
+                              ),
+                              SizedBox(width: R.space(14)),
+                              Expanded(
+                                child: Text(
+                                  _isProcessing
+                                      ? 'Reading your\npage…'
+                                      : 'Scan or upload\nan image',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: R.text(18),
+                                    fontWeight: FontWeight.w500,
+                                    color: textDark,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Padding(
+                          padding: EdgeInsets.all(R.space(14)),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _btn(
+                                  context,
+                                  'Scan',
+                                  Icons.camera_alt_rounded,
+                                  () => _pickImage(ImageSource.camera),
+                                ),
+                              ),
+                              SizedBox(width: R.space(12)),
+                              Expanded(
+                                child: _btn(
+                                  context,
+                                  'Upload',
+                                  Icons.file_upload_outlined,
+                                  () => _pickImage(ImageSource.gallery),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: R.space(32)),
+
+                  // ==================================================
+                  // DOCUMENTS
+                  // ==================================================
+                  Text(
+                    'Documents',
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(21),
+                      fontWeight: FontWeight.w500,
+                      color: textDark.withOpacity(0.9),
+                    ),
+                  ),
+
+                  SizedBox(height: R.space(2)),
+
+                  Text(
+                    'Send a scanned page to your child or somewhere else',
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(12),
+                      color: Colors.black45,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+
+                  SizedBox(height: R.space(16)),
+
+                  _isLoadingDocuments
+                      ? const Center(
+                          child: CircularProgressIndicator(color: primaryPurple),
+                        )
+                      : _documents.isEmpty
+                      ? _emptyDocumentsState()
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _documents.length,
+                          separatorBuilder: (_, _) => SizedBox(height: R.space(10)),
+                          itemBuilder: (context, index) =>
+                              _documentTile(_documents[index]),
+                        ),
+                ],
+              ),
+            ),
+          ),
+          if (_isPreparingDocument)
+            Positioned.fill(
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: ModalBarrier(dismissible: false, color: Colors.black45),
+                  ),
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: R.space(24)),
+                      child: Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          maxWidth: R.maxContentWidth < 420 ? R.maxContentWidth : 420,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: R.space(24), vertical: R.space(28),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(R.radius(24)),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(color: primaryPurple),
+                            SizedBox(height: R.space(20)),
+                            Text('Preparing document',
+                              textAlign: TextAlign.center,
                               style: GoogleFonts.montserrat(
-                                fontSize: R.text(18),
-                                fontWeight: FontWeight.w500,
+                                fontSize: R.text(20), fontWeight: FontWeight.w500,
                                 color: textDark,
                               ),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: R.space(8)),
+                            Text('Saving your scan before analyzing the text...',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.montserrat(
+                                fontSize: R.text(12), color: Colors.black45,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-
-                    Padding(
-                      padding: EdgeInsets.all(R.space(14)),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _btn(
-                              context,
-                              'Scan',
-                              Icons.camera_alt_rounded,
-                              () => _pickImage(ImageSource.camera),
-                            ),
-                          ),
-                          SizedBox(width: R.space(12)),
-                          Expanded(
-                            child: _btn(
-                              context,
-                              'Upload',
-                              Icons.file_upload_outlined,
-                              () => _pickImage(ImageSource.gallery),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-
-              SizedBox(height: R.space(32)),
-
-              // ==================================================
-              // DOCUMENTS
-              // ==================================================
-              Text(
-                'Documents',
-                style: GoogleFonts.montserrat(
-                  fontSize: R.text(21),
-                  fontWeight: FontWeight.w500,
-                  color: textDark.withOpacity(0.9),
-                ),
-              ),
-
-              SizedBox(height: R.space(2)),
-
-              Text(
-                'Send a scanned page to your child or somewhere else',
-                style: GoogleFonts.montserrat(
-                  fontSize: R.text(12),
-                  color: Colors.black45,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-
-              SizedBox(height: R.space(16)),
-
-              _isLoadingDocuments
-                  ? const Center(
-                      child: CircularProgressIndicator(color: primaryPurple),
-                    )
-                  : _documents.isEmpty
-                  ? _emptyDocumentsState()
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _documents.length,
-                      separatorBuilder: (_, _) => SizedBox(height: R.space(10)),
-                      itemBuilder: (context, index) =>
-                          _documentTile(_documents[index]),
-                    ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -1407,6 +1436,185 @@ class _ScannerPageState extends State<ScannerPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(R.radius(16)),
             side: BorderSide(color: Colors.black.withOpacity(0.05)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// DOCUMENT NAME DIALOG
+// ============================================================
+
+class _DocumentNameDialog extends StatefulWidget {
+  final String suggestedName;
+  const _DocumentNameDialog({required this.suggestedName});
+
+  @override
+  State<_DocumentNameDialog> createState() => _DocumentNameDialogState();
+}
+
+class _DocumentNameDialogState extends State<_DocumentNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.suggestedName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onSave() {
+    final name = _controller.text.trim();
+    if (name.isNotEmpty) {
+      Navigator.pop(context, name);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // To match the responsive logic, use R static from outer context
+    return MediaQuery(
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1.0)),
+      child: Dialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: R.space(16),
+          vertical: R.space(24),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(R.radius(24)),
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: R.maxContentWidth < 420 ? R.maxContentWidth : 420,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.all(R.space(22)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Removed icon and SizedBox(height: R.space(16)),
+                  Text(
+                    'Name your document',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(20),
+                      fontWeight: FontWeight.w500,
+                      color: _ScannerPageState.textDark,
+                    ),
+                  ),
+                  SizedBox(height: R.space(8)),
+                  Text(
+                    'Enter a name for your document',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(12),
+                      color: Colors.black45,
+                      height: 1.35,
+                    ),
+                  ),
+                  SizedBox(height: R.space(20)),
+                  TextField(
+                    controller: _controller,
+                    autofocus: true,
+                    maxLength: 60,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(13),
+                      color: _ScannerPageState.textDark,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Document name',
+                      hintStyle: GoogleFonts.montserrat(
+                        fontSize: R.text(14),
+                        color: Colors.black45,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF1F2F6),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(R.radius(18)),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(R.radius(18)),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(R.radius(18)),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: R.space(20),
+                        vertical: R.space(20),
+                      ),
+                    ),
+                    onSubmitted: (value) {
+                      final name = value.trim();
+                      if (name.isNotEmpty) {
+                        Navigator.pop(context, name);
+                      }
+                    },
+                  ),
+                  SizedBox(height: R.space(20)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.montserrat(
+                              fontSize: R.text(12),
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black38,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: R.space(10)),
+                      Expanded(
+                        child: SizedBox(
+                          height: R.buttonH(52),
+                          child: ElevatedButton(
+                            onPressed: _onSave,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _ScannerPageState.primaryPurple,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  R.radius(18),
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'Save',
+                              style: GoogleFonts.montserrat(
+                                fontSize: R.text(12),
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

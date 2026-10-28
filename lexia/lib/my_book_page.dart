@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'app_typography.dart';
 import 'responsive_helper.dart';
@@ -142,6 +144,16 @@ class MyBookPage extends StatelessWidget {
                       return Column(
                         children: docs.map((docSnap) {
                           final data = docSnap.data();
+                          final String? coverUrl =
+                              (data['coverUrl'] as String?) ??
+                              (data['thumbnailUrl'] as String?) ??
+                              (data['imageUrl'] as String?);
+                          final String? coverStoragePath =
+                              (data['imageStoragePath'] as String?) ??
+                              (data['coverStoragePath'] as String?) ??
+                              (data['thumbnailStoragePath'] as String?) ??
+                              (data['parentStoragePath'] as String?) ??
+                              (data['storagePath'] as String?);
                           final String name =
                               (data['name'] as String?)?.trim().isNotEmpty ==
                                   true
@@ -195,26 +207,11 @@ class MyBookPage extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  Container(
-                                    width: R.icon(58),
-                                    height: R.icon(58),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFFE8E4F8,
-                                      ).withOpacity(0.75),
-                                      borderRadius: BorderRadius.circular(
-                                        R.radius(16),
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.description_rounded,
-                                      size: R.icon(30),
-                                      color: primaryPurple.withOpacity(0.75),
-                                    ),
+                                  _DocumentCover(
+                                    url: coverUrl,
+                                    storagePath: coverStoragePath,
                                   ),
-
                                   SizedBox(width: R.space(12)),
-
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -241,7 +238,6 @@ class MyBookPage extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-
                                   Icon(
                                     Icons.chevron_right_rounded,
                                     size: R.icon(22),
@@ -279,11 +275,11 @@ class _DocumentReaderPage extends StatelessWidget {
   final Map<String, String> difficultyByWord;
   static final RegExp _wordPattern = RegExp(r"[A-Za-z]+(?:['’][A-Za-z]+)?");
 
-  List<TextSpan> _highlightedSpans() {
+  List<InlineSpan> _highlightedSpans() {
     if (extractedText.trim().isEmpty) {
       return [const TextSpan(text: 'No text was detected in this document.')];
     }
-    final spans = <TextSpan>[];
+    final spans = <InlineSpan>[];
     var end = 0;
     for (final match in _wordPattern.allMatches(extractedText)) {
       if (match.start > end) {
@@ -295,16 +291,40 @@ class _DocumentReaderPage extends StatelessWidget {
       final Color? highlight = difficulty == 'medium'
           ? const Color(0xFFFFF176)
           : difficulty == 'hard'
-          ? const Color(0xFFFFB74D)
-          : null;
-      spans.add(
-        TextSpan(
-          text: word,
-          style: highlight == null
-              ? null
-              : TextStyle(backgroundColor: highlight),
-        ),
-      );
+              ? const Color(0xFFFFB74D)
+              : null;
+      if (highlight == null) {
+        spans.add(TextSpan(text: word));
+      } else {
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(
+              margin: EdgeInsets.symmetric(
+                horizontal: R.space(2),
+                vertical: R.space(3),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: R.space(9),
+                vertical: R.space(6),
+              ),
+              decoration: BoxDecoration(
+                color: highlight,
+                borderRadius: BorderRadius.circular(R.radius(11)),
+              ),
+              child: Text(
+                word,
+                style: GoogleFonts.montserrat(
+                  fontSize: R.text(15),
+                  fontWeight: FontWeight.w600,
+                  color: MyBookPage.textDark,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
       end = match.end;
     }
     if (end < extractedText.length) {
@@ -356,7 +376,12 @@ class _DocumentReaderPage extends StatelessWidget {
             stops: [0.0, 0.4, 0.7, 1.0],
           ),
         ),
-        padding: EdgeInsets.fromLTRB(R.pagePad, R.space(20), R.pagePad, R.pagePad),
+        padding: EdgeInsets.fromLTRB(
+          R.pagePad,
+          R.space(20),
+          R.pagePad,
+          R.pagePad,
+        ),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
@@ -398,10 +423,10 @@ class _DocumentReaderPage extends StatelessWidget {
               SizedBox(height: R.space(14)),
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(R.space(16)),
+                padding: EdgeInsets.all(R.space(18)),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(R.radius(20)),
+                  borderRadius: BorderRadius.circular(R.radius(22)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -410,13 +435,12 @@ class _DocumentReaderPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: SelectableText.rich(
+                child: Text.rich(
                   TextSpan(
-                    style: AppTypography.getStyle(
-                      useOpenDyslexic: useOpenDyslexic,
-                      fontSize: R.text(14),
-                      color: MyBookPage.textDark.withOpacity(0.9),
-                      height: 1.5,
+                    style: GoogleFonts.montserrat(
+                      fontSize: R.text(15),
+                      height: 1.6,
+                      color: MyBookPage.textDark,
                     ),
                     children: _highlightedSpans(),
                   ),
@@ -426,6 +450,63 @@ class _DocumentReaderPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DocumentCover extends StatelessWidget {
+  const _DocumentCover({this.url, this.storagePath});
+
+  final String? url;
+  final String? storagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      color: const Color(0xFFE8E4F8),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.description_rounded,
+        size: R.icon(30),
+        color: MyBookPage.primaryPurple.withOpacity(0.75),
+      ),
+    );
+
+    Widget image(String imageUrl) => Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('MyBook cover image failed to load: $error');
+        return fallback;
+      },
+    );
+
+    Widget content;
+    if (url != null && url!.trim().isNotEmpty) {
+      content = image(url!);
+    } else if (storagePath != null && storagePath!.trim().isNotEmpty) {
+      content = FutureBuilder<String>(
+        future: FirebaseStorage.instance.ref(storagePath!).getDownloadURL(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            debugPrint('MyBook cover Storage URL failed: ${snapshot.error}');
+          }
+          if (snapshot.hasData) return image(snapshot.data!);
+          return fallback;
+        },
+      );
+    } else {
+      debugPrint(
+        'MyBook cover missing: shared document has no image URL or image Storage path',
+      );
+      content = fallback;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(R.radius(12)),
+      child: SizedBox(width: R.icon(58), height: R.icon(58), child: content),
     );
   }
 }

@@ -125,9 +125,9 @@ class _ScanResultPageState extends State<ScanResultPage> {
     return null;
   }
 
-  List<TextSpan> _highlightedSpans() {
+  List<InlineSpan> _highlightedSpans() {
     final text = widget.extractedText;
-    final spans = <TextSpan>[];
+    final spans = <InlineSpan>[];
     var lastEnd = 0;
     for (final match in _wordPattern.allMatches(text)) {
       if (match.start > lastEnd) {
@@ -141,12 +141,35 @@ class _ScanResultPageState extends State<ScanResultPage> {
           : difficulty == 'hard'
               ? hardHighlight
               : null;
-      spans.add(TextSpan(
-        text: originalWord,
-        style: highlight == null
-            ? null
-            : TextStyle(backgroundColor: highlight),
-      ));
+      if (highlight == null) {
+        spans.add(TextSpan(text: originalWord));
+      } else {
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: R.space(2), vertical: R.space(3)),
+              padding: EdgeInsets.symmetric(
+                horizontal: R.space(9),
+                vertical: R.space(6),
+              ),
+              decoration: BoxDecoration(
+                color: highlight,
+                borderRadius: BorderRadius.circular(R.radius(11)),
+              ),
+              child: Text(
+                originalWord,
+                style: GoogleFonts.montserrat(
+                  fontSize: R.text(15),
+                  fontWeight: FontWeight.w600,
+                  color: textDark,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
       lastEnd = match.end;
     }
     if (lastEnd < text.length) {
@@ -164,6 +187,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: textDark),
+        leading: _isAnalyzing ? const SizedBox.shrink() : null,
         title: Text(
           widget.documentName,
           style: GoogleFonts.montserrat(
@@ -174,103 +198,152 @@ class _ScanResultPageState extends State<ScanResultPage> {
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ivoryWhite, paleBlush, softCream, Colors.white],
-            stops: [0.0, 0.4, 0.7, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              R.pagePad,
-              R.space(16),
-              R.pagePad,
-              R.space(40),
+      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+                stops: [0.0, 0.4, 0.7, 1.0],
+              ),
             ),
-            child: widget.extractedText.trim().isEmpty
-                ? _emptyState()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_isAnalyzing) ...[
-                        Row(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  R.pagePad,
+                  R.space(16),
+                  R.pagePad,
+                  R.space(40),
+                ),
+                child: widget.extractedText.trim().isEmpty
+                    ? _emptyState()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!_isAnalyzing && _failedCount > 0) ...[
+                            TextButton.icon(
+                              onPressed: _analyzeExtractedText,
+                              icon: const Icon(Icons.refresh),
+                              label: Text(
+                                '$_failedCount words could not be analyzed. Retry',
+                              ),
+                            ),
+                            SizedBox(height: R.space(10)),
+                          ],
+                          Row(
+                            children: [
+                              _legendItem('Medium', mediumHighlight),
+                              SizedBox(width: R.space(16)),
+                              _legendItem('Hard', hardHighlight),
+                            ],
+                          ),
+                          SizedBox(height: R.space(12)),
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(R.space(18)),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(R.radius(22)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.025),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Text.rich(
+                              TextSpan(
+                                style: GoogleFonts.montserrat(
+                                  fontSize: R.text(15),
+                                  height: 1.6,
+                                  color: textDark,
+                                ),
+                                children: _highlightedSpans(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+          if (_isAnalyzing)
+            Positioned.fill(
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: ModalBarrier(
+                      dismissible: false,
+                      color: Colors.black45,
+                    ),
+                  ),
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: R.space(25)),
+                      child: Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          maxWidth: R.maxContentWidth < 420
+                              ? R.maxContentWidth
+                              : 420,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: R.space(24),
+                          vertical: R.space(28),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(R.radius(24)),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const SizedBox(
-                              width: 17,
-                              height: 17,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                            const CircularProgressIndicator(
+                              color: primaryPurple,
+                              strokeWidth: 3,
+                            ),
+                            SizedBox(height: R.space(20)),
+                            Text(
+                              'Analyzing text',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.montserrat(
+                                fontSize: R.text(20),
+                                fontWeight: FontWeight.w500,
+                                color: textDark,
+                              ),
+                            ),
+                            SizedBox(height: R.space(8)),
+                            Text(
+                              'Lexia is checking word difficulty...',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.montserrat(
+                                fontSize: R.text(12),
+                                color: Colors.black45,
+                              ),
+                            ),
+                            SizedBox(height: R.space(16)),
+                            Text(
+                              '$_analyzedCount / $_totalUniqueWords words',
+                              style: GoogleFonts.montserrat(
+                                fontSize: R.text(12),
                                 color: primaryPurple,
                               ),
                             ),
-                            SizedBox(width: R.space(10)),
-                            Expanded(
-                              child: Text(
-                                'Analyzing words ($_analyzedCount/$_totalUniqueWords)...',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: R.text(12),
-                                  color: textDark,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
-                        SizedBox(height: R.space(12)),
-                      ],
-                      if (!_isAnalyzing && _failedCount > 0) ...[
-                        TextButton.icon(
-                          onPressed: _analyzeExtractedText,
-                          icon: const Icon(Icons.refresh),
-                          label: Text(
-                            '$_failedCount words could not be analyzed. Retry',
-                          ),
-                        ),
-                        SizedBox(height: R.space(10)),
-                      ],
-                      Row(
-                        children: [
-                          _legendItem('Medium', mediumHighlight),
-                          SizedBox(width: R.space(16)),
-                          _legendItem('Hard', hardHighlight),
-                        ],
                       ),
-                      SizedBox(height: R.space(12)),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(R.space(18)),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(R.radius(22)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.025),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: SelectableText.rich(
-                          TextSpan(
-                            style: GoogleFonts.montserrat(
-                              fontSize: R.text(15),
-                              height: 1.6,
-                              color: textDark,
-                            ),
-                            children: _highlightedSpans(),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-          ),
-        ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
