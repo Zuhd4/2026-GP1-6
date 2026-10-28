@@ -1,4 +1,8 @@
 import 'dart:io';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -52,6 +56,367 @@ class _ScannerPageState extends State<ScannerPage> {
   );
   final List<_ScannedDocument> _documents = [];
   bool _isProcessing = false;
+  bool _isSendingToChild = false;
+  final double _sendProgress = 0;
+  String _sendingChildName = '';
+
+  Future<void> _showSendProgressDialog() {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, refreshDialog) {
+          // Rebuild this dialog when the upload stream reports progress.
+          return PopScope(
+            canPop: false,
+            child: AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: const Color(0xFFFFFDFB),
+              title: const Row(
+                children: [
+                  Icon(Icons.cloud_upload_rounded, color: primaryPurple),
+                  SizedBox(width: 10),
+                  Expanded(child: Text('Sending document')),
+                ],
+              ),
+              content: StreamBuilder<double>(
+                stream: _uploadProgressStream?.stream,
+                initialData: 0,
+                builder: (context, snapshot) {
+                  final progress = (snapshot.data ?? 0).clamp(0.0, 1.0);
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sending to $_sendingChildName',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14,
+                          color: textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 12,
+                          backgroundColor: const Color(0xFFEAE5F7),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            primaryPurple,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '${(progress * 100).round()}%',
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w600,
+                          color: primaryPurple,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  StreamController<double>? _uploadProgressStream;
+
+  Future<void> _sendDocumentToChild(_ScannedDocument doc) async {
+    if (_isSendingToChild) return;
+    final parentId = FirebaseAuth.instance.currentUser?.uid;
+    if (parentId == null) {
+      if (mounted) {
+        LexiaPopup.showMessage(
+          context: context,
+          title: 'Sign in required',
+          message: 'Please sign in as a parent first.',
+          emoji: '🔒',
+          buttonText: 'Okay',
+        );
+      }
+      return;
+    }
+
+    try {
+      final children = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentId)
+          .collection('children')
+          .get();
+      if (!mounted) return;
+      if (children.docs.isEmpty) {
+        LexiaPopup.showMessage(
+          context: context,
+          title: 'No child profiles',
+          message: 'Add a child profile first to send a document.',
+          emoji: '🧒',
+          buttonText: 'Okay',
+        );
+        return;
+      }
+
+      final selectedChildId = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: ivoryWhite,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 26),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEDE8FA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.child_care_rounded,
+                    size: 32,
+                    color: primaryPurple,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Send to child',
+                  style: GoogleFonts.montserrat(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 19,
+                    color: textDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose who will receive “${doc.name}”',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 12,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 320),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: children.docs.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 9),
+                    itemBuilder: (_, index) {
+                      final child = children.docs[index];
+                      final childName = (child.data()['name'] ?? 'Child')
+                          .toString();
+                      return Material(
+                        color: const Color(0xFFF6F2FC),
+                        borderRadius: BorderRadius.circular(15),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(15),
+                          onTap: () => Navigator.pop(dialogContext, child.id),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 13,
+                            ),
+                            child: Row(
+                              children: [
+                                const CircleAvatar(
+                                  backgroundColor: Color(0xFFE6DDF7),
+                                  child: Icon(
+                                    Icons.face_rounded,
+                                    color: primaryPurple,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    childName,
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: textDark,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: primaryPurple,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.montserrat(color: textDark),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (!mounted || selectedChildId == null) return;
+      final child = children.docs.firstWhere(
+        (entry) => entry.id == selectedChildId,
+      );
+      _sendingChildName = (child.data()['name'] ?? 'Child').toString();
+      _uploadProgressStream = StreamController<double>.broadcast();
+      setState(() => _isSendingToChild = true);
+      // Show a modal progress indicator rather than a bottom snackbar.
+      final progressDialog = _showSendProgressDialog();
+
+      try {
+        final destination = FirebaseFirestore.instance
+            .collection('users')
+            .doc(parentId)
+            .collection('children')
+            .doc(selectedChildId)
+            .collection('sharedDocuments')
+            .doc();
+        final path =
+            'users/$parentId/children/$selectedChildId/sharedDocuments/${destination.id}.jpg';
+        final storageRef = FirebaseStorage.instance.ref(path);
+        final upload = storageRef.putFile(doc.file);
+        final subscription = upload.snapshotEvents.listen((snapshot) {
+          if (snapshot.totalBytes > 0 &&
+              !(_uploadProgressStream?.isClosed ?? true)) {
+            _uploadProgressStream?.add(
+              snapshot.bytesTransferred / snapshot.totalBytes,
+            );
+          }
+        });
+        try {
+          await upload;
+        } finally {
+          await subscription.cancel();
+        }
+        _uploadProgressStream?.add(1);
+        try {
+          await destination.set({
+            'name': doc.name,
+            'extractedText': doc.extractedText ?? '',
+            'imageStoragePath': path,
+            'createdAt': FieldValue.serverTimestamp(),
+            'sentBy': parentId,
+          });
+        } catch (_) {
+          try {
+            await storageRef.delete();
+          } catch (_) {}
+          rethrow;
+        }
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+        await progressDialog;
+        if (!mounted) return;
+        LexiaPopup.showMessage(
+          context: context,
+          title: 'Sent successfully!',
+          message: '“${doc.name}” was sent to $_sendingChildName.',
+          emoji: '💌',
+          buttonText: 'Done',
+          buttonColor: primaryGreen,
+        );
+      } catch (error, stackTrace) {
+        debugPrint('SEND DOCUMENT ERROR: $error');
+        debugPrintStack(stackTrace: stackTrace);
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+          await progressDialog;
+          if (mounted) {
+            final String explanation;
+            if (error is FirebaseException && error.code == 'permission-denied') {
+              explanation = 'Firebase permissions do not allow saving this document. Please check Firestore rules.';
+            } else if (error is FirebaseException &&
+                (error.code == 'unauthorized' || error.code == 'unauthenticated')) {
+              explanation = 'Firebase Storage did not allow this upload. Please check Storage rules.';
+            } else {
+              explanation = 'The document could not be sent. Please try again.';
+            }
+            LexiaPopup.showMessage(
+              context: context,
+              title: 'Could not send',
+              message: explanation,
+              emoji: '⚠️',
+              buttonText: 'Okay',
+            );
+          }
+        }
+      } finally {
+        await _uploadProgressStream?.close();
+        _uploadProgressStream = null;
+        if (mounted) setState(() => _isSendingToChild = false);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('LOAD CHILDREN / SEND DOCUMENT ERROR: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (mounted) {
+        LexiaPopup.showMessage(
+          context: context,
+          title: 'Could not load children',
+          message: 'Please check your connection and try again.',
+          emoji: '⚠️',
+          buttonText: 'Okay',
+        );
+      }
+    }
+  }
+
+  Future<String?> _askDocumentName(String suggestedName) async {
+    final controller = TextEditingController(text: suggestedName);
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Name your document'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          decoration: const InputDecoration(labelText: 'Document name'),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              Navigator.pop(dialogContext, value.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) Navigator.pop(dialogContext, name);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -125,11 +490,17 @@ class _ScannerPageState extends State<ScannerPage> {
         return;
       }
 
-      setState(() => _documents.insert(0, doc));
-
-      if (mounted) {
-        _openResult(doc);
-      }
+      if (!mounted) return;
+      final name = await _askDocumentName(doc.name);
+      if (!mounted || name == null) return;
+      final namedDoc = _ScannedDocument(
+        file: doc.file,
+        name: name,
+        scannedAt: doc.scannedAt,
+        extractedText: doc.extractedText,
+      );
+      setState(() => _documents.insert(0, namedDoc));
+      _openResult(namedDoc);
     } catch (e) {
       setState(() => _isProcessing = false);
       if (mounted) {
@@ -393,8 +764,7 @@ class _ScannerPageState extends State<ScannerPage> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: _documents.length,
-                      separatorBuilder: (_, __) =>
-                          SizedBox(height: R.space(10)),
+                      separatorBuilder: (_, _) => SizedBox(height: R.space(10)),
                       itemBuilder: (context, index) =>
                           _documentTile(_documents[index]),
                     ),
@@ -498,6 +868,17 @@ class _ScannerPageState extends State<ScannerPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Send to child',
+            onPressed: _isSendingToChild
+                ? null
+                : () => _sendDocumentToChild(doc),
+            icon: Icon(
+              Icons.send_rounded,
+              color: primaryGreen,
+              size: R.icon(20),
             ),
           ),
           IconButton(

@@ -65,7 +65,9 @@ class _WordPageState extends State<WordPage>
     });
 
     try {
-      final url = Uri.parse("https://analyzer-u8yc.onrender.com/analyze");
+      final url = Uri.parse(
+        "https://lexia-word-analyzer-100861482313.me-central1.run.app/analyze",
+      );
 
       final response = await http.post(
         url,

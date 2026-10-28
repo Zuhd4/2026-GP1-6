@@ -3,45 +3,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'app_typography.dart';
-import 'widgets/lexia_popup.dart';
 import 'responsive_helper.dart';
 
 class MyBookPage extends StatelessWidget {
-  const MyBookPage({super.key});
+  const MyBookPage({super.key, required this.childId});
+
+  final String childId;
 
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
   static const Color ivoryWhite = Color(0xFFFFFDFB);
   static const Color paleBlush = Color(0xFFFFF9F9);
   static const Color softCream = Color(0xFFFFFAF5);
-
-  void _comingSoon(BuildContext context, bool useOpenDyslexic) {
-    LexiaPopup.showMessage(
-      context: context,
-      title: 'Coming Soon!',
-      message: 'This document will be available soon!',
-      emoji: '🚀',
-      buttonColor: primaryPurple,
-      buttonText: 'Got it!',
-      useOpenDyslexic: useOpenDyslexic,
-    );
-  }
-
-  Future<void> _showLockedPopup(
-    BuildContext context,
-    bool useOpenDyslexic,
-  ) async {
-    await LexiaPopup.showMessage(
-      context: context,
-      title: 'Coming Soon!',
-      message: 'This feature will be available soon.',
-      emoji: '🚀',
-      buttonColor: primaryPurple,
-      buttonText: 'Got it!',
-      useOpenDyslexic: useOpenDyslexic,
-      barrierDismissible: false,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +30,23 @@ class MyBookPage extends StatelessWidget {
       return const Scaffold(
         backgroundColor: ivoryWhite,
         body: Center(child: Text('User not found')),
+      );
+    }
+
+    if (childId.isEmpty) {
+      return Scaffold(
+        backgroundColor: ivoryWhite,
+        body: Center(
+          child: Text(
+            'No child selected.',
+            style: AppTypography.getStyle(
+              useOpenDyslexic: false,
+              fontSize: R.text(16),
+              fontWeight: FontWeight.w500,
+              color: textDark.withOpacity(0.8),
+            ),
+          ),
+        ),
       );
     }
 
@@ -107,88 +97,149 @@ class MyBookPage extends StatelessWidget {
 
                   SizedBox(height: R.space(28)),
 
-                  GestureDetector(
-                    onTap: () => _showLockedPopup(context, useOpenDyslexic),
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(R.space(14)),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(R.radius(22)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.025),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(uid)
+                        .collection('children')
+                        .doc(childId)
+                        .collection('sharedDocuments')
+                        .orderBy('createdAt', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(
+                          child: CircularProgressIndicator(
+                            color: primaryPurple,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: R.icon(58),
-                                height: R.icon(58),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFFE8E4F8,
-                                  ).withOpacity(0.75),
-                                  borderRadius: BorderRadius.circular(
-                                    R.radius(16),
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.description_rounded,
-                                  size: R.icon(30),
-                                  color: primaryPurple.withOpacity(0.45),
-                                ),
-                              ),
-                              Icon(
-                                Icons.lock_outline_rounded,
-                                size: R.icon(22),
-                                color: textDark.withOpacity(0.45),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(width: R.space(12)),
-
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Monkey Story',
-                                  style: AppTypography.getStyle(
-                                    useOpenDyslexic: useOpenDyslexic,
-                                    fontSize: R.text(14),
-                                    fontWeight: FontWeight.w600,
-                                    color: textDark.withOpacity(0.45),
-                                  ),
-                                ),
-                                SizedBox(height: R.space(4)),
-                                Text(
-                                  'Sent by parent',
-                                  style: AppTypography.getStyle(
-                                    useOpenDyslexic: useOpenDyslexic,
-                                    fontSize: R.text(11),
-                                    color: Colors.black38,
-                                  ),
-                                ),
-                              ],
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error loading documents.',
+                            style: AppTypography.getStyle(
+                              useOpenDyslexic: useOpenDyslexic,
+                              fontSize: R.text(14),
+                              color: Colors.red,
                             ),
                           ),
-
-                          Icon(
-                            Icons.lock_rounded,
-                            size: R.icon(18),
-                            color: Colors.black26,
+                        );
+                      }
+                      final docs = snapshot.data?.docs ?? [];
+                      if (docs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No documents shared yet.',
+                            style: AppTypography.getStyle(
+                              useOpenDyslexic: useOpenDyslexic,
+                              fontSize: R.text(14),
+                              color: textDark.withOpacity(0.6),
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
+                        );
+                      }
+                      return Column(
+                        children: docs.map((docSnap) {
+                          final data = docSnap.data();
+                          final String name =
+                              (data['name'] as String?)?.trim().isNotEmpty ==
+                                  true
+                              ? data['name'] as String
+                              : 'Untitled Document';
+                          final String extractedText =
+                              (data['extractedText'] as String?) ?? '';
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => _DocumentReaderPage(
+                                    title: name,
+                                    extractedText: extractedText,
+                                    useOpenDyslexic: useOpenDyslexic,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              margin: EdgeInsets.only(bottom: R.space(16)),
+                              padding: EdgeInsets.all(R.space(14)),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(
+                                  R.radius(22),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.025),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: R.icon(58),
+                                    height: R.icon(58),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFFE8E4F8,
+                                      ).withOpacity(0.75),
+                                      borderRadius: BorderRadius.circular(
+                                        R.radius(16),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.description_rounded,
+                                      size: R.icon(30),
+                                      color: primaryPurple.withOpacity(0.75),
+                                    ),
+                                  ),
+
+                                  SizedBox(width: R.space(12)),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: AppTypography.getStyle(
+                                            useOpenDyslexic: useOpenDyslexic,
+                                            fontSize: R.text(14),
+                                            fontWeight: FontWeight.w600,
+                                            color: textDark.withOpacity(0.9),
+                                          ),
+                                        ),
+                                        SizedBox(height: R.space(4)),
+                                        Text(
+                                          'Sent by parent',
+                                          style: AppTypography.getStyle(
+                                            useOpenDyslexic: useOpenDyslexic,
+                                            fontSize: R.text(11),
+                                            color: Colors.black38,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: R.icon(22),
+                                    color: Colors.black26,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -196,6 +247,85 @@ class MyBookPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _DocumentReaderPage extends StatelessWidget {
+  const _DocumentReaderPage({
+    required this.title,
+    required this.extractedText,
+    required this.useOpenDyslexic,
+  });
+
+  final String title;
+  final String extractedText;
+  final bool useOpenDyslexic;
+
+  @override
+  Widget build(BuildContext context) {
+    R.init(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: MyBookPage.primaryPurple,
+        title: Text(
+          title,
+          style: AppTypography.getStyle(
+            useOpenDyslexic: useOpenDyslexic,
+            fontSize: R.text(18),
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              MyBookPage.ivoryWhite,
+              MyBookPage.paleBlush,
+              MyBookPage.softCream,
+              Colors.white,
+            ],
+            stops: [0.0, 0.4, 0.7, 1.0],
+          ),
+        ),
+        padding: EdgeInsets.all(R.pagePad),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Container(
+            padding: EdgeInsets.all(R.space(16)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(R.radius(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: SelectableText(
+              extractedText.trim().isEmpty
+                  ? 'No text was detected in this document.'
+                  : extractedText,
+              style: AppTypography.getStyle(
+                useOpenDyslexic: useOpenDyslexic,
+                fontSize: R.text(14),
+                color: MyBookPage.textDark.withOpacity(0.9),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
