@@ -10,11 +10,13 @@ import 'responsive_helper.dart';
 class ScanResultPage extends StatefulWidget {
   final String documentName;
   final String extractedText;
+  final ValueChanged<Map<String, String>>? onDifficultiesUpdated;
 
   const ScanResultPage({
     super.key,
     required this.documentName,
     required this.extractedText,
+    this.onDifficultiesUpdated,
   });
 
   @override
@@ -87,9 +89,15 @@ class _ScanResultPageState extends State<ScanResultPage> {
         }
         _analyzedCount += batch.length;
       });
+      widget.onDifficultiesUpdated?.call(
+        Map<String, String>.from(_difficultyByWord),
+      );
     }
     if (mounted && widget.extractedText == requestedText) {
       setState(() => _isAnalyzing = false);
+      widget.onDifficultiesUpdated?.call(
+        Map<String, String>.from(_difficultyByWord),
+      );
     }
   }
 

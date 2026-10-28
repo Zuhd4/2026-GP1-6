@@ -149,6 +149,19 @@ class MyBookPage extends StatelessWidget {
                               : 'Untitled Document';
                           final String extractedText =
                               (data['extractedText'] as String?) ?? '';
+                          final rawDifficulties = data['difficultyByWord'];
+                          final difficultyByWord = <String, String>{};
+                          if (rawDifficulties is Map) {
+                            rawDifficulties.forEach((key, value) {
+                              if (key is String && value is String) {
+                                difficultyByWord[key.toLowerCase().replaceAll(
+                                  '’',
+                                  "'",
+                                )] = value
+                                    .toLowerCase();
+                              }
+                            });
+                          }
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -158,6 +171,7 @@ class MyBookPage extends StatelessWidget {
                                     title: name,
                                     extractedText: extractedText,
                                     useOpenDyslexic: useOpenDyslexic,
+                                    difficultyByWord: difficultyByWord,
                                   ),
                                 ),
                               );
@@ -256,11 +270,48 @@ class _DocumentReaderPage extends StatelessWidget {
     required this.title,
     required this.extractedText,
     required this.useOpenDyslexic,
+    required this.difficultyByWord,
   });
 
   final String title;
   final String extractedText;
   final bool useOpenDyslexic;
+  final Map<String, String> difficultyByWord;
+  static final RegExp _wordPattern = RegExp(r"[A-Za-z]+(?:['’][A-Za-z]+)?");
+
+  List<TextSpan> _highlightedSpans() {
+    if (extractedText.trim().isEmpty) {
+      return [const TextSpan(text: 'No text was detected in this document.')];
+    }
+    final spans = <TextSpan>[];
+    var end = 0;
+    for (final match in _wordPattern.allMatches(extractedText)) {
+      if (match.start > end) {
+        spans.add(TextSpan(text: extractedText.substring(end, match.start)));
+      }
+      final word = match.group(0)!;
+      final key = word.toLowerCase().replaceAll('’', "'");
+      final difficulty = difficultyByWord[key];
+      final Color? highlight = difficulty == 'medium'
+          ? const Color(0xFFFFF176)
+          : difficulty == 'hard'
+          ? const Color(0xFFFFB74D)
+          : null;
+      spans.add(
+        TextSpan(
+          text: word,
+          style: highlight == null
+              ? null
+              : TextStyle(backgroundColor: highlight),
+        ),
+      );
+      end = match.end;
+    }
+    if (end < extractedText.length) {
+      spans.add(TextSpan(text: extractedText.substring(end)));
+    }
+    return spans;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -268,17 +319,26 @@ class _DocumentReaderPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: MyBookPage.primaryPurple,
+        backgroundColor: MyBookPage.ivoryWhite,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          color: MyBookPage.textDark,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        titleSpacing: 12,
         title: Text(
           title,
           style: AppTypography.getStyle(
             useOpenDyslexic: useOpenDyslexic,
             fontSize: R.text(18),
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+            fontWeight: FontWeight.w500,
+            color: MyBookPage.textDark,
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: MyBookPage.textDark),
       ),
       body: Container(
         width: double.infinity,
@@ -296,33 +356,73 @@ class _DocumentReaderPage extends StatelessWidget {
             stops: [0.0, 0.4, 0.7, 1.0],
           ),
         ),
-        padding: EdgeInsets.all(R.pagePad),
+        padding: EdgeInsets.fromLTRB(R.pagePad, R.space(20), R.pagePad, R.pagePad),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          child: Container(
-            padding: EdgeInsets.all(R.space(16)),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(R.radius(20)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: SelectableText(
-              extractedText.trim().isEmpty
-                  ? 'No text was detected in this document.'
-                  : extractedText,
-              style: AppTypography.getStyle(
-                useOpenDyslexic: useOpenDyslexic,
-                fontSize: R.text(14),
-                color: MyBookPage.textDark.withOpacity(0.9),
-                height: 1.5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    color: const Color(0xFFFFF176),
+                  ),
+                  SizedBox(width: R.space(6)),
+                  Text(
+                    'Medium',
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: useOpenDyslexic,
+                      fontSize: R.text(12),
+                      color: MyBookPage.textDark,
+                    ),
+                  ),
+                  SizedBox(width: R.space(18)),
+                  Container(
+                    width: 14,
+                    height: 14,
+                    color: const Color(0xFFFFB74D),
+                  ),
+                  SizedBox(width: R.space(6)),
+                  Text(
+                    'Hard',
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: useOpenDyslexic,
+                      fontSize: R.text(12),
+                      color: MyBookPage.textDark,
+                    ),
+                  ),
+                ],
               ),
-            ),
+              SizedBox(height: R.space(14)),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(R.space(16)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(R.radius(20)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: SelectableText.rich(
+                  TextSpan(
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: useOpenDyslexic,
+                      fontSize: R.text(14),
+                      color: MyBookPage.textDark.withOpacity(0.9),
+                      height: 1.5,
+                    ),
+                    children: _highlightedSpans(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
