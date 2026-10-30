@@ -5,17 +5,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
 import 'responsive_helper.dart';
+import 'app_typography.dart';
 
 /// Displays OCR text and highlights Medium/Hard words using the Python analyzer.
 class ScanResultPage extends StatefulWidget {
   final String documentName;
   final String extractedText;
+  final bool useOpenDyslexic;
   final ValueChanged<Map<String, String>>? onDifficultiesUpdated;
 
   const ScanResultPage({
     super.key,
     required this.documentName,
     required this.extractedText,
+    this.useOpenDyslexic = false,
     this.onDifficultiesUpdated,
   });
 
@@ -139,8 +142,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
       final Color? highlight = difficulty == 'medium'
           ? mediumHighlight
           : difficulty == 'hard'
-              ? hardHighlight
-              : null;
+          ? hardHighlight
+          : null;
       if (highlight == null) {
         spans.add(TextSpan(text: originalWord));
       } else {
@@ -148,7 +151,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: R.space(2), vertical: R.space(3)),
+              margin: EdgeInsets.symmetric(
+                horizontal: R.space(2),
+                vertical: R.space(3),
+              ),
               padding: EdgeInsets.symmetric(
                 horizontal: R.space(9),
                 vertical: R.space(6),
@@ -159,7 +165,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
               ),
               child: Text(
                 originalWord,
-                style: GoogleFonts.montserrat(
+                style: AppTypography.getStyle(
+                  useOpenDyslexic: widget.useOpenDyslexic,
                   fontSize: R.text(15),
                   fontWeight: FontWeight.w600,
                   color: textDark,
@@ -259,7 +266,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
                             ),
                             child: Text.rich(
                               TextSpan(
-                                style: GoogleFonts.montserrat(
+                                style: AppTypography.getStyle(
+                                  useOpenDyslexic: widget.useOpenDyslexic,
                                   fontSize: R.text(15),
                                   height: 1.6,
                                   color: textDark,
@@ -363,10 +371,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
         SizedBox(width: R.space(6)),
         Text(
           label,
-          style: GoogleFonts.montserrat(
-            fontSize: R.text(12),
-            color: textDark,
-          ),
+          style: GoogleFonts.montserrat(fontSize: R.text(12), color: textDark),
         ),
       ],
     );

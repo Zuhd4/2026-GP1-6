@@ -1,3 +1,4 @@
+import 'auth_identity.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -37,7 +38,7 @@ class ReadingPage extends StatelessWidget {
     final double topMargin = R.safeTop + R.space(95);
     final double bottomMargin = R.safeBottom + R.space(105);
 
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     if (uid.isEmpty || childId.isEmpty) {
       return const Scaffold(
@@ -53,10 +54,7 @@ class ReadingPage extends StatelessWidget {
         .doc(childId);
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .snapshots(),
+      stream: childRef.snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};
         final bool useOpenDyslexic = userData['useOpenDyslexicFont'] == true;
@@ -571,7 +569,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
   }
 
   DocumentReference<Map<String, dynamic>>? get _childRef {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     if (uid.isEmpty || widget.childId.isEmpty) {
       return null;
@@ -814,16 +812,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
     story['updatedAt'] = FieldValue.serverTimestamp();
     story.putIfAbsent('completed', () => false);
     level['storyReading'] = story;
-    level['updatedAt'] = FieldValue.serverTimestamp();
     progress[levelKey] = level;
 
     // Replace the story map instead of deeply merging it. This prevents
     // deprecated Firestore keys from returning after migration.
-    await childRef.update({
-      'readingProgress.$levelKey.storyReading': story,
-      'readingProgress.$levelKey.updatedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await childRef.update({'readingProgress.$levelKey.storyReading': story});
     debugPrint('Saved latest Page ${pageIndex + 1} AND best page separately');
   }
 
@@ -956,6 +949,15 @@ class _BookReaderPageState extends State<BookReaderPage> {
         if (mounted) setState(() => _savedPages.add(pageIndex));
       } catch (e) {
         debugPrint('Failed to save latest Page ${pageIndex + 1}: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not save reading progress. Please try recording again.',
+              ),
+            ),
+          );
+        }
       }
 
       if (!mounted) return;
@@ -1167,7 +1169,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final childRef = _childRef;
 
     if (childRef == null) {
-      return;
+      throw StateError('Child profile not found.');
     }
 
     final String levelKey = 'level_${widget.level}';
@@ -1254,15 +1256,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
     updatedStoryReading['attemptInProgress'] = false;
 
     currentLevelProgress['storyReading'] = updatedStoryReading;
-    currentLevelProgress['updatedAt'] = FieldValue.serverTimestamp();
     currentProgress[levelKey] = currentLevelProgress;
 
     // Replace the whole story map so old lastAttempt*/pageResults fields
     // are actually deleted, rather than left behind by a deep merge.
     await childRef.update({
       'readingProgress.$levelKey.storyReading': updatedStoryReading,
-      'readingProgress.$levelKey.updatedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -1673,10 +1672,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
                                                 (isLastPage
                                                     ? !allPagesReady
                                                     : (!_hasCompletedBook &&
-                                                          !(_assessmentByPage
-                                                                  .containsKey(
-                                                                    safeCurrentPage,
-                                                                  ) ||
+                                                          !((_assessmentByPage
+                                                                      .containsKey(
+                                                                        safeCurrentPage,
+                                                                      ) &&
+                                                                  !currentPageAssessed) ||
                                                               (currentPageAssessed &&
                                                                   currentPageSaved))))
                                             ? null
@@ -2008,9 +2008,14 @@ class _ColoredStoryFeedback extends StatelessWidget {
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
       const SizedBox(width: 5),
+
       Text(
         label,
-        style: TextStyle(fontSize: R.text(10), color: ReadingPage.textDark),
+        style: AppTypography.getStyle(
+          useOpenDyslexic: useOpenDyslexic,
+          fontSize: R.text(10),
+          color: ReadingPage.textDark,
+        ),
       ),
     ],
   );
@@ -2084,7 +2089,7 @@ class _ColoredStoryFeedback extends StatelessWidget {
                     child: Text(
                       expected[i],
                       style: AppTypography.getStyle(
-                        useOpenDyslexic: useOpenDyslexic,
+                        useOpenDyslexic: false,
                         fontSize: R.text(17),
                         fontWeight: FontWeight.w700,
                         color: foregrounds[statuses[i]],
@@ -2233,7 +2238,7 @@ class _PageTextResultSection extends StatelessWidget {
           Text(
             text,
             style: AppTypography.getStyle(
-              useOpenDyslexic: useOpenDyslexic,
+              useOpenDyslexic: false,
               fontSize: R.text(11),
               fontWeight: FontWeight.w400,
               color: ReadingPage.textDark.withOpacity(0.68),

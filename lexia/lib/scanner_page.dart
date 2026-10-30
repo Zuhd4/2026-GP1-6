@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_language_id/google_mlkit_language_id.dart';
 import 'package:image_picker/image_picker.dart';
@@ -25,6 +27,7 @@ class _ScannedDocument {
   final File file;
   final String name;
   final DateTime scannedAt;
+  final bool useOpenDyslexic;
 
   String? extractedText;
   String? parentDocumentId;
@@ -43,6 +46,7 @@ class _ScannedDocument {
     required this.file,
     required this.name,
     required this.scannedAt,
+    this.useOpenDyslexic = false,
     this.extractedText,
     this.parentDocumentId,
     this.parentStoragePath,
@@ -117,6 +121,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 ? createdAt.toDate()
                 : DateTime.now(),
             extractedText: (data['extractedText'] ?? '').toString(),
+            useOpenDyslexic: data['useOpenDyslexicFont'] == true,
             parentDocumentId: entry.id,
             parentStoragePath: storagePath,
           );
@@ -142,11 +147,80 @@ class _ScannerPageState extends State<ScannerPage> {
           _documents.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
         });
       }
+
+      // Repair previously deleted parent documents that were left in My Book.
+      // Use the full Firestore snapshot, NOT restored images, as the source of
+      // truth: a temporary image download failure must never revoke access.
+      await _cleanUpOrphanedChildShares(
+        uid,
+        snapshot.docs.map((entry) => entry.id).toSet(),
+      );
     } catch (error, stackTrace) {
       debugPrint('LOAD PARENT DOCUMENTS ERROR: $error');
       debugPrintStack(stackTrace: stackTrace);
     } finally {
       if (mounted) setState(() => _isLoadingDocuments = false);
+    }
+  }
+
+  // Remove a shared document from the child's My Book immediately.
+  // Deleting its Firestore record updates the child's live StreamBuilder.
+  // The Storage image is deleted afterward (best effort).
+  Future<void> _removeChildShare(
+    QueryDocumentSnapshot<Map<String, dynamic>> sharedDoc,
+  ) async {
+    final imagePath = sharedDoc.data()['imageStoragePath'] as String?;
+    await sharedDoc.reference.delete();
+    if (imagePath != null && imagePath.isNotEmpty) {
+      try {
+        await FirebaseStorage.instance.ref(imagePath).delete();
+      } on FirebaseException catch (error) {
+        if (error.code != 'object-not-found') {
+          debugPrint('REMOVE SHARED IMAGE ERROR: $error');
+        }
+      } catch (error) {
+        debugPrint('REMOVE SHARED IMAGE ERROR: $error');
+      }
+    }
+  }
+
+  // One-time reconciliation on parent Books load for documents deleted
+  // before cascading deletion was implemented. No legacy records lacking
+  // parentDocumentId are touched.
+  Future<void> _cleanUpOrphanedChildShares(
+    String parentUid,
+    Set<String> validParentDocumentIds,
+  ) async {
+    try {
+      final children = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentUid)
+          .collection('children')
+          .get();
+      for (final child in children.docs) {
+        try {
+          final shares = await child.reference
+              .collection('sharedDocuments')
+              .get();
+          for (final sharedDoc in shares.docs) {
+            final parentDocId = sharedDoc.data()['parentDocumentId'];
+            if (parentDocId is String &&
+                parentDocId.isNotEmpty &&
+                !validParentDocumentIds.contains(parentDocId)) {
+              try {
+                await _removeChildShare(sharedDoc);
+                debugPrint('REMOVED OLD ORPHAN SHARE: ${sharedDoc.id}');
+              } catch (error) {
+                debugPrint('ORPHAN SHARE CLEANUP FAILED: $error');
+              }
+            }
+          }
+        } catch (error) {
+          debugPrint('CHILD SHARE CLEANUP FAILED (${child.id}): $error');
+        }
+      }
+    } catch (error) {
+      debugPrint('ORPHAN CLEANUP COULD NOT LOAD CHILDREN: $error');
     }
   }
 
@@ -166,6 +240,7 @@ class _ScannerPageState extends State<ScannerPage> {
         'name': doc.name,
         'extractedText': doc.extractedText ?? '',
         'difficultyByWord': Map<String, String>.from(doc.difficultyByWord),
+        'useOpenDyslexicFont': doc.useOpenDyslexic,
         'imageStoragePath': path,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -200,8 +275,7 @@ class _ScannerPageState extends State<ScannerPage> {
   bool _isProcessing = false;
   bool _isPreparingDocument = false;
   bool _isSendingToChild = false;
-
-  final String _sendingChildName = '';
+  bool _isDeletingDocument = false;
 
   StreamController<double>? _uploadProgressStream;
 
@@ -304,6 +378,64 @@ class _ScannerPageState extends State<ScannerPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // Use the child's selected profile avatar in the recipient picker.
+  // Lexia stores avatarUrl as an asset path (PNG or SVG).
+  Widget _childAvatar(String? avatarUrl) {
+    final source = (avatarUrl == null || avatarUrl.trim().isEmpty)
+        ? 'assets/lexiaAv.png'
+        : avatarUrl.trim();
+
+    Widget fallback() => Image.asset(
+      'assets/lexiaAv.png',
+      width: 44,
+      height: 44,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) =>
+          const Icon(Icons.person_rounded, color: primaryPurple),
+    );
+
+    Widget picture;
+    if (source.toLowerCase().endsWith('.svg')) {
+      picture = source.startsWith('http://') || source.startsWith('https://')
+          ? SvgPicture.network(
+              source,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              placeholderBuilder: (_) => fallback(),
+            )
+          : SvgPicture.asset(
+              source,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              placeholderBuilder: (_) => fallback(),
+            );
+    } else if (source.startsWith('http://') || source.startsWith('https://')) {
+      picture = Image.network(
+        source,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    } else {
+      picture = Image.asset(
+        source,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 22,
+      backgroundColor: const Color(0xFFE6DDF7),
+      child: ClipOval(child: picture),
     );
   }
 
@@ -449,12 +581,8 @@ class _ScannerPageState extends State<ScannerPage> {
                               value: selected.contains(child.id),
                               activeColor: primaryPurple,
                               controlAffinity: ListTileControlAffinity.trailing,
-                              secondary: const CircleAvatar(
-                                backgroundColor: Color(0xFFE6DDF7),
-                                child: Icon(
-                                  Icons.face_rounded,
-                                  color: primaryPurple,
-                                ),
+                              secondary: _childAvatar(
+                                child.data()['avatarUrl']?.toString(),
                               ),
                               title: Text(
                                 childName,
@@ -600,6 +728,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 doc.difficultyByWord,
               ),
               'imageStoragePath': path,
+              'useOpenDyslexicFont': doc.useOpenDyslexic,
               'createdAt': FieldValue.serverTimestamp(),
               'sentBy': parentId,
               'parentDocumentId': parentDocumentId,
@@ -720,10 +849,10 @@ class _ScannerPageState extends State<ScannerPage> {
   // DOCUMENT NAMING
   // ============================================================
 
-  Future<String?> _askDocumentName(String suggestedName) {
+  Future<_DocumentNameChoice?> _askDocumentName(String suggestedName) {
     if (!mounted) return Future.value(null);
     R.init(context);
-    return showDialog<String>(
+    return showDialog<_DocumentNameChoice>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) =>
@@ -825,15 +954,16 @@ class _ScannerPageState extends State<ScannerPage> {
       // ASK DOCUMENT NAME
       // --------------------------------------------------------
 
-      final name = await _askDocumentName(doc.name);
+      final choice = await _askDocumentName(doc.name);
 
-      if (!mounted || name == null) return;
+      if (!mounted || choice == null) return;
 
       final namedDoc = _ScannedDocument(
         file: doc.file,
-        name: name,
+        name: choice.name,
         scannedAt: doc.scannedAt,
         extractedText: doc.extractedText,
+        useOpenDyslexic: choice.useOpenDyslexic,
       );
       setState(() => _isPreparingDocument = true);
       try {
@@ -864,7 +994,10 @@ class _ScannerPageState extends State<ScannerPage> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() { _isProcessing = false; _isPreparingDocument = false; });
+      setState(() {
+        _isProcessing = false;
+        _isPreparingDocument = false;
+      });
 
       LexiaPopup.showMessage(
         context: context,
@@ -888,6 +1021,7 @@ class _ScannerPageState extends State<ScannerPage> {
         builder: (_) => ScanResultPage(
           documentName: doc.name,
           extractedText: doc.extractedText ?? '',
+          useOpenDyslexic: doc.useOpenDyslexic,
           // NEW: Receive difficulty results from Analyzer.
           onDifficultiesUpdated: (results) {
             doc.difficultyByWord
@@ -913,22 +1047,240 @@ class _ScannerPageState extends State<ScannerPage> {
   // SHARE DOCUMENT
   // ============================================================
 
+  // Share analyzed results as print-friendly PNG pages (2:3 aspect ratio).
+  // Each page has fixed margins so wide OpenDyslexic letters cannot be
+  // cropped by Android's 4x6 print preview.
   Future<void> _shareDocument(_ScannedDocument doc) async {
+    if ((doc.extractedText ?? '').trim().isEmpty) {
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'No analyzed text',
+        message: 'Open the document to analyze its text before exporting.',
+        icon: Icons.info_outline_rounded,
+        buttonColor: primaryPurple,
+      );
+      return;
+    }
+    if (!_isAnalysisComplete(doc)) {
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Analysis not finished',
+        message:
+            'Open the document and wait until all words are analyzed before exporting.',
+        icon: Icons.manage_search_rounded,
+        buttonColor: primaryPurple,
+      );
+      return;
+    }
+
     try {
-      await Share.shareXFiles([
-        XFile(doc.file.path),
-      ], text: 'Shared from Lexia — ${doc.name}');
-    } catch (_) {
-      if (mounted) {
-        LexiaPopup.showMessage(
-          context: context,
-          title: 'Couldn\'t share',
-          message: 'Please try again in a moment.',
-          emoji: '⚠️',
-          buttonColor: Colors.redAccent.withOpacity(0.8),
-          buttonText: 'Okay',
+      const double pageWidth = 1080;
+      const double pageHeight = 1620; // 4x6 aspect ratio (portrait)
+      const double left = 84;
+      const double right = pageWidth - 84;
+      const double bodyTop = 292;
+      const double bodyBottom = pageHeight - 125;
+      const double bodyFontSize = 29;
+      final double lineHeight = doc.useOpenDyslexic ? 59 : 51;
+
+      final TextStyle bodyStyle = doc.useOpenDyslexic
+          ? const TextStyle(
+              fontFamily: 'OpenDyslexic',
+              fontSize: bodyFontSize,
+              color: textDark,
+            )
+          : GoogleFonts.montserrat(fontSize: bodyFontSize, color: textDark);
+      final highlightedStyle = bodyStyle.copyWith(fontWeight: FontWeight.w600);
+
+      TextPainter measure(String value, TextStyle style) {
+        final painter = TextPainter(
+          text: TextSpan(text: value, style: style),
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
         );
+        painter.layout();
+        return painter;
       }
+
+      final pages = <ui.PictureRecorder>[];
+      ui.PictureRecorder? recorder;
+      Canvas? canvas;
+      double x = left;
+      double y = bodyTop;
+
+      void beginPage() {
+        recorder = ui.PictureRecorder();
+        canvas = Canvas(recorder!);
+        canvas!.drawRect(
+          const Rect.fromLTWH(0, 0, pageWidth, pageHeight),
+          Paint()..color = Colors.white,
+        );
+        final titleStyle = GoogleFonts.montserrat(
+          fontSize: 42,
+          fontWeight: FontWeight.w700,
+          color: textDark,
+        );
+        // Titles can be long. Limit width to the same safe margins.
+        final title = TextPainter(
+          text: TextSpan(text: doc.name, style: titleStyle),
+          textDirection: TextDirection.ltr,
+          maxLines: 2,
+          ellipsis: '…',
+        )..layout(maxWidth: right - left);
+        title.paint(canvas!, const Offset(left, 42));
+        measure(
+          'Lexia - Word Difficulty Analysis',
+          GoogleFonts.montserrat(fontSize: 23, color: primaryPurple),
+        ).paint(canvas!, const Offset(left, 155));
+
+        canvas!.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(left, 225, 26, 26),
+            const Radius.circular(5),
+          ),
+          Paint()..color = const Color(0xFFFFF176),
+        );
+        measure(
+          'Medium',
+          GoogleFonts.montserrat(fontSize: 22, color: textDark),
+        ).paint(canvas!, const Offset(left + 39, 222));
+        canvas!.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(280, 225, 26, 26),
+            const Radius.circular(5),
+          ),
+          Paint()..color = const Color(0xFFFFB74D),
+        );
+        measure(
+          'Hard',
+          GoogleFonts.montserrat(fontSize: 22, color: textDark),
+        ).paint(canvas!, const Offset(319, 222));
+        x = left;
+        y = bodyTop;
+      }
+
+      void finishPage() {
+        if (recorder != null) {
+          measure(
+            'Page ${pages.length + 1}',
+            GoogleFonts.montserrat(fontSize: 22, color: Colors.black54),
+          ).paint(canvas!, const Offset(left, pageHeight - 77));
+          pages.add(recorder!);
+          recorder = null;
+          canvas = null;
+        }
+      }
+
+      void nextLine() {
+        x = left;
+        y += lineHeight;
+        if (y + lineHeight > bodyBottom) {
+          finishPage();
+          beginPage();
+        }
+      }
+
+      beginPage();
+      for (final line in doc.extractedText!.split('\n')) {
+        if (line.trim().isEmpty) {
+          nextLine();
+          continue;
+        }
+        for (final tokenMatch in RegExp(r'\S+').allMatches(line)) {
+          final token = tokenMatch.group(0)!;
+          final word = _wordPattern.firstMatch(token)?.group(0);
+          final difficulty = word == null
+              ? null
+              : doc.difficultyByWord[_normalizeWord(word)];
+          final Color? highlight = difficulty == 'medium'
+              ? const Color(0xFFFFF176)
+              : difficulty == 'hard'
+              ? const Color(0xFFFFB74D)
+              : null;
+          final painter = measure(
+            token,
+            highlight == null ? bodyStyle : highlightedStyle,
+          );
+          final space = measure(' ', bodyStyle).width;
+          final width = painter.width;
+          if (x > left && x + width > right) nextLine();
+          // Make unusually long OCR tokens fit the page instead of clipping.
+          final scale = width > right - left ? (right - left) / width : 1.0;
+          if (highlight != null) {
+            canvas!.drawRRect(
+              RRect.fromRectAndRadius(
+                Rect.fromLTWH(
+                  x - 3,
+                  y - 3,
+                  width * scale + 6,
+                  painter.height + 6,
+                ),
+                const Radius.circular(9),
+              ),
+              Paint()..color = highlight,
+            );
+          }
+          canvas!.save();
+          canvas!.translate(x, y);
+          canvas!.scale(scale, 1);
+          painter.paint(canvas!, Offset.zero);
+          canvas!.restore();
+          x += width * scale + space;
+        }
+        nextLine();
+      }
+      finishPage();
+
+      if (pages.length > 40) {
+        await LexiaPopup.showMessage(
+          context: context,
+          title: 'Document too long',
+          message: 'This document is too long to export as images.',
+          icon: Icons.info_outline_rounded,
+          buttonColor: primaryPurple,
+        );
+        return;
+      }
+
+      final directory = await getTemporaryDirectory();
+      final safeName = doc.name
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '_')
+          .replaceAll(RegExp(r'^_+|_+$'), '');
+      final name = safeName.isEmpty ? 'Lexia_Result' : safeName;
+      final attachments = <XFile>[];
+      for (var i = 0; i < pages.length; i++) {
+        final pageRecorder = pages[i];
+        final picture = pageRecorder.endRecording();
+        final image = await picture.toImage(
+          pageWidth.toInt(),
+          pageHeight.toInt(),
+        );
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        picture.dispose();
+        if (data == null) throw StateError('Could not encode analyzed image');
+        final file = File(
+          '${directory.path}/${name}_Lexia_Analysis_${i + 1}.png',
+        );
+        await file.writeAsBytes(data.buffer.asUint8List(), flush: true);
+        attachments.add(XFile(file.path, mimeType: 'image/png'));
+      }
+      await Share.shareXFiles(
+        attachments,
+        text: 'Lexia analyzed results - ${doc.name}',
+      );
+    } catch (error, stackTrace) {
+      debugPrint('EXPORT ANALYSIS IMAGE ERROR: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) return;
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Could not export results',
+        message: 'Please try again.',
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.redAccent,
+        buttonColor: primaryPurple,
+      );
     }
   }
 
@@ -937,44 +1289,129 @@ class _ScannerPageState extends State<ScannerPage> {
   // ============================================================
 
   Future<void> _deleteDocument(_ScannedDocument doc) async {
+    if (_isDeletingDocument) return;
+
     final confirmed = await LexiaPopup.showConfirm(
       context: context,
       title: 'Remove document?',
-      message: 'This will remove "${doc.name}" from your list.',
+      message:
+          'This will remove "${doc.name}" from your Documents and from every child you shared it with.',
       confirmText: 'Remove',
       confirmColor: Colors.redAccent,
       icon: Icons.delete_outline_rounded,
       iconColor: Colors.redAccent,
     );
     if (!confirmed || !mounted) return;
+
+    setState(() => _isDeletingDocument = true);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    // Keep the loading popup visible for the entire deletion operation.
+    unawaited(
+      showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: false,
+        builder: (_) => PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                    color: primaryPurple,
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Deleting document',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
+                      color: textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Removing the document from your Books and your children’s My Book...',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 12,
+                      color: Colors.black54,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    bool failed = false;
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null && doc.parentDocumentId != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('parentDocuments')
-            .doc(doc.parentDocumentId)
-            .delete();
+      final parentUid = FirebaseAuth.instance.currentUser?.uid;
+      final parentDocId = doc.parentDocumentId;
+      if (parentUid == null || parentDocId == null) {
+        throw StateError('The parent document is not saved.');
       }
-      if (doc.parentStoragePath != null) {
+
+      final parentRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentUid);
+      final children = await parentRef.collection('children').get();
+
+      // Remove child references first. If any Firestore deletion fails,
+      // keep the parent document so this operation can be retried.
+      for (final child in children.docs) {
+        final matches = await child.reference
+            .collection('sharedDocuments')
+            .where('parentDocumentId', isEqualTo: parentDocId)
+            .get();
+        for (final sharedDoc in matches.docs) {
+          await _removeChildShare(sharedDoc);
+        }
+      }
+
+      await parentRef.collection('parentDocuments').doc(parentDocId).delete();
+      if (doc.parentStoragePath != null && doc.parentStoragePath!.isNotEmpty) {
         try {
           await FirebaseStorage.instance.ref(doc.parentStoragePath!).delete();
+        } on FirebaseException catch (error) {
+          if (error.code != 'object-not-found') {
+            debugPrint('DELETE PARENT IMAGE ERROR: $error');
+          }
         } catch (error) {
           debugPrint('DELETE PARENT IMAGE ERROR: $error');
         }
       }
       if (mounted) setState(() => _documents.remove(doc));
-    } catch (error) {
-      if (mounted) {
-        LexiaPopup.showMessage(
-          context: context,
-          title: 'Could not remove',
-          message: 'Please try again.',
-          emoji: '⚠️',
-          buttonText: 'Okay',
-        );
-      }
+    } catch (error, stackTrace) {
+      failed = true;
+      debugPrint('DELETE DOCUMENT AND CHILD SHARES ERROR: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      // Close the loading popup even when deletion fails.
+      if (navigator.mounted && navigator.canPop()) navigator.pop();
+      if (mounted) setState(() => _isDeletingDocument = false);
+    }
+
+    if (failed && mounted) {
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Could not remove completely',
+        message:
+            'Some documents could not be removed. Please check your connection and try again.',
+        emoji: '⚠️',
+        buttonText: 'Okay',
+      );
     }
   }
 
@@ -1196,7 +1633,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
                   _isLoadingDocuments
                       ? const Center(
-                          child: CircularProgressIndicator(color: primaryPurple),
+                          child: CircularProgressIndicator(
+                            color: primaryPurple,
+                          ),
                         )
                       : _documents.isEmpty
                       ? _emptyDocumentsState()
@@ -1204,7 +1643,8 @@ class _ScannerPageState extends State<ScannerPage> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _documents.length,
-                          separatorBuilder: (_, _) => SizedBox(height: R.space(10)),
+                          separatorBuilder: (_, _) =>
+                              SizedBox(height: R.space(10)),
                           itemBuilder: (context, index) =>
                               _documentTile(_documents[index]),
                         ),
@@ -1217,7 +1657,10 @@ class _ScannerPageState extends State<ScannerPage> {
               child: Stack(
                 children: [
                   const Positioned.fill(
-                    child: ModalBarrier(dismissible: false, color: Colors.black45),
+                    child: ModalBarrier(
+                      dismissible: false,
+                      color: Colors.black45,
+                    ),
                   ),
                   Center(
                     child: Padding(
@@ -1225,10 +1668,13 @@ class _ScannerPageState extends State<ScannerPage> {
                       child: Container(
                         width: double.infinity,
                         constraints: BoxConstraints(
-                          maxWidth: R.maxContentWidth < 420 ? R.maxContentWidth : 420,
+                          maxWidth: R.maxContentWidth < 420
+                              ? R.maxContentWidth
+                              : 420,
                         ),
                         padding: EdgeInsets.symmetric(
-                          horizontal: R.space(24), vertical: R.space(28),
+                          horizontal: R.space(24),
+                          vertical: R.space(28),
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -1237,20 +1683,26 @@ class _ScannerPageState extends State<ScannerPage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircularProgressIndicator(color: primaryPurple),
+                            const CircularProgressIndicator(
+                              color: primaryPurple,
+                            ),
                             SizedBox(height: R.space(20)),
-                            Text('Preparing document',
+                            Text(
+                              'Preparing document',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.montserrat(
-                                fontSize: R.text(20), fontWeight: FontWeight.w500,
+                                fontSize: R.text(20),
+                                fontWeight: FontWeight.w500,
                                 color: textDark,
                               ),
                             ),
                             SizedBox(height: R.space(8)),
-                            Text('Saving your scan before analyzing the text...',
+                            Text(
+                              'Saving your scan before analyzing the text...',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.montserrat(
-                                fontSize: R.text(12), color: Colors.black45,
+                                fontSize: R.text(12),
+                                color: Colors.black45,
                               ),
                             ),
                           ],
@@ -1447,6 +1899,12 @@ class _ScannerPageState extends State<ScannerPage> {
 // DOCUMENT NAME DIALOG
 // ============================================================
 
+class _DocumentNameChoice {
+  const _DocumentNameChoice(this.name, this.useOpenDyslexic);
+  final String name;
+  final bool useOpenDyslexic;
+}
+
 class _DocumentNameDialog extends StatefulWidget {
   final String suggestedName;
   const _DocumentNameDialog({required this.suggestedName});
@@ -1457,6 +1915,7 @@ class _DocumentNameDialog extends StatefulWidget {
 
 class _DocumentNameDialogState extends State<_DocumentNameDialog> {
   late final TextEditingController _controller;
+  bool _useOpenDyslexic = false;
 
   @override
   void initState() {
@@ -1473,7 +1932,7 @@ class _DocumentNameDialogState extends State<_DocumentNameDialog> {
   void _onSave() {
     final name = _controller.text.trim();
     if (name.isNotEmpty) {
-      Navigator.pop(context, name);
+      Navigator.pop(context, _DocumentNameChoice(name, _useOpenDyslexic));
     }
   }
 
@@ -1563,11 +2022,32 @@ class _DocumentNameDialogState extends State<_DocumentNameDialog> {
                     onSubmitted: (value) {
                       final name = value.trim();
                       if (name.isNotEmpty) {
-                        Navigator.pop(context, name);
+                        Navigator.pop(
+                          context,
+                          _DocumentNameChoice(name, _useOpenDyslexic),
+                        );
                       }
                     },
                   ),
-                  SizedBox(height: R.space(20)),
+                  SizedBox(height: R.space(3)),
+                  CheckboxListTile(
+                    value: _useOpenDyslexic,
+                    onChanged: (value) => setState(() {
+                      _useOpenDyslexic = value ?? false;
+                    }),
+                    activeColor: _ScannerPageState.primaryPurple,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(
+                      'Dyslexia friendly font',
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(12),
+                        color: _ScannerPageState.textDark,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: R.space(14)),
                   Row(
                     children: [
                       Expanded(

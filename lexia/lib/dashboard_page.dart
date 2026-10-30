@@ -50,6 +50,13 @@ class DashboardPage extends StatelessWidget {
           .snapshots(),
 
       builder: (context, userSnapshot) {
+        if (userSnapshot.hasError) {
+          return _DashboardLoadError(
+            source: 'Parent profile',
+            error: userSnapshot.error.toString(),
+          );
+        }
+
         if (userSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.transparent,
@@ -72,6 +79,13 @@ class DashboardPage extends StatelessWidget {
               .snapshots(),
 
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _DashboardLoadError(
+                source: 'Children collection',
+                error: snapshot.error.toString(),
+              );
+            }
+
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
                 backgroundColor: Colors.transparent,
@@ -2365,6 +2379,63 @@ class _EmptyStateCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shows which Firestore stream failed instead of spinning indefinitely.
+class _DashboardLoadError extends StatelessWidget {
+  final String source;
+  final String error;
+
+  const _DashboardLoadError({required this.source, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF9F9),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Color(0xFF6A5ACD),
+                  size: 44,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Could not load Parent Dashboard',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3142),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('Failed: $source', textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                SelectableText(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const DashboardPage()),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

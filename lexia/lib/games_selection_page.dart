@@ -1,3 +1,4 @@
+import 'auth_identity.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,7 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
   bool wordMatchingCompleted = false;
   bool listenAndSpellCompleted = false;
 
-  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? '';
+  String get _uid => AuthIdentity.parentUid;
 
   DocumentReference<Map<String, dynamic>>? get _childRef {
     if (_uid.isEmpty || widget.childId.isEmpty) return null;
@@ -202,6 +203,8 @@ class _GamesSelectionPageState extends State<GamesSelectionPage> {
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(_uid)
+          .collection('children')
+          .doc(widget.childId)
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};

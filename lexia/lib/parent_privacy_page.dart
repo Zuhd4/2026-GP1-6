@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,12 +11,11 @@ import 'onboarding_page.dart';
 import 'add_child_page.dart';
 import 'child_profile_settings_page.dart';
 import 'parent_change_password_page.dart';
-import 'change_pin_page.dart';
+import 'widgets/family_code_card.dart';
 
 class ParentPrivacyPage extends StatelessWidget {
-  final String currentPin;
-
-  const ParentPrivacyPage({super.key, required this.currentPin});
+  // Kept optional for compatibility with older navigation callers.
+  const ParentPrivacyPage({super.key, String? currentPin});
 
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
@@ -71,20 +71,16 @@ class ParentPrivacyPage extends StatelessWidget {
                 _header(context),
                 SizedBox(height: 20.h),
 
-                // ==========================================
-                // STEP 5: ACCESSIBILITY SECTION (OpenDyslexic)
-                // ==========================================
+                // Parent controls OpenDyslexic separately for each child.
                 _sectionHeader("Accessibility"),
-                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: FirebaseFirestore.instance
                       .collection('users')
                       .doc(uid)
+                      .collection('children')
                       .snapshots(),
-                  builder: (context, userSnap) {
-                    final userData = userSnap.data?.data() ?? {};
-                    final bool useOpenDyslexic =
-                        userData['useOpenDyslexicFont'] == true;
-
+                  builder: (context, childSnap) {
+                    final children = childSnap.data?.docs ?? [];
                     return Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: 16.w,
@@ -94,118 +90,100 @@ class ParentPrivacyPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: primaryPurple.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                                child: Icon(
-                                  Icons.accessibility_new_rounded,
-                                  color: primaryPurple.withOpacity(0.7),
-                                  size: 18.r,
-                                ),
+                          if (children.isEmpty)
+                            Text(
+                              'Add a child to choose their font.',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 11.sp,
+                                color: Colors.black45,
                               ),
-                              SizedBox(width: 12.w),
-
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "OpenDyslexic Font",
-                                      style: GoogleFonts.montserrat(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w500,
-                                        color: textDark,
-                                      ),
-                                    ),
-                                    SizedBox(height: 2.h),
-                                    Text(
-                                      useOpenDyslexic
-                                          ? "Enabled for app interface"
-                                          : "Disabled (Standard font)",
-                                      style: GoogleFonts.montserrat(
-                                        fontSize: 10.sp,
-                                        color: Colors.black38,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              GestureDetector(
-                                onTap: () async {
-                                  final bool newValue = !useOpenDyslexic;
-                                  await FirebaseFirestore.instance
-                                      .collection('users')
-                                      .doc(uid)
-                                      .set({
-                                        'useOpenDyslexicFont': newValue,
-                                        'updatedAt':
-                                            FieldValue.serverTimestamp(),
-                                      }, SetOptions(merge: true));
-
-                                  if (context.mounted) {
-                                    LexiaPopup.showMessage(
-                                      context: context,
-                                      title: newValue
-                                          ? "OpenDyslexic Font Active"
-                                          : "Standard Font Active",
-                                      message: newValue
-                                          ? "OpenDyslexic font is now active for app menus and instructions. Target game vocabulary words remain standard."
-                                          : "Standard font is now active across all screens.",
-                                      icon: Icons.font_download_rounded,
-                                      iconColor: primaryPurple,
-                                      buttonColor: primaryPurple,
-                                      buttonText: "Got it",
-                                    );
-                                  }
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: 54.w,
-                                  height: 30.h,
-                                  padding: EdgeInsets.all(3.r),
+                            )
+                          else ...[
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(8.r),
                                   decoration: BoxDecoration(
-                                    color: useOpenDyslexic
-                                        ? primaryPurple
-                                        : Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(30.r),
-                                  ),
-                                  child: AnimatedAlign(
-                                    duration: const Duration(milliseconds: 200),
-                                    alignment: useOpenDyslexic
-                                        ? Alignment.centerRight
-                                        : Alignment.centerLeft,
-                                    child: Container(
-                                      width: 24.r,
-                                      height: 24.r,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        useOpenDyslexic
-                                            ? Icons.check_rounded
-                                            : Icons.close_rounded,
-                                        size: 15.r,
-                                        color: useOpenDyslexic
-                                            ? primaryPurple
-                                            : Colors.grey,
-                                      ),
+                                    color: primaryPurple.withValues(
+                                      alpha: 0.05,
                                     ),
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                  child: Icon(
+                                    Icons.accessibility_new_rounded,
+                                    color: primaryPurple.withValues(alpha: 0.7),
+                                    size: 18.r,
                                   ),
                                 ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Dyslexia Friendly Font',
+                                        style: GoogleFonts.montserrat(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: textDark,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        'Choose children below',
+                                        style: GoogleFonts.montserrat(
+                                          fontSize: 10.sp,
+                                          color: Colors.black38,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Divider(
+                              height: 26.h,
+                              color: const Color(0xFFF0ECF8),
+                            ),
+                            Text(
+                              'Choose individually',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 11.sp,
+                                color: Colors.black45,
                               ),
-                            ],
-                          ),
+                            ),
+                            SizedBox(height: 12.h),
+                            ...children.map((child) {
+                              final childData = child.data();
+                              final name = (childData['name'] ?? 'Child')
+                                  .toString();
+                              final enabled =
+                                  childData['useOpenDyslexicFont'] == true;
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: 10.h),
+                                child: _fontPreferenceTile(
+                                  context,
+                                  title: name,
+                                  subtitle: enabled
+                                      ? 'OpenDyslexic'
+                                      : 'Standard font',
+                                  avatar: childData['avatarUrl']?.toString(),
+                                  enabled: enabled,
+                                  onTap: () => _confirmChildFont(
+                                    context,
+                                    uid,
+                                    child.id,
+                                    name,
+                                    !enabled,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                           SizedBox(height: 10.h),
                           Text(
-                            "Note: OpenDyslexic enhances readability for menus and instructions. Target vocabulary words inside games remain unchanged for educational accuracy.",
+                            'Dyslexia Friendly Font applies to menus and instructions for selected children. Target vocabulary words stay standard.',
                             style: GoogleFonts.montserrat(
                               fontSize: 10.sp,
                               color: Colors.black45,
@@ -242,39 +220,6 @@ class ParentPrivacyPage extends StatelessWidget {
                           );
                         },
                       ),
-                      const Divider(height: 24, color: Color(0xFFF8F9FB)),
-                      _detailTile(
-                        icon: Icons.lock_outline_rounded,
-                        title: "Parental PIN",
-                        value: "••••",
-                        onTap: () async {
-                          final String uid =
-                              FirebaseAuth.instance.currentUser?.uid ?? '';
-
-                          final userDoc = await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(uid)
-                              .get();
-
-                          final latestPin =
-                              userDoc.data()?['pin']?.toString() ?? currentPin;
-
-                          if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChangePinPage(
-                                  title: "Update your parental PIN",
-                                  subtitle:
-                                      "Use a 4-digit PIN to protect parent-only actions.",
-                                  currentPin: latestPin,
-                                  isChild: false,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
                     ],
                   ),
                 ),
@@ -309,6 +254,9 @@ class ParentPrivacyPage extends StatelessWidget {
                   },
                 ),
 
+                SizedBox(height: 15.h),
+                const FamilyCodeCard(),
+
                 SizedBox(height: 25.h),
 
                 _sectionHeader("Account Actions"),
@@ -332,6 +280,123 @@ class ParentPrivacyPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _fontPreferenceTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required bool enabled,
+    required VoidCallback? onTap,
+    String? avatar,
+    IconData icon = Icons.font_download_rounded,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 5.h),
+        child: Row(
+          children: [
+            if (avatar != null)
+              _avatarImage(avatar, size: 37.r, radius: 10)
+            else
+              Container(
+                width: 37.r,
+                height: 37.r,
+                decoration: BoxDecoration(
+                  color: primaryPurple.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Icon(icon, color: primaryPurple, size: 19.r),
+              ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                      color: textDark,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 10.sp,
+                      color: Colors.black45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8.w),
+            IgnorePointer(
+              child: Switch(
+                value: enabled,
+                onChanged: onTap == null ? null : (_) {},
+                activeThumbColor: primaryPurple,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _setChildFont(
+    BuildContext context,
+    String parentUid,
+    String childId,
+    bool enabled,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentUid)
+          .collection('children')
+          .doc(childId)
+          .update({'useOpenDyslexicFont': enabled});
+    } catch (_) {
+      if (context.mounted) {
+        await LexiaPopup.showMessage(
+          context: context,
+          title: 'Could not save',
+          message: 'Please try again.',
+          icon: Icons.error_outline_rounded,
+          iconColor: Colors.redAccent,
+          buttonColor: primaryPurple,
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmChildFont(
+    BuildContext context,
+    String parentUid,
+    String childId,
+    String childName,
+    bool enabled,
+  ) async {
+    final confirmed = await LexiaPopup.showConfirm(
+      context: context,
+      title: enabled
+          ? 'Enable Dyslexia Friendly Font?'
+          : 'Disable Dyslexia Friendly Font?',
+      message: enabled
+          ? 'Apply Dyslexia Friendly Font to $childName?'
+          : 'Use the standard font for $childName?',
+      confirmText: enabled ? 'Enable' : 'Disable',
+      cancelText: 'Cancel',
+      icon: Icons.font_download_rounded,
+      iconColor: primaryPurple,
+      confirmColor: primaryPurple,
+    );
+    if (!confirmed || !context.mounted) return;
+    await _setChildFont(context, parentUid, childId, enabled);
   }
 
   Widget _header(BuildContext context) {
@@ -437,309 +502,112 @@ class ParentPrivacyPage extends StatelessWidget {
     String? avatar,
     String id,
   ) {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
+    final parentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(uid)
+          .doc(parentUid)
           .collection('children')
           .doc(id)
           .snapshots(),
       builder: (context, snapshot) {
-        final data = snapshot.data?.data() ?? {};
-
-        final bool allowChildPin = data['allowChildPin'] == true;
-        final String childPin = data['childPin']?.toString() ?? '';
-
-        final bool childPinEnabled =
-            data['childPinEnabled'] == true ||
-            (data['childPinEnabled'] == null && childPin.isNotEmpty);
-
-        final String permissionStatus = allowChildPin
-            ? "PIN allowed"
-            : "PIN not allowed";
-
-        final String childLockStatus = childPin.isEmpty
-            ? "No PIN added yet"
-            : childPinEnabled
-            ? "Child turned PIN on"
-            : "Child turned PIN off";
-
+        final data = snapshot.data?.data() ?? <String, dynamic>{};
+        final bool enabled = data['picturePinEnabled'] == true;
         return Container(
           margin: EdgeInsets.only(bottom: 12.h),
-          padding: EdgeInsets.all(12.w),
+          padding: EdgeInsets.all(14.w),
           decoration: _cardDecoration(),
           child: Column(
             children: [
               Row(
                 children: [
                   _avatarImage(avatar, size: 48.r, radius: 14),
-                  SizedBox(width: 14.w),
-
+                  SizedBox(width: 12.w),
                   Expanded(
                     child: Text(
                       name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.w500,
-                        color: textDark,
                         fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: textDark,
                       ),
                     ),
                   ),
-
                   IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChildProfileSettingsPage(
-                            childId: id,
-                            initialName: name,
-                            initialAvatar: avatar ?? 'assets/lexiaAv.png',
-                          ),
+                    tooltip: 'Edit child profile',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChildProfileEditPage(
+                          childId: id,
+                          initialName: name,
+                          initialAvatar: avatar ?? 'assets/lexiaAv.png',
+                          openedByParent: true,
                         ),
-                      );
-                    },
-                    icon: Icon(
-                      Icons.edit_rounded,
-                      size: 18.r,
-                      color: primaryPurple.withOpacity(0.7),
+                      ),
                     ),
+                    icon: const Icon(Icons.edit_rounded, color: primaryPurple),
                   ),
-
                   IconButton(
+                    tooltip: 'Delete child profile',
                     onPressed: () =>
-                        _confirmDeleteChild(context, name, id, uid),
-                    icon: Icon(
+                        _confirmDeleteChild(context, name, id, parentUid),
+                    icon: const Icon(
                       Icons.delete_outline_rounded,
-                      color: Colors.redAccent.withOpacity(0.6),
-                      size: 20.r,
+                      color: Colors.redAccent,
                     ),
                   ),
                 ],
               ),
-
               const Divider(height: 22, color: Color(0xFFF8F9FB)),
-
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                decoration: BoxDecoration(
-                  color: primaryPurple.withOpacity(0.035),
-                  borderRadius: BorderRadius.circular(16.r),
-                ),
-                child: Column(
-                  children: [
-                    Row(
+              Row(
+                children: [
+                  Icon(
+                    enabled ? Icons.lock_rounded : Icons.lock_open_rounded,
+                    color: primaryPurple,
+                    size: 19.r,
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: EdgeInsets.all(8.r),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                          child: Icon(
-                            Icons.pin_rounded,
-                            color: primaryPurple.withOpacity(0.7),
-                            size: 18.r,
+                        Text(
+                          'Picture PIN',
+                          style: GoogleFonts.montserrat(
+                            color: textDark,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(width: 12.w),
-
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Child PIN Permission",
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 10.sp,
-                                  color: Colors.black38,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                              Text(
-                                permissionStatus,
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: textDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        GestureDetector(
-                          onTap: () async {
-                            final bool newAllowValue = !allowChildPin;
-
-                            final Map<String, dynamic> updateData = {
-                              'allowChildPin': newAllowValue,
-                              'updatedAt': FieldValue.serverTimestamp(),
-                            };
-
-                            if (!newAllowValue) {
-                              updateData['childPinEnabled'] = false;
-                            }
-
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(uid)
-                                .collection('children')
-                                .doc(id)
-                                .set(updateData, SetOptions(merge: true));
-
-                            if (context.mounted) {
-                              LexiaPopup.showMessage(
-                                context: context,
-                                title: newAllowValue
-                                    ? "Child PIN Allowed"
-                                    : "Child PIN Disabled",
-                                message: newAllowValue
-                                    ? "$name can now add or use a PIN for this profile."
-                                    : "$name can enter the profile without a PIN. The saved PIN was not deleted.",
-                                icon: newAllowValue
-                                    ? Icons.lock_rounded
-                                    : Icons.lock_open_rounded,
-                                iconColor: primaryPurple,
-                                buttonColor: primaryPurple,
-                                buttonText: "Got it",
-                              );
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 54.w,
-                            height: 30.h,
-                            padding: EdgeInsets.all(3.r),
-                            decoration: BoxDecoration(
-                              color: allowChildPin
-                                  ? primaryPurple
-                                  : Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(30.r),
-                            ),
-                            child: AnimatedAlign(
-                              duration: const Duration(milliseconds: 200),
-                              alignment: allowChildPin
-                                  ? Alignment.centerRight
-                                  : Alignment.centerLeft,
-                              child: Container(
-                                width: 24.r,
-                                height: 24.r,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  allowChildPin
-                                      ? Icons.check_rounded
-                                      : Icons.close_rounded,
-                                  size: 15.r,
-                                  color: allowChildPin
-                                      ? primaryPurple
-                                      : Colors.grey,
-                                ),
-                              ),
-                            ),
+                        Text(
+                          enabled ? 'PIN is set' : 'PIN not set',
+                          style: GoogleFonts.montserrat(
+                            color: Colors.black54,
+                            fontSize: 10.sp,
                           ),
                         ),
                       ],
                     ),
-
-                    if (allowChildPin) ...[
-                      SizedBox(height: 10.h),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 10.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14.r),
-                          border: Border.all(
-                            color: primaryPurple.withOpacity(0.08),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              childPinEnabled
-                                  ? Icons.lock_rounded
-                                  : Icons.lock_open_rounded,
-                              size: 18.r,
-                              color: childPinEnabled
-                                  ? primaryPurple.withOpacity(0.75)
-                                  : Colors.black45,
-                            ),
-                            SizedBox(width: 10.w),
-                            Expanded(
-                              child: Text(
-                                childLockStatus,
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 11.sp,
-                                  color: childPinEnabled
-                                      ? textDark.withOpacity(0.75)
-                                      : Colors.black45,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
+                  ),
+                  TextButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _ParentResetPicturePinPage(
+                          childId: id,
+                          childName: name,
                         ),
                       ),
-                    ],
-
-                    if (allowChildPin && childPin.isNotEmpty) ...[
-                      SizedBox(height: 10.h),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 10.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14.r),
-                          border: Border.all(
-                            color: primaryPurple.withOpacity(0.08),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.password_rounded,
-                              size: 18.r,
-                              color: primaryPurple.withOpacity(0.7),
-                            ),
-                            SizedBox(width: 10.w),
-                            Text(
-                              "Selected PIN",
-                              style: GoogleFonts.montserrat(
-                                fontSize: 11.sp,
-                                color: Colors.black45,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              childPin,
-                              style: GoogleFonts.montserrat(
-                                fontSize: 14.sp,
-                                color: textDark,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(enabled ? 'Reset PIN' : 'Set PIN'),
+                  ),
+                ],
+              ),
+              _ParentPinRecoveryView(
+                key: ValueKey('pin-$id-${data['picturePinUpdatedAt']}'),
+                childId: id,
               ),
             ],
           ),
@@ -832,7 +700,7 @@ class ParentPrivacyPage extends StatelessWidget {
     );
   }
 
-  void _signOut(BuildContext context) async {
+  Future<void> _signOut(BuildContext context) async {
     final shouldSignOut = await LexiaPopup.showConfirm(
       context: context,
       title: "Sign Out",
@@ -843,29 +711,44 @@ class ParentPrivacyPage extends StatelessWidget {
       iconColor: primaryPurple,
     );
 
-    if (!shouldSignOut) return;
+    if (!shouldSignOut || !context.mounted) return;
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-
-    if (uid != null) {
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'sessionActive': false,
-        'signedOutAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
-
-    await FirebaseAuth.instance.signOut();
-
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const OnboardingPage()),
-        (r) => false,
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'sessionActive': false,
+          'signedOutAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Sign Out Failed',
+        message: 'Could not update the session. Please try again.',
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.redAccent,
+        buttonColor: primaryPurple,
       );
+      return;
     }
+
+    if (!context.mounted) return;
+
+    // Remove all parent pages (and their Firestore listeners) before sign-out.
+    // A zero-duration route avoids leaving old pages active during animation.
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder<void>(
+        pageBuilder: (_, __, ___) => const _ParentSignOutTransition(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+      (_) => false,
+    );
   }
 
-  void _confirmDeleteChild(
+  Future<void> _confirmDeleteChild(
     BuildContext context,
     String name,
     String id,
@@ -882,56 +765,775 @@ class ParentPrivacyPage extends StatelessWidget {
       iconColor: Colors.redAccent,
     );
 
-    if (shouldDelete) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('children')
-          .doc(id)
-          .delete();
+    if (!shouldDelete || !context.mounted) return;
+
+    // A Cloud Function removes the child document AND all subcollections,
+    // its uploaded files, and the dedicated child Firebase Auth account.
+    // A plain document.delete() leaves orphaned privateAuth documents.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22.r),
+          ),
+          content: Row(
+            children: [
+              const CircularProgressIndicator(color: primaryPurple),
+              SizedBox(width: 18.w),
+              Expanded(
+                child: Text(
+                  'Deleting child profile...',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 12.sp,
+                    color: textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    String? failure;
+    try {
+      final signedInUid = FirebaseAuth.instance.currentUser?.uid;
+      if (signedInUid == null || signedInUid != uid) {
+        throw StateError('Parent sign-in required.');
+      }
+      await FirebaseFunctions.instanceFor(
+        region: 'me-central1',
+      ).httpsCallable('deleteChildProfile').call({'childId': id});
+    } on FirebaseFunctionsException catch (e) {
+      failure = e.message ?? 'Could not delete this child profile.';
+    } catch (e) {
+      failure = 'Could not delete this child profile. Please try again.';
+      debugPrint('DELETE CHILD ERROR: $e');
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    if (failure != null) {
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Deletion Not Completed',
+        message: failure,
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.redAccent,
+        buttonColor: primaryPurple,
+      );
     }
   }
 
-  void _confirmDelete(BuildContext context) async {
+  Future<void> _confirmDelete(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null || user.email == null) {
+      if (!context.mounted) return;
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Sign In Required',
+        message: 'Please sign in as a parent to delete the account.',
+        icon: Icons.lock_outline_rounded,
+        iconColor: Colors.redAccent,
+        buttonColor: primaryPurple,
+      );
+      return;
+    }
 
     final shouldDelete = await LexiaPopup.showConfirm(
       context: context,
-      title: "Delete Account?",
-      message: "This will permanently delete your account and all family data.",
-      confirmText: "Delete",
+      title: 'Delete Account?',
+      message: 'This will permanently delete your account and all family data.',
+      confirmText: 'Delete',
       confirmColor: Colors.redAccent,
       icon: Icons.delete_forever_rounded,
       iconColor: Colors.redAccent,
     );
 
-    if (!shouldDelete) return;
+    if (!shouldDelete || !context.mounted) return;
+
+    final verified = await _confirmDeletionPassword(context, user);
+    if (verified != true || !context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22.r),
+          ),
+          content: Row(
+            children: [
+              const CircularProgressIndicator(color: primaryPurple),
+              SizedBox(width: 18.w),
+              Expanded(
+                child: Text(
+                  'Deleting family account...',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 12.sp,
+                    color: textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    String? failure;
 
     try {
-      final uid = user!.uid;
-
-      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-      await user.delete();
-
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const OnboardingPage()),
-          (r) => false,
-        );
-      }
+      await FirebaseFunctions.instanceFor(
+        region: 'me-central1',
+      ).httpsCallable('deleteFamilyAccount').call({});
+    } on FirebaseFunctionsException catch (e) {
+      failure = e.message ?? 'Account deletion could not be completed.';
     } catch (_) {
-      if (context.mounted) {
-        LexiaPopup.showMessage(
-          context: context,
-          title: "Security Required",
-          message: "Please re-login before deleting your account.",
-          icon: Icons.lock_outline_rounded,
-          iconColor: Colors.redAccent,
-          buttonColor: primaryPurple,
-          buttonText: "Got it",
-        );
-      }
+      failure = 'Could not complete account deletion. Please try again.';
+    }
+
+    if (!context.mounted) return;
+
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (failure != null) {
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Deletion Not Completed',
+        message: failure,
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.redAccent,
+        buttonColor: primaryPurple,
+      );
+      return;
+    }
+
+    await FirebaseAuth.instance.signOut();
+
+    if (!context.mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const OnboardingPage()),
+      (route) => false,
+    );
+  }
+
+  Future<bool?> _confirmDeletionPassword(
+    BuildContext context,
+    User user,
+  ) async {
+    final controller = TextEditingController();
+    bool hidePassword = true;
+    bool verifying = false;
+    String? error;
+
+    try {
+      return await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24.r),
+            ),
+            title: Text(
+              'Confirm Your Password',
+              style: GoogleFonts.montserrat(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w700,
+                color: textDark,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Enter your parent password to permanently delete your family account.',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 11.sp,
+                    color: Colors.black54,
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                TextField(
+                  controller: controller,
+                  enabled: !verifying,
+                  obscureText: hidePassword,
+                  autofocus: true,
+                  onChanged: (_) {
+                    if (error != null) update(() => error = null);
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Parent password',
+                    errorText: error,
+                    errorStyle: GoogleFonts.montserrat(
+                      color: Colors.red,
+                      fontSize: 10.sp,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F8FC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    suffixIcon: IconButton(
+                      onPressed: verifying
+                          ? null
+                          : () => update(() => hidePassword = !hidePassword),
+                      icon: Icon(
+                        hidePassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: verifying
+                    ? null
+                    : () => Navigator.pop(dialogContext, false),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.montserrat(color: primaryPurple),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: verifying
+                    ? null
+                    : () async {
+                        if (controller.text.isEmpty) {
+                          update(() => error = 'Field required');
+                          return;
+                        }
+
+                        update(() {
+                          verifying = true;
+                          error = null;
+                        });
+
+                        try {
+                          final credential = EmailAuthProvider.credential(
+                            email: user.email!,
+                            password: controller.text,
+                          );
+
+                          await user.reauthenticateWithCredential(credential);
+                          await user.getIdToken(true);
+
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext, true);
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          if (dialogContext.mounted) {
+                            update(() {
+                              error = e.code == 'network-request-failed'
+                                  ? 'Network error. Please try again.'
+                                  : 'Incorrect password. Please try again.';
+                              verifying = false;
+                            });
+                          }
+                        } catch (_) {
+                          if (dialogContext.mounted) {
+                            update(() {
+                              error = 'Unable to verify password.';
+                              verifying = false;
+                            });
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: verifying
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'Delete Account',
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
     }
   }
+}
+
+// Displays the saved picture sequence automatically to the signed-in parent.
+// Only the parent-authenticated Cloud Function can decrypt the private copy.
+class _ParentPinRecoveryView extends StatefulWidget {
+  final String childId;
+  const _ParentPinRecoveryView({super.key, required this.childId});
+
+  @override
+  State<_ParentPinRecoveryView> createState() => _ParentPinRecoveryViewState();
+}
+
+class _ParentPinRecoveryViewState extends State<_ParentPinRecoveryView> {
+  static const purple = Color(0xFF6A5ACD);
+  List<int>? _pictures;
+  bool _loading = true;
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPictures();
+  }
+
+  Future<void> _loadPictures() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _message = null;
+        _pictures = null;
+      });
+    }
+    try {
+      final result = await FirebaseFunctions.instanceFor(region: 'me-central1')
+          .httpsCallable('manageChildPin')
+          .call({'action': 'getRecovery', 'childId': widget.childId});
+      final data = Map<String, dynamic>.from(result.data as Map);
+      if (!mounted) return;
+      if (data['available'] == true && data['sequence'] is List) {
+        final values = List<int>.from(data['sequence'] as List);
+        if (values.length != 3 || values.any((n) => n < 1 || n > 9)) {
+          throw StateError('Unexpected PIN data.');
+        }
+        setState(() {
+          _pictures = values;
+        });
+      } else {
+        setState(() {
+          _message =
+              'Reset this PIN once to display the three pictures. Existing PINs saved before recovery was enabled cannot be recovered.';
+        });
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted)
+        setState(() {
+          _message = e.message ?? e.code;
+        });
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _message = 'Unable to load the Picture PIN.';
+        });
+    } finally {
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_loading)
+            const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 10),
+                Text('Loading Picture PIN...'),
+              ],
+            )
+          else if (_pictures != null) ...[
+            const Text(
+              'Selected pictures (in order)',
+              style: TextStyle(color: Color(0xFF2D3142)),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: _pictures!
+                  .asMap()
+                  .entries
+                  .map(
+                    (entry) => Container(
+                      width: 75,
+                      height: 85,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4EFFF),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: const Color(0xFFE3DDF6)),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '${entry.key + 1}',
+                            style: const TextStyle(fontSize: 11, color: purple),
+                          ),
+                          Expanded(
+                            child: Image.asset(
+                              'assets/pin_photos/pin_${entry.value}.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ] else if (_message != null)
+            Text(
+              _message!,
+              style: const TextStyle(color: Colors.deepOrange, fontSize: 12),
+            ),
+          if (!_loading && _pictures == null && _message != null)
+            TextButton.icon(
+              onPressed: _loadPictures,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// Parent-controlled picture PIN replacement, including encrypted recovery.
+class _ParentResetPicturePinPage extends StatefulWidget {
+  final String childId;
+  final String childName;
+  const _ParentResetPicturePinPage({
+    required this.childId,
+    required this.childName,
+  });
+
+  @override
+  State<_ParentResetPicturePinPage> createState() =>
+      _ParentResetPicturePinPageState();
+}
+
+class _ParentResetPicturePinPageState
+    extends State<_ParentResetPicturePinPage> {
+  static const purple = Color(0xFF6A5ACD);
+  static const dark = Color(0xFF2D3142);
+  final List<int> first = [];
+  final List<int> confirmation = [];
+  bool confirming = false;
+  bool saving = false;
+  String? message;
+
+  List<int> get active => confirming ? confirmation : first;
+
+  Future<void> proceed() async {
+    if (active.length != 3 || saving) return;
+    if (!confirming) {
+      setState(() {
+        confirming = true;
+        confirmation.clear();
+        message = null;
+      });
+      return;
+    }
+    if (first.join(',') != confirmation.join(',')) {
+      setState(() {
+        confirmation.clear();
+        message = 'The pictures do not match. Please try again.';
+      });
+      return;
+    }
+    setState(() {
+      saving = true;
+      message = null;
+    });
+    try {
+      await FirebaseFunctions.instanceFor(
+        region: 'me-central1',
+      ).httpsCallable('manageChildPin').call({
+        'action': 'reset',
+        'childId': widget.childId,
+        'newPin': List<int>.from(first),
+      });
+      if (!mounted) return;
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Picture PIN Updated!',
+        message: 'The new Picture PIN has been saved successfully.',
+        icon: Icons.check_rounded,
+        iconColor: const Color(0xFF59A685),
+        buttonColor: purple,
+        buttonText: 'Got it',
+        barrierDismissible: false,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        message = e.message ?? e.code;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        message = 'Could not reset PIN. Please try again.';
+      });
+    } finally {
+      if (mounted)
+        setState(() {
+          saving = false;
+        });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF9F9),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: Text(
+          confirming ? 'Confirm Picture PIN' : 'Reset Picture PIN',
+          style: GoogleFonts.montserrat(
+            color: dark,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Picture PIN for ${widget.childName}',
+                style: GoogleFonts.montserrat(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: dark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                confirming
+                    ? 'Select the same three pictures again in the same order.'
+                    : 'Select three pictures in order to replace the existing PIN.',
+                style: GoogleFonts.montserrat(color: Colors.black54),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  3,
+                  (i) => Container(
+                    width: 70,
+                    height: 70,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3EEFF),
+                      border: Border.all(color: const Color(0xFFDCD4F8)),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: i < active.length
+                        ? Image.asset(
+                            'assets/pin_photos/pin_${active[i]}.png',
+                            fit: BoxFit.contain,
+                          )
+                        : Center(
+                            child: Text(
+                              '${i + 1}',
+                              style: const TextStyle(color: Colors.black38),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 9,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1,
+                ),
+                itemBuilder: (_, index) => InkWell(
+                  onTap: saving || active.length == 3
+                      ? null
+                      : () {
+                          setState(() {
+                            active.add(index + 1);
+                            message = null;
+                          });
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F6FF),
+                      border: Border.all(color: const Color(0xFFE3DDF6)),
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                    child: Image.asset(
+                      'assets/pin_photos/pin_${index + 1}.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${active.length}/3 selected',
+                    style: const TextStyle(color: purple),
+                  ),
+                  TextButton(
+                    onPressed: saving || active.isEmpty
+                        ? null
+                        : () {
+                            setState(() => active.removeLast());
+                          },
+                    child: const Text('Undo'),
+                  ),
+                  TextButton(
+                    onPressed: saving || active.isEmpty
+                        ? null
+                        : () {
+                            setState(() => active.clear());
+                          },
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
+              if (message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    message!,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              const SizedBox(height: 25),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: saving || active.length != 3 ? null : proceed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: purple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: saving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          confirming ? 'Save New PIN' : 'Next',
+                          style: GoogleFonts.montserrat(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// This temporary screen owns no Firestore listeners. It waits for the parent
+// routes to finish disposing before invalidating the Firebase Auth session.
+class _ParentSignOutTransition extends StatefulWidget {
+  const _ParentSignOutTransition();
+
+  @override
+  State<_ParentSignOutTransition> createState() =>
+      _ParentSignOutTransitionState();
+}
+
+class _ParentSignOutTransitionState extends State<_ParentSignOutTransition> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _finishSignOut());
+  }
+
+  Future<void> _finishSignOut() async {
+    // The first frame commits the new route; the following frame lets the old
+    // parent routes and their StreamBuilders finish disposing.
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const OnboardingPage()),
+        (_) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      await LexiaPopup.showMessage(
+        context: context,
+        title: 'Sign Out Failed',
+        message: 'Please check your connection and try again.',
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.redAccent,
+        buttonColor: const Color(0xFF6A5ACD),
+      );
+      if (mounted) _finishSignOut();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    backgroundColor: Color(0xFFFFF9F9),
+    body: Center(child: CircularProgressIndicator(color: Color(0xFF6A5ACD))),
+  );
 }

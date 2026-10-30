@@ -1,3 +1,4 @@
+import '../auth_identity.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -42,12 +43,14 @@ class LevelNode extends StatelessWidget {
     final isLocked = status == "locked";
     final isCompleted = status == "completed";
     final isCurrent = status == "current";
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
+          .collection('children')
+          .doc(childId)
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};

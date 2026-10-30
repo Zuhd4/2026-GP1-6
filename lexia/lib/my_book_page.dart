@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'auth_identity.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -26,7 +28,7 @@ class MyBookPage extends StatelessWidget {
     final double topMargin = R.safeTop + R.space(95);
     final double bottomMargin = R.safeBottom + R.space(105);
 
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     if (uid.isEmpty) {
       return const Scaffold(
@@ -56,6 +58,8 @@ class MyBookPage extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
+          .collection('children')
+          .doc(childId)
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};
@@ -182,7 +186,9 @@ class MyBookPage extends StatelessWidget {
                                   builder: (context) => _DocumentReaderPage(
                                     title: name,
                                     extractedText: extractedText,
-                                    useOpenDyslexic: useOpenDyslexic,
+                                    useInterfaceOpenDyslexic: useOpenDyslexic,
+                                    useOpenDyslexic:
+                                        data['useOpenDyslexicFont'] == true,
                                     difficultyByWord: difficultyByWord,
                                   ),
                                 ),
@@ -266,12 +272,15 @@ class _DocumentReaderPage extends StatelessWidget {
     required this.title,
     required this.extractedText,
     required this.useOpenDyslexic,
+    required this.useInterfaceOpenDyslexic,
     required this.difficultyByWord,
   });
 
   final String title;
   final String extractedText;
   final bool useOpenDyslexic;
+  // Child accessibility preference: headers and instructions only.
+  final bool useInterfaceOpenDyslexic;
   final Map<String, String> difficultyByWord;
   static final RegExp _wordPattern = RegExp(r"[A-Za-z]+(?:['’][A-Za-z]+)?");
 
@@ -291,8 +300,8 @@ class _DocumentReaderPage extends StatelessWidget {
       final Color? highlight = difficulty == 'medium'
           ? const Color(0xFFFFF176)
           : difficulty == 'hard'
-              ? const Color(0xFFFFB74D)
-              : null;
+          ? const Color(0xFFFFB74D)
+          : null;
       if (highlight == null) {
         spans.add(TextSpan(text: word));
       } else {
@@ -314,7 +323,8 @@ class _DocumentReaderPage extends StatelessWidget {
               ),
               child: Text(
                 word,
-                style: GoogleFonts.montserrat(
+                style: AppTypography.getStyle(
+                  useOpenDyslexic: useOpenDyslexic,
                   fontSize: R.text(15),
                   fontWeight: FontWeight.w600,
                   color: MyBookPage.textDark,
@@ -352,7 +362,7 @@ class _DocumentReaderPage extends StatelessWidget {
         title: Text(
           title,
           style: AppTypography.getStyle(
-            useOpenDyslexic: useOpenDyslexic,
+            useOpenDyslexic: useInterfaceOpenDyslexic,
             fontSize: R.text(18),
             fontWeight: FontWeight.w500,
             color: MyBookPage.textDark,
@@ -398,7 +408,7 @@ class _DocumentReaderPage extends StatelessWidget {
                   Text(
                     'Medium',
                     style: AppTypography.getStyle(
-                      useOpenDyslexic: useOpenDyslexic,
+                      useOpenDyslexic: useInterfaceOpenDyslexic,
                       fontSize: R.text(12),
                       color: MyBookPage.textDark,
                     ),
@@ -413,7 +423,7 @@ class _DocumentReaderPage extends StatelessWidget {
                   Text(
                     'Hard',
                     style: AppTypography.getStyle(
-                      useOpenDyslexic: useOpenDyslexic,
+                      useOpenDyslexic: useInterfaceOpenDyslexic,
                       fontSize: R.text(12),
                       color: MyBookPage.textDark,
                     ),
@@ -437,7 +447,8 @@ class _DocumentReaderPage extends StatelessWidget {
                 ),
                 child: Text.rich(
                   TextSpan(
-                    style: GoogleFonts.montserrat(
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: useOpenDyslexic,
                       fontSize: R.text(15),
                       height: 1.6,
                       color: MyBookPage.textDark,
@@ -454,11 +465,83 @@ class _DocumentReaderPage extends StatelessWidget {
   }
 }
 
-class _DocumentCover extends StatelessWidget {
+class _DocumentCover extends StatefulWidget {
   const _DocumentCover({this.url, this.storagePath});
 
   final String? url;
   final String? storagePath;
+
+  @override
+  State<_DocumentCover> createState() => _DocumentCoverState();
+}
+
+class _DocumentCoverState extends State<_DocumentCover> {
+  Future<_CoverResult>? _coverFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCover();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DocumentCover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.storagePath != widget.storagePath ||
+        oldWidget.url != widget.url) {
+      _loadCover();
+    }
+  }
+
+  void _loadCover() {
+    _coverFuture = _resolveCover();
+  }
+
+  Future<_CoverResult> _resolveCover() async {
+    final path = widget.storagePath?.trim();
+    final savedUrl = widget.url?.trim();
+    if (path != null && path.isNotEmpty) {
+      try {
+        // Storage bytes use the active Firebase Authentication session.
+        final bytes = await FirebaseStorage.instance
+            .ref(path)
+            .getData(20 * 1024 * 1024);
+        if (bytes != null && bytes.isNotEmpty) {
+          return _CoverResult(bytes: bytes);
+        }
+        debugPrint('MyBook cover: empty Storage object at $path');
+      } on FirebaseException catch (error) {
+        debugPrint(
+          'MyBook cover getData FAILED at $path: '
+          'code=${error.code}, message=${error.message}, '
+          'signedIn=${FirebaseAuth.instance.currentUser != null}',
+        );
+      } catch (error) {
+        debugPrint('MyBook cover getData FAILED at $path: $error');
+      }
+
+      // Some Storage environments support URL retrieval even when the direct
+      // byte download fails. Keep the diagnostic messages for both attempts.
+      try {
+        final url = await FirebaseStorage.instance.ref(path).getDownloadURL();
+        return _CoverResult(url: url);
+      } on FirebaseException catch (error) {
+        debugPrint(
+          'MyBook cover getDownloadURL FAILED at $path: '
+          'code=${error.code}, message=${error.message}',
+        );
+      } catch (error) {
+        debugPrint('MyBook cover getDownloadURL FAILED at $path: $error');
+      }
+    } else {
+      debugPrint('MyBook cover: shared document has NO imageStoragePath');
+    }
+
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      return _CoverResult(url: savedUrl);
+    }
+    return const _CoverResult();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -472,41 +555,51 @@ class _DocumentCover extends StatelessWidget {
       ),
     );
 
-    Widget image(String imageUrl) => Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      errorBuilder: (context, error, stackTrace) {
-        debugPrint('MyBook cover image failed to load: $error');
-        return fallback;
-      },
-    );
-
-    Widget content;
-    if (url != null && url!.trim().isNotEmpty) {
-      content = image(url!);
-    } else if (storagePath != null && storagePath!.trim().isNotEmpty) {
-      content = FutureBuilder<String>(
-        future: FirebaseStorage.instance.ref(storagePath!).getDownloadURL(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            debugPrint('MyBook cover Storage URL failed: ${snapshot.error}');
-          }
-          if (snapshot.hasData) return image(snapshot.data!);
-          return fallback;
-        },
-      );
-    } else {
-      debugPrint(
-        'MyBook cover missing: shared document has no image URL or image Storage path',
-      );
-      content = fallback;
-    }
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(R.radius(12)),
-      child: SizedBox(width: R.icon(58), height: R.icon(58), child: content),
+      child: SizedBox(
+        width: R.icon(58),
+        height: R.icon(58),
+        child: FutureBuilder<_CoverResult>(
+          future: _coverFuture,
+          builder: (context, snapshot) {
+            final result = snapshot.data;
+            if (result?.bytes != null) {
+              return Image.memory(
+                result!.bytes!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('MyBook cover Image.memory FAILED: $error');
+                  return fallback;
+                },
+              );
+            }
+            if (result?.url != null) {
+              return Image.network(
+                result!.url!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('MyBook cover Image.network FAILED: $error');
+                  return fallback;
+                },
+              );
+            }
+            if (snapshot.hasError) {
+              debugPrint(
+                'MyBook cover unexpected loading ERROR: '
+                '${snapshot.error}',
+              );
+            }
+            return fallback;
+          },
+        ),
+      ),
     );
   }
+}
+
+class _CoverResult {
+  const _CoverResult({this.bytes, this.url});
+  final Uint8List? bytes;
+  final String? url;
 }

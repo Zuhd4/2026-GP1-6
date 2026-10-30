@@ -1,3 +1,7 @@
+import 'auth_identity.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'login_screen.dart';
+import 'profile_selection.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,7 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dashboard_page.dart';
 import 'scanner_page.dart';
 import 'profile_page.dart';
-import 'profile_selection.dart';
 import 'games_page.dart';
 import 'reading_page.dart';
 import 'my_book_page.dart';
@@ -23,8 +26,83 @@ class MainWrapper extends StatefulWidget {
   State<MainWrapper> createState() => _MainWrapperState();
 }
 
-class _MainWrapperState extends State<MainWrapper> {
+class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   int _selectedIndex = 1;
+  bool _wasBackgrounded = false;
+  bool _switchingProfiles = false;
+  bool _childSessionHidden = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isChildMode) WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    if (widget.isChildMode) WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!widget.isChildMode || _switchingProfiles) return;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _wasBackgrounded = true;
+      // Hide child content immediately so it is not exposed upon return.
+      if (mounted && !_childSessionHidden) {
+        setState(() => _childSessionHidden = true);
+      }
+    } else if (state == AppLifecycleState.resumed && _wasBackgrounded) {
+      _wasBackgrounded = false;
+      _returnToChildPicker();
+    }
+  }
+
+  Future<void> _returnToChildPicker() async {
+    if (_switchingProfiles || !mounted) return;
+    _switchingProfiles = true;
+    try {
+      final code = await AuthIdentity.storedFamilyCode();
+      if (code == null || code.isEmpty) {
+        await FirebaseAuth.instance.signOut();
+        AuthIdentity.clearChild();
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+        return;
+      }
+      final cached = await AuthIdentity.storedProfiles(code);
+      final children = cached.isNotEmpty
+          ? cached
+          : await AuthIdentity.loadFamilyProfiles(code);
+      await FirebaseAuth.instance.signOut();
+      AuthIdentity.clearChild();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) =>
+              ProfileSelectionPage(familyCode: code, profiles: children),
+        ),
+        (_) => false,
+      );
+    } catch (e) {
+      debugPrint('LEXIA AUTH - Return to profiles failed: $e');
+      // Do not leave the child dashboard accessible after a failed switch.
+      await FirebaseAuth.instance.signOut();
+      AuthIdentity.clearChild();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    } finally {
+      _switchingProfiles = false;
+    }
+  }
 
   final List<Widget> _parentPages = [
     const ScannerPage(),
@@ -36,7 +114,7 @@ class _MainWrapperState extends State<MainWrapper> {
   static const Color textDark = Color(0xFF2D3142);
 
   Future<void> _openChildSettings() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = AuthIdentity.parentUid;
 
     try {
       QuerySnapshot snap;
@@ -97,6 +175,46 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
+  Future<void> _exitChild() async {
+    if (!widget.isChildMode) return;
+    final code = AuthIdentity.familyCode;
+    await FirebaseAuth.instance.signOut();
+    AuthIdentity.clearChild();
+    if (!mounted) return;
+    if (code == null || code.isEmpty) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+      return;
+    }
+    try {
+      final result = await FirebaseFunctions.instanceFor(region: 'me-central1')
+          .httpsCallable('verifyFamilyCode')
+          .call<Map<String, dynamic>>({'familyCode': code});
+      final children = (result.data['profiles'] as List<dynamic>? ?? [])
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ProfileSelectionPage(familyCode: code, profiles: children),
+        ),
+        (_) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -122,13 +240,17 @@ class _MainWrapperState extends State<MainWrapper> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       backgroundColor: const Color(0xFFF9F7F8),
-      body: Stack(
-        children: [
-          Positioned.fill(child: currentPages[_selectedIndex]),
-          _buildHeader(sw, mq),
-        ],
-      ),
-      bottomNavigationBar: _buildFooter(sw, mq),
+      body: widget.isChildMode && _childSessionHidden
+          ? const Center(child: CircularProgressIndicator(color: primaryPurple))
+          : Stack(
+              children: [
+                Positioned.fill(child: currentPages[_selectedIndex]),
+                _buildHeader(sw, mq),
+              ],
+            ),
+      bottomNavigationBar: widget.isChildMode && _childSessionHidden
+          ? null
+          : _buildFooter(sw, mq),
     );
   }
 
@@ -163,20 +285,8 @@ class _MainWrapperState extends State<MainWrapper> {
                   children: [
                     const SizedBox(width: 4),
 
-                    IconButton(
-                      icon: Icon(
-                        Icons.logout_rounded,
-                        color: textDark.withOpacity(0.6),
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProfileSelectionPage(),
-                        ),
-                        (r) => false,
-                      ),
-                    ),
+                    // No back/logout button in the main dashboard header.
+                    const SizedBox(width: 48),
 
                     const Spacer(),
 
@@ -197,7 +307,7 @@ class _MainWrapperState extends State<MainWrapper> {
                           ),
                         ),
                       )
-                    else
+                    else ...[
                       IconButton(
                         icon: const Icon(
                           Icons.person_outline_rounded,
@@ -205,6 +315,7 @@ class _MainWrapperState extends State<MainWrapper> {
                         ),
                         onPressed: _openChildSettings,
                       ),
+                    ],
 
                     const SizedBox(width: 4),
                   ],
@@ -302,32 +413,6 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-
-    if (widget.isChildMode) {
-      _listenToParentSession();
-    }
-  }
-
-  void _listenToParentSession() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    FirebaseFirestore.instance.collection('users').doc(uid).snapshots().listen((
-      doc,
-    ) {
-      final data = doc.data();
-      final sessionActive = data?['sessionActive'];
-
-      if (sessionActive == false && mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const OnboardingPage()),
-          (route) => false,
-        );
-      }
-    });
-  }
+  // Child authentication is independent of the parent session.
+  // Never log the child out just because the parent signed out.
 }

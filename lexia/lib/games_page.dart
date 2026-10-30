@@ -1,3 +1,4 @@
+import 'auth_identity.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ class GamesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     R.init(context);
 
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     if (uid.isEmpty) {
       return const Scaffold(body: Center(child: Text("User not logged in")));
@@ -31,47 +32,26 @@ class GamesPage extends StatelessWidget {
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .snapshots(),
-      builder: (context, parentSnap) {
-        final parentData = parentSnap.data?.data() ?? {};
-        final bool useOpenDyslexic = parentData['useOpenDyslexicFont'] == true;
-
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .collection('children')
-              .doc(childId)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                backgroundColor: Colors.transparent,
-                body: Center(
-                  child: CircularProgressIndicator(color: primaryPurple),
-                ),
-              );
-            }
-
-            if (!snapshot.hasData || !snapshot.data!.exists) {
-              return _emptyMessage(
-                context,
-                "Child profile not found",
-                useOpenDyslexic,
-              );
-            }
-
-            final childDoc = snapshot.data!;
-            final childData = childDoc.data() ?? {};
-
-            return _GamesMapContent(
-              childId: childDoc.id,
-              childData: childData,
-              useOpenDyslexic: useOpenDyslexic,
-            );
-          },
+          .collection('users').doc(uid)
+          .collection('children').doc(childId).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _emptyMessage(context, 'Could not load game progress', false);
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Center(child: CircularProgressIndicator(color: primaryPurple)),
+          );
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return _emptyMessage(context, 'Child profile not found', false);
+        }
+        final childData = snapshot.data!.data() ?? {};
+        return _GamesMapContent(
+          childId: childId,
+          childData: childData,
+          useOpenDyslexic: childData['useOpenDyslexicFont'] == true,
         );
       },
     );

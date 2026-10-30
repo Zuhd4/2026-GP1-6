@@ -1,3 +1,4 @@
+import 'auth_identity.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -44,7 +45,8 @@ class _LevelCompletePageState extends State<LevelCompletePage>
       duration: const Duration(seconds: 3),
     )..repeat();
 
-    _saveTrophy();
+    // Trophies are derived from bestStars of all three games on the map.
+    // Child rules permit gameProgress, not trophy counter fields.
   }
 
   Future<void> _saveTrophy() async {
@@ -55,8 +57,8 @@ class _LevelCompletePageState extends State<LevelCompletePage>
       return;
     }
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || uid.isEmpty) return;
+    final uid = AuthIdentity.parentUid;
+    if (uid.isEmpty) return;
 
     setState(() => _isSaving = true);
 
@@ -116,12 +118,14 @@ class _LevelCompletePageState extends State<LevelCompletePage>
 
   @override
   Widget build(BuildContext context) {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};

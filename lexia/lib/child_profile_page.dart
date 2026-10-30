@@ -1,16 +1,27 @@
+import 'auth_identity.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'profile_selection.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'app_typography.dart';
 import 'child_profile_settings_page.dart';
 
-class ChildProfilePage extends StatelessWidget {
+class ChildProfilePage extends StatefulWidget {
   final String childId;
 
   const ChildProfilePage({super.key, required this.childId});
+
+  @override
+  State<ChildProfilePage> createState() => _ChildProfilePageState();
+}
+
+class _ChildProfilePageState extends State<ChildProfilePage> {
+  bool _isExiting = false;
+  String get childId => widget.childId;
 
   static const Color textDark = Color(0xFF2D3142);
   static const Color primaryPurple = Color(0xFF6A5ACD);
@@ -99,38 +110,91 @@ class ChildProfilePage extends StatelessWidget {
     ),
   );
 
-  Widget _accountDetailTile(
-    IconData icon,
-    String title,
-    String value,
-    bool useOpenDyslexic,
-  ) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        padding: EdgeInsets.all(8.r),
-        decoration: BoxDecoration(
-          color: primaryPurple.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(10.r),
+  // Leave the child session, but keep this family's selection flow.
+  Future<void> _exitToProfiles() async {
+    if (_isExiting) return;
+    setState(() => _isExiting = true);
+
+    try {
+      // Wait until the on-page overlay replaces Firestore StreamBuilders.
+      // This releases child document listeners before Firebase sign-out.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      final code = AuthIdentity.familyCode;
+      if (code == null || code.isEmpty) {
+        throw StateError('Family Code unavailable.');
+      }
+
+      final result = await FirebaseFunctions.instanceFor(region: 'me-central1')
+          .httpsCallable('verifyFamilyCode')
+          .call<Map<String, dynamic>>({'familyCode': code});
+      final profiles = (result.data['profiles'] as List<dynamic>? ?? [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+
+      await FirebaseAuth.instance.signOut();
+      AuthIdentity.clearChild();
+      if (!mounted) return;
+
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) =>
+              ProfileSelectionPage(familyCode: code, profiles: profiles),
         ),
-        child: Icon(icon, color: primaryPurple.withOpacity(0.7), size: 18.r),
-      ),
-      title: Text(
-        title,
-        style: AppTypography.getStyle(
-          useOpenDyslexic: useOpenDyslexic,
-          fontSize: 10.sp,
-          color: Colors.black38,
-          fontWeight: FontWeight.w400,
+        (_) => false,
+      );
+    } catch (e) {
+      debugPrint('Exit to child profiles failed: $e');
+      if (!mounted) return;
+      setState(() => _isExiting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open profiles. Please try again.'),
         ),
-      ),
-      subtitle: Text(
-        value,
-        style: AppTypography.getStyle(
-          useOpenDyslexic: useOpenDyslexic,
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w500,
-          color: textDark,
+      );
+    }
+  }
+
+  Widget _exitingOverlay() {
+    return Scaffold(
+      backgroundColor: ivoryWhite,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [ivoryWhite, paleBlush, softCream, Colors.white],
+            stops: [0.0, 0.4, 0.7, 1.0],
+          ),
+        ),
+        child: Center(
+          child: Dialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24.r),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 30.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: primaryPurple),
+                  SizedBox(height: 18.h),
+                  Text(
+                    'Exiting...',
+                    style: AppTypography.getStyle(
+                      useOpenDyslexic: false,
+                      fontSize: 17.sp,
+                      fontWeight: FontWeight.w600,
+                      color: textDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -138,12 +202,15 @@ class ChildProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (_isExiting) return _exitingOverlay();
+    final String uid = AuthIdentity.parentUid;
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};
@@ -195,11 +262,6 @@ class ChildProfilePage extends StatelessWidget {
                 final String avatar =
                     data['avatarUrl']?.toString() ?? 'assets/lexiaAv.png';
 
-                final bool allowChildPin = data['allowChildPin'] == true;
-                final String pinDisplay = allowChildPin
-                    ? "••••"
-                    : "Not enabled";
-
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   padding: EdgeInsets.fromLTRB(22.w, 20.h, 22.w, 100.h),
@@ -247,18 +309,6 @@ class ChildProfilePage extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-
-                                  const Divider(
-                                    height: 32,
-                                    color: Color(0xFFF8F9FB),
-                                  ),
-
-                                  _accountDetailTile(
-                                    Icons.pin_rounded,
-                                    "Child PIN",
-                                    pinDisplay,
-                                    useOpenDyslexic,
-                                  ),
                                 ],
                               ),
 
@@ -294,6 +344,34 @@ class ChildProfilePage extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        SizedBox(height: 30.h),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54.h,
+                          child: ElevatedButton.icon(
+                            onPressed: _isExiting ? null : _exitToProfiles,
+                            icon: Icon(Icons.logout_rounded, size: 24.r),
+                            label: Text(
+                              'Exit',
+                              style: AppTypography.getStyle(
+                                useOpenDyslexic: useOpenDyslexic,
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryPurple,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: primaryPurple,
+                              disabledForegroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18.r),
+                              ),
+                            ),
                           ),
                         ),
                       ],

@@ -60,6 +60,11 @@ dependencies:
   record: ^6.2.1
   path_provider: ^2.1.6
   http: ^1.6.0
+  cloud_functions: ^6.5.1
+  flutter_secure_storage: ^10.3.4
+  pdf: ^3.12.0
+  file_picker: ^11.0.3
+  pdfx: ^2.11.0
 
 dev_dependencies:
   flutter_test:
@@ -110,6 +115,7 @@ flutter:
     - assets/e_think.png
     - assets/e_wink.png
     - assets/fonts/
+    - assets/pin_photos/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

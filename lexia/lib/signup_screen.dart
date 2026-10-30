@@ -3,9 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'login_screen.dart';
-import 'profile_selection.dart';
+import 'main_wrapper.dart';
 import 'responsive_helper.dart';
-import 'package:flutter/services.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,7 +18,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _pinController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -29,7 +27,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? emailError;
   String? passwordError;
   String? confirmPasswordError;
-  String? pinError;
   String? generalError;
 
   static const Color primary = Color(0xFF6A5ACD);
@@ -45,7 +42,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _pinController.dispose();
     super.dispose();
   }
 
@@ -54,7 +50,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
-    final pin = _pinController.text.trim();
 
     final emailRegex = RegExp(
       r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
@@ -99,21 +94,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         confirmPasswordError = null;
       }
 
-      if (pin.isEmpty) {
-        pinError = "4-digit PIN required";
-      } else if (!RegExp(r'^\d+$').hasMatch(pin)) {
-        pinError = "PIN must contain numbers only";
-      } else if (pin.length != 4) {
-        pinError = "PIN must be exactly 4 digits";
-      } else {
-        pinError = null;
-      }
-
       if (nameError != null ||
           emailError != null ||
           passwordError != null ||
-          confirmPasswordError != null ||
-          pinError != null) {
+          confirmPasswordError != null) {
         isValid = false;
       }
     });
@@ -143,7 +127,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             'uid': cred.user!.uid,
             'name': _nameController.text.trim(),
             'email': _emailController.text.trim(),
-            'pin': _pinController.text.trim(),
             'createdAt': FieldValue.serverTimestamp(),
           });
 
@@ -151,7 +134,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const ProfileSelectionPage()),
+        MaterialPageRoute(builder: (_) => const MainWrapper()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
@@ -409,25 +392,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
 
                         SizedBox(height: R.space(13)),
-
-                        SizedBox(height: R.space(7)),
-                        TextField(
-                          controller: _pinController,
-                          obscureText: true,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(4),
-                          ],
-                          style: GoogleFonts.montserrat(fontSize: R.text(11)),
-                          decoration: _input(
-                            "Create a 4-digit PIN",
-                            Icons.pin_outlined,
-                            errorText: pinError,
-                          ),
-                          onSubmitted: (_) => _handleSignUp(),
-                        ),
 
                         if (generalError != null) ...[
                           SizedBox(height: R.space(8)),

@@ -1,3 +1,4 @@
+import 'auth_identity.dart';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -329,7 +330,7 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   }
 
   Future<void> _saveLetterScrambleProgress() async {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     if (uid.isEmpty || widget.childId.isEmpty) {
       return;
@@ -381,7 +382,6 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
 
     await childRef.set({
       'gameProgress': currentProgress,
-      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
@@ -395,6 +395,12 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         await _saveLetterScrambleProgress();
       } catch (e) {
         debugPrint("Failed to save Letter Scramble progress: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Could not save your game. Please try again.")),
+          );
+        }
+        return;
       }
 
       if (!mounted) return;
@@ -489,12 +495,14 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
   Widget build(BuildContext context) {
     R.init(context);
 
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = AuthIdentity.parentUid;
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};
