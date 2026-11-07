@@ -1930,9 +1930,9 @@ class _ReadingStoryDetails extends StatelessWidget {
 
                   icon: Icons.check_circle_rounded,
 
-                  color: const Color(0xFF59A685),
+                  color: const Color(0xFF278364),
 
-                  background: const Color(0xFFEAF6F0),
+                  background: const Color(0xFFE1F1F2),
                 ),
               ),
 
@@ -1946,9 +1946,9 @@ class _ReadingStoryDetails extends StatelessWidget {
 
                   icon: Icons.swap_horiz_rounded,
 
-                  color: const Color(0xFFF0A24A),
+                  color: const Color(0xFFAA454C),
 
-                  background: const Color(0xFFFFF5E8),
+                  background: const Color(0xFFF6E2E8),
                 ),
               ),
 
@@ -1962,9 +1962,9 @@ class _ReadingStoryDetails extends StatelessWidget {
 
                   icon: Icons.remove_circle_outline_rounded,
 
-                  color: const Color(0xFFE36E6E),
+                  color: const Color(0xFF626F80),
 
-                  background: const Color(0xFFFFEEEE),
+                  background: const Color(0xFFE6ECF6),
                 ),
               ),
 
@@ -1978,9 +1978,9 @@ class _ReadingStoryDetails extends StatelessWidget {
 
                   icon: Icons.add_circle_outline_rounded,
 
-                  color: const Color(0xFF7789D8),
+                  color: const Color(0xFF4F69C0),
 
-                  background: const Color(0xFFEEF1FF),
+                  background: const Color(0xFFE3EBFF),
                 ),
               ),
             ],
@@ -2320,7 +2320,7 @@ class _EmptyStateCard extends StatelessWidget {
       child: Column(
         children: [
           Icon(
-            Icons.child_care_rounded,
+            Icons.sentiment_satisfied_alt_rounded,
 
             size: R.icon(44),
 

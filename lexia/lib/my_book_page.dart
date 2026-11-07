@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import 'app_typography.dart';
 import 'responsive_helper.dart';
@@ -267,7 +268,7 @@ class MyBookPage extends StatelessWidget {
   }
 }
 
-class _DocumentReaderPage extends StatelessWidget {
+class _DocumentReaderPage extends StatefulWidget {
   const _DocumentReaderPage({
     required this.title,
     required this.extractedText,
@@ -279,31 +280,135 @@ class _DocumentReaderPage extends StatelessWidget {
   final String title;
   final String extractedText;
   final bool useOpenDyslexic;
-  // Child accessibility preference: headers and instructions only.
   final bool useInterfaceOpenDyslexic;
   final Map<String, String> difficultyByWord;
+
+  @override
+  State<_DocumentReaderPage> createState() => _DocumentReaderPageState();
+}
+
+class _DocumentReaderPageState extends State<_DocumentReaderPage> {
   static final RegExp _wordPattern = RegExp(r"[A-Za-z]+(?:['’][A-Za-z]+)?");
 
+  static const Color mediumHighlight = Color(0xFFFFF176);
+  static const Color hardHighlight = Color(0xFFFFB74D);
+
+  final FlutterTts _tts = FlutterTts();
+
+  double _readingFontSize = 15;
+  bool _isSpeaking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupTts();
+  }
+
+  Future<void> _setupTts() async {
+    _tts.setCompletionHandler(() {
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+    });
+
+    _tts.setCancelHandler(() {
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+    });
+
+    _tts.setErrorHandler((_) {
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+    });
+
+    try {
+      await _tts.setLanguage('en-US');
+      await _tts.setSpeechRate(0.43);
+      await _tts.setPitch(1.0);
+    } catch (e) {
+      debugPrint('TTS setup error: $e');
+    }
+  }
+
+  Future<void> _toggleSpeech() async {
+    if (_isSpeaking) {
+      await _tts.stop();
+
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+      }
+      return;
+    }
+
+    final text = widget.extractedText.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isSpeaking = true);
+
+    try {
+      await _tts.speak(text);
+    } catch (e) {
+      debugPrint('TTS speaking error: $e');
+
+      if (!mounted) return;
+
+      setState(() => _isSpeaking = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to read text aloud.')),
+      );
+    }
+  }
+
+  void _changeFontSize(double change) {
+    setState(() {
+      _readingFontSize = (_readingFontSize + change)
+          .clamp(12.0, 23.0)
+          .toDouble();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    super.dispose();
+  }
+
+  // ============================================================
+  // HIGHLIGHTED DOCUMENT TEXT
+  // ============================================================
+
   List<InlineSpan> _highlightedSpans() {
-    if (extractedText.trim().isEmpty) {
+    final text = widget.extractedText;
+
+    if (text.trim().isEmpty) {
       return [const TextSpan(text: 'No text was detected in this document.')];
     }
+
     final spans = <InlineSpan>[];
-    var end = 0;
-    for (final match in _wordPattern.allMatches(extractedText)) {
-      if (match.start > end) {
-        spans.add(TextSpan(text: extractedText.substring(end, match.start)));
+    var lastEnd = 0;
+
+    for (final match in _wordPattern.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
       }
-      final word = match.group(0)!;
-      final key = word.toLowerCase().replaceAll('’', "'");
-      final difficulty = difficultyByWord[key];
+
+      final originalWord = match.group(0)!;
+
+      final key = originalWord.toLowerCase().replaceAll('’', "'");
+
+      final difficulty = widget.difficultyByWord[key];
+
       final Color? highlight = difficulty == 'medium'
-          ? const Color(0xFFFFF176)
+          ? mediumHighlight
           : difficulty == 'hard'
-          ? const Color(0xFFFFB74D)
+          ? hardHighlight
           : null;
+
       if (highlight == null) {
-        spans.add(TextSpan(text: word));
+        spans.add(TextSpan(text: originalWord));
       } else {
         spans.add(
           WidgetSpan(
@@ -311,37 +416,123 @@ class _DocumentReaderPage extends StatelessWidget {
             child: Container(
               margin: EdgeInsets.symmetric(
                 horizontal: R.space(2),
-                vertical: R.space(3),
+                vertical: R.space(4),
               ),
               padding: EdgeInsets.symmetric(
-                horizontal: R.space(9),
-                vertical: R.space(6),
+                horizontal: R.space(5),
+                vertical: R.space(3),
               ),
               decoration: BoxDecoration(
                 color: highlight,
-                borderRadius: BorderRadius.circular(R.radius(11)),
+                borderRadius: BorderRadius.circular(R.radius(9)),
               ),
               child: Text(
-                word,
+                originalWord,
+                textDirection: TextDirection.ltr,
                 style: AppTypography.getStyle(
-                  useOpenDyslexic: useOpenDyslexic,
-                  fontSize: R.text(15),
+                  useOpenDyslexic: widget.useOpenDyslexic,
+                  fontSize: R.text(_readingFontSize),
                   fontWeight: FontWeight.w600,
                   color: MyBookPage.textDark,
-                  height: 1.25,
+                  height: 1.2,
                 ),
               ),
             ),
           ),
         );
       }
-      end = match.end;
+
+      lastEnd = match.end;
     }
-    if (end < extractedText.length) {
-      spans.add(TextSpan(text: extractedText.substring(end)));
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
     }
+
     return spans;
   }
+
+  // ============================================================
+  // MEDIUM / HARD LEGEND
+  // ============================================================
+
+  Widget _legendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 14, height: 14, color: color),
+        SizedBox(width: R.space(6)),
+        Text(
+          label,
+          style: AppTypography.getStyle(
+            useOpenDyslexic: widget.useInterfaceOpenDyslexic,
+            fontSize: R.text(12),
+            color: MyBookPage.textDark,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // READING CONTROLS
+  // ============================================================
+
+  Widget _buildReadingControls() {
+    return Wrap(
+      spacing: R.space(10),
+      runSpacing: R.space(8),
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _legendItem('Medium', mediumHighlight),
+            SizedBox(width: R.space(18)),
+            _legendItem('Hard', hardHighlight),
+          ],
+        ),
+
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Decrease text size',
+              onPressed: _readingFontSize <= 12
+                  ? null
+                  : () => _changeFontSize(-1),
+              icon: const Icon(Icons.text_decrease_rounded),
+              color: MyBookPage.primaryPurple,
+            ),
+
+            IconButton(
+              tooltip: 'Increase text size',
+              onPressed: _readingFontSize >= 23
+                  ? null
+                  : () => _changeFontSize(1),
+              icon: const Icon(Icons.text_increase_rounded),
+              color: MyBookPage.primaryPurple,
+            ),
+
+            IconButton(
+              tooltip: _isSpeaking ? 'Stop reading' : 'Read text aloud',
+              onPressed: _toggleSpeech,
+              icon: Icon(
+                _isSpeaking
+                    ? Icons.stop_circle_rounded
+                    : Icons.volume_up_rounded,
+              ),
+              color: MyBookPage.primaryPurple,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // PAGE UI
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -360,9 +551,9 @@ class _DocumentReaderPage extends StatelessWidget {
         ),
         titleSpacing: 12,
         title: Text(
-          title,
+          widget.title,
           style: AppTypography.getStyle(
-            useOpenDyslexic: useInterfaceOpenDyslexic,
+            useOpenDyslexic: widget.useInterfaceOpenDyslexic,
             fontSize: R.text(18),
             fontWeight: FontWeight.w500,
             color: MyBookPage.textDark,
@@ -370,6 +561,7 @@ class _DocumentReaderPage extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: MyBookPage.textDark),
       ),
+
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -392,45 +584,18 @@ class _DocumentReaderPage extends StatelessWidget {
           R.pagePad,
           R.pagePad,
         ),
+
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    color: const Color(0xFFFFF176),
-                  ),
-                  SizedBox(width: R.space(6)),
-                  Text(
-                    'Medium',
-                    style: AppTypography.getStyle(
-                      useOpenDyslexic: useInterfaceOpenDyslexic,
-                      fontSize: R.text(12),
-                      color: MyBookPage.textDark,
-                    ),
-                  ),
-                  SizedBox(width: R.space(18)),
-                  Container(
-                    width: 14,
-                    height: 14,
-                    color: const Color(0xFFFFB74D),
-                  ),
-                  SizedBox(width: R.space(6)),
-                  Text(
-                    'Hard',
-                    style: AppTypography.getStyle(
-                      useOpenDyslexic: useInterfaceOpenDyslexic,
-                      fontSize: R.text(12),
-                      color: MyBookPage.textDark,
-                    ),
-                  ),
-                ],
-              ),
+              // Medium / Hard + Font controls + TTS
+              _buildReadingControls(),
+
               SizedBox(height: R.space(14)),
+
+              // Document text
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.all(R.space(18)),
@@ -445,16 +610,20 @@ class _DocumentReaderPage extends StatelessWidget {
                     ),
                   ],
                 ),
+
                 child: Text.rich(
                   TextSpan(
                     style: AppTypography.getStyle(
-                      useOpenDyslexic: useOpenDyslexic,
-                      fontSize: R.text(15),
-                      height: 1.6,
+                      useOpenDyslexic: widget.useOpenDyslexic,
+                      fontSize: R.text(_readingFontSize),
+                      height: 2.0,
                       color: MyBookPage.textDark,
-                    ),
+                    ).copyWith(wordSpacing: 0),
                     children: _highlightedSpans(),
                   ),
+                  textAlign: TextAlign.left,
+                  textDirection: TextDirection.ltr,
+                  softWrap: true,
                 ),
               ),
             ],

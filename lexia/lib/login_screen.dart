@@ -671,7 +671,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _roleButton(
                               title: 'Log In as Child',
                               subtitle: 'Use your Family Code',
-                              icon: Icons.child_care_rounded,
+                              icon: Icons.sentiment_satisfied_alt_rounded,
                               role: 'child',
                               onPressed: () =>
                                   setState(() => _activeForm = 'child'),

@@ -116,7 +116,7 @@ class _ScannerPageState extends State<ScannerPage> {
           final createdAt = data['createdAt'];
           final doc = _ScannedDocument(
             file: file,
-            name: (data['name'] ?? 'Untitled Document').toString(),
+            name: (data['name'] ?? 'Untitled Book').toString(),
             scannedAt: createdAt is Timestamp
                 ? createdAt.toDate()
                 : DateTime.now(),
@@ -346,7 +346,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Updating document access...',
+                    'Updating book access...',
                     style: GoogleFonts.montserrat(
                       fontSize: 14,
                       color: textDark,
@@ -463,8 +463,8 @@ class _ScannerPageState extends State<ScannerPage> {
       if (mounted) {
         LexiaPopup.showMessage(
           context: context,
-          title: 'Document not ready',
-          message: 'Please save the document before managing recipients.',
+          title: 'Book not ready',
+          message: 'Please save the book before managing recipients.',
           emoji: '⚠️',
           buttonText: 'Okay',
         );
@@ -479,12 +479,76 @@ class _ScannerPageState extends State<ScannerPage> {
           .get();
       if (!mounted) return;
       if (children.docs.isEmpty) {
-        LexiaPopup.showMessage(
+        await showDialog<void>(
           context: context,
-          title: 'No child profiles',
-          message: 'Add a child profile first to send a document.',
-          emoji: '🧒',
-          buttonText: 'Okay',
+          builder: (dialogContext) => Dialog(
+            backgroundColor: ivoryWhite,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(26),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEDE8FA),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.sentiment_satisfied_alt_rounded,
+                      size: 34,
+                      color: primaryPurple,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'No child profiles',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 19,
+                      color: textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Add a child profile first to send a book.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 12,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Okay',
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
         return;
       }
@@ -523,20 +587,6 @@ class _ScannerPageState extends State<ScannerPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEDE8FA),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.child_care_rounded,
-                        size: 32,
-                        color: primaryPurple,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
                     Text(
                       'Send to children',
                       style: GoogleFonts.montserrat(
@@ -556,10 +606,10 @@ class _ScannerPageState extends State<ScannerPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Uncheck a child to remove the document from My Book.',
+                      'Uncheck a child to remove the book.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.montserrat(
-                        fontSize: 11,
+                        fontSize: 8.5,
                         color: Colors.black45,
                       ),
                     ),
@@ -651,7 +701,7 @@ class _ScannerPageState extends State<ScannerPage> {
           context: context,
           title: 'Analysis not finished',
           message:
-              'Open the document and wait until all words are analyzed before sending.',
+              'Open the book and wait until all words are analyzed before sending.',
           emoji: '🔎',
           buttonText: 'Okay',
         );
@@ -803,7 +853,7 @@ class _ScannerPageState extends State<ScannerPage> {
               ? 'Access updated!'
               : 'Some changes failed',
           message: failedActions.isEmpty
-              ? '$successfullySent sent, $successfullyRevoked removed. Your document is still saved in Documents.'
+              ? '$successfullySent sent, $successfullyRevoked removed. Your book is still saved in Books.'
               : '$successfullySent sent, $successfullyRevoked removed. ${failedActions.join(". ")}.',
           emoji: failedActions.isEmpty ? '💌' : '⚠️',
           buttonText: 'Done',
@@ -987,9 +1037,9 @@ class _ScannerPageState extends State<ScannerPage> {
           setState(() => _isPreparingDocument = false);
           LexiaPopup.showMessage(
             context: context,
-            title: 'Could not save document',
+            title: 'Could not save book',
             message:
-                'The scan could not be saved to your Documents. Please check your connection and Firebase permissions, then try again.',
+                'The scan could not be saved to your Books. Please check your connection and Firebase permissions, then try again.',
             emoji: '⚠️',
             buttonText: 'Okay',
           );
@@ -1068,7 +1118,7 @@ class _ScannerPageState extends State<ScannerPage> {
       await LexiaPopup.showMessage(
         context: context,
         title: 'No analyzed text',
-        message: 'Open the document to analyze its text before exporting.',
+        message: 'Open the book to analyze its text before exporting.',
         icon: Icons.info_outline_rounded,
         buttonColor: primaryPurple,
       );
@@ -1079,7 +1129,7 @@ class _ScannerPageState extends State<ScannerPage> {
         context: context,
         title: 'Analysis not finished',
         message:
-            'Open the document and wait until all words are analyzed before exporting.',
+            'Open the book and wait until all words are analyzed before exporting.',
         icon: Icons.manage_search_rounded,
         buttonColor: primaryPurple,
       );
@@ -1247,8 +1297,8 @@ class _ScannerPageState extends State<ScannerPage> {
       if (pages.length > 40) {
         await LexiaPopup.showMessage(
           context: context,
-          title: 'Document too long',
-          message: 'This document is too long to export as images.',
+          title: 'Book too long',
+          message: 'This book is too long to export as images.',
           icon: Icons.info_outline_rounded,
           buttonColor: primaryPurple,
         );
@@ -1306,9 +1356,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
     final confirmed = await LexiaPopup.showConfirm(
       context: context,
-      title: 'Remove document?',
+      title: 'Remove book?',
       message:
-          'This will remove "${doc.name}" from your Documents and from every child you shared it with.',
+          'This will remove "${doc.name}" from your Books and from every child you shared it with.',
       confirmText: 'Remove',
       confirmColor: Colors.redAccent,
       icon: Icons.delete_outline_rounded,
@@ -1342,7 +1392,7 @@ class _ScannerPageState extends State<ScannerPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Deleting document',
+                    'Deleting book',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.montserrat(
                       fontSize: 19,
@@ -1352,7 +1402,7 @@ class _ScannerPageState extends State<ScannerPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Removing the document from your Books and your children’s My Book...',
+                    'Removing the book from your Books and your children’s My Book...',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.montserrat(
                       fontSize: 12,
@@ -1421,7 +1471,7 @@ class _ScannerPageState extends State<ScannerPage> {
         context: context,
         title: 'Could not remove completely',
         message:
-            'Some documents could not be removed. Please check your connection and try again.',
+            'Some books could not be removed. Please check your connection and try again.',
         emoji: '⚠️',
         buttonText: 'Okay',
       );
@@ -1617,33 +1667,11 @@ class _ScannerPageState extends State<ScannerPage> {
                     ),
                   ),
 
-                  SizedBox(height: R.space(32)),
+                  SizedBox(height: R.space(1)),
 
                   // ==================================================
-                  // DOCUMENTS
+                  // BOOKS
                   // ==================================================
-                  Text(
-                    'Documents',
-                    style: GoogleFonts.montserrat(
-                      fontSize: R.text(21),
-                      fontWeight: FontWeight.w500,
-                      color: textDark.withOpacity(0.9),
-                    ),
-                  ),
-
-                  SizedBox(height: R.space(2)),
-
-                  Text(
-                    'Send a scanned page to your child or somewhere else',
-                    style: GoogleFonts.montserrat(
-                      fontSize: R.text(12),
-                      color: Colors.black45,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-
-                  SizedBox(height: R.space(16)),
-
                   _isLoadingDocuments
                       ? const Center(
                           child: CircularProgressIndicator(
@@ -1701,7 +1729,7 @@ class _ScannerPageState extends State<ScannerPage> {
                             ),
                             SizedBox(height: R.space(20)),
                             Text(
-                              'Preparing document',
+                              'Preparing book',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.montserrat(
                                 fontSize: R.text(20),
@@ -1759,7 +1787,7 @@ class _ScannerPageState extends State<ScannerPage> {
           ),
           SizedBox(height: R.space(8)),
           Text(
-            'No documents yet',
+            'No books yet',
             style: GoogleFonts.montserrat(
               fontSize: R.text(13),
               color: Colors.black38,
@@ -1979,7 +2007,7 @@ class _DocumentNameDialogState extends State<_DocumentNameDialog> {
                 children: [
                   // Removed icon and SizedBox(height: R.space(16)),
                   Text(
-                    'Name your document',
+                    'Name your book',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.montserrat(
                       fontSize: R.text(20),
@@ -1989,7 +2017,7 @@ class _DocumentNameDialogState extends State<_DocumentNameDialog> {
                   ),
                   SizedBox(height: R.space(8)),
                   Text(
-                    'Enter a name for your document',
+                    'Enter a name for your book',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.montserrat(
                       fontSize: R.text(12),
@@ -2008,7 +2036,7 @@ class _DocumentNameDialogState extends State<_DocumentNameDialog> {
                       color: _ScannerPageState.textDark,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Document name',
+                      hintText: 'Book name',
                       hintStyle: GoogleFonts.montserrat(
                         fontSize: R.text(14),
                         color: Colors.black45,
