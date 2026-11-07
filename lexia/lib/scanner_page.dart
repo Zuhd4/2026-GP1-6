@@ -623,7 +623,7 @@ class _ScannerPageState extends State<ScannerPage> {
                             foregroundColor: Colors.white,
                           ),
                           child: Text(
-                            'Save changes',
+                            'Send',
                             style: GoogleFonts.montserrat(
                               fontWeight: FontWeight.w600,
                             ),
@@ -2145,14 +2145,17 @@ class _ReviewScannedTextPageState extends State<_ReviewScannedTextPage> {
     final text = _controller.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter some text before continuing.')),
+        const SnackBar(
+          content: Text('Please enter some text before continuing.'),
+        ),
       );
       return;
     }
     final confirmed = await LexiaPopup.showConfirm(
       context: context,
       title: 'Confirm text?',
-      message: 'Have you reviewed and corrected the scanned text? Continue to analyze it?',
+      message:
+          'Have you reviewed and corrected the scanned text? Continue to analyze it?',
       confirmText: 'Continue',
       confirmColor: const Color(0xFF6A5ACD),
       icon: Icons.fact_check_outlined,
