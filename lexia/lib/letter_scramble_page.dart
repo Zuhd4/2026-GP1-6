@@ -397,7 +397,9 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
         debugPrint("Failed to save Letter Scramble progress: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Could not save your game. Please try again.")),
+            const SnackBar(
+              content: Text("Could not save your game. Please try again."),
+            ),
           );
         }
         return;
@@ -432,16 +434,12 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     }
   }
 
-  String get currentAnswer {
-    if (targetWord.isEmpty) return "";
-
-    int selectedIndex = 0;
-    final List<String> display = [];
-
-    for (int i = 0; i < targetWord.length; i++) {
-      if (targetWord[i] == ' ') {
-        display.add('   ');
-      } else {
+  List<String> get currentAnswerWords {
+    if (targetWord.isEmpty) return [];
+    var selectedIndex = 0;
+    return targetWord.trim().split(RegExp(r'\s+')).map((word) {
+      final display = <String>[];
+      for (var i = 0; i < word.length; i++) {
         if (selectedIndex < selectedLetters.length) {
           display.add(selectedLetters[selectedIndex]);
           selectedIndex++;
@@ -449,9 +447,8 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
           display.add('_');
         }
       }
-    }
-
-    return display.join(' ');
+      return display.join(' ');
+    }).toList();
   }
 
   Future<void> _showStarDialog() async {
@@ -722,28 +719,35 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
             ),
           ),
           SizedBox(height: R.space(16)),
-          FractionallySizedBox(
-            widthFactor: 0.82,
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: R.space(10),
-                vertical: R.space(10),
-              ),
-              decoration: BoxDecoration(
-                color: primaryPurple.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(R.radius(16)),
-              ),
-              child: Center(
-                child: Text(
-                  currentAnswer,
-                  style: GoogleFonts.fredoka(
-                    fontSize: R.text(22),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: R.space(1.5),
-                    color: primaryPurple,
-                  ),
-                ),
-              ),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: R.space(10),
+              vertical: R.space(12),
+            ),
+            decoration: BoxDecoration(
+              color: primaryPurple.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(R.radius(16)),
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: R.space(22),
+              runSpacing: R.space(12),
+              children: currentAnswerWords
+                  .map(
+                    (word) => Text(
+                      word,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.fredoka(
+                        fontSize: R.text(22),
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: R.space(1.5),
+                        color: primaryPurple,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
         ],

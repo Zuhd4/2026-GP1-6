@@ -114,6 +114,10 @@ class ChildProfileSettingsPage extends StatelessWidget {
       builder: (context, snapshot) {
         final useOpenDyslexic =
             snapshot.data?.data()?['useOpenDyslexicFont'] == true;
+        final childData = snapshot.data?.data();
+        final currentName = (childData?['name'] as String?) ?? initialName;
+        final currentAvatar =
+            (childData?['avatarUrl'] as String?) ?? initialAvatar;
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Container(
@@ -185,8 +189,8 @@ class ChildProfileSettingsPage extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (_) => ChildProfileEditPage(
                                   childId: childId,
-                                  initialName: initialName,
-                                  initialAvatar: initialAvatar,
+                                  initialName: currentName,
+                                  initialAvatar: currentAvatar,
                                 ),
                               ),
                             ),
@@ -249,6 +253,7 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
   late String _selectedAvatar;
 
   bool _isSaving = false;
+  bool _hasLoadedLatestProfile = false;
 
   String? _nameError;
 
@@ -436,6 +441,19 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
           .snapshots(),
       builder: (context, userSnap) {
         final userData = userSnap.data?.data() ?? {};
+        if (!_hasLoadedLatestProfile &&
+            userSnap.hasData &&
+            userSnap.data!.exists) {
+          _hasLoadedLatestProfile = true;
+          final savedName = userData['name'];
+          final savedAvatar = userData['avatarUrl'];
+          if (savedName is String) {
+            _nameController.text = savedName;
+          }
+          if (savedAvatar is String && savedAvatar.isNotEmpty) {
+            _selectedAvatar = savedAvatar;
+          }
+        }
         final bool useOpenDyslexic =
             !widget.openedByParent && userData['useOpenDyslexicFont'] == true;
 

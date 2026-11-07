@@ -66,6 +66,9 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
   bool useOpenDyslexic = false;
   String? errorMessage;
 
+  String _displayWord(String word) =>
+      word.trim().split(RegExp(r'\s+')).join('   ').toUpperCase();
+
   @override
   void initState() {
     super.initState();
@@ -496,7 +499,9 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
         debugPrint("Failed to save progress: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Could not save your game. Please try again.")),
+            const SnackBar(
+              content: Text("Could not save your game. Please try again."),
+            ),
           );
         }
         return;
@@ -828,7 +833,7 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
                             return Image.network(
                               imageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
+                              errorBuilder: (_, _, _) => Icon(
                                 Icons.image_not_supported_rounded,
                                 color: primaryPurple.withOpacity(0.3),
                               ),
@@ -871,8 +876,13 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
         !isChecking;
 
     Widget slotTile = Container(
-      height: R.space(52),
+      // height: R.space(52),
+      constraints: BoxConstraints(minHeight: R.space(52)),
       alignment: Alignment.center,
+      padding: EdgeInsets.symmetric(
+        horizontal: R.space(6),
+        vertical: R.space(8),
+      ),
       decoration: BoxDecoration(
         color: isConfirmed
             ? green.withOpacity(0.15)
@@ -893,7 +903,7 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
       ),
       child: Text(
         assignedWord != null
-            ? assignedWord.toUpperCase()
+            ? _displayWord(assignedWord)
             : isHovering
             ? "Drop Here!"
             : "Drop Word Here",
@@ -908,6 +918,8 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
               ? blue
               : textDark.withOpacity(0.35),
         ),
+        textAlign: TextAlign.center,
+        softWrap: true,
       ),
     );
 
@@ -939,12 +951,14 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
             ],
           ),
           child: Text(
-            assignedWord.toUpperCase(),
+            _displayWord(assignedWord ?? ''),
             style: GoogleFonts.fredoka(
               fontSize: R.text(18),
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
+            textAlign: TextAlign.center,
+            softWrap: true,
           ),
         ),
       ),
@@ -1113,12 +1127,14 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
                             ],
                           ),
                           child: Text(
-                            word.toUpperCase(),
+                            _displayWord(word),
                             style: GoogleFonts.fredoka(
                               fontSize: R.text(18),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
+                            textAlign: TextAlign.center,
+                            softWrap: true,
                           ),
                         ),
                       ),
@@ -1155,12 +1171,13 @@ class _WordMatchingPageState extends State<WordMatchingPage> {
         ],
       ),
       child: Text(
-        word.toUpperCase(),
+        _displayWord(word),
         style: GoogleFonts.fredoka(
           fontSize: R.text(16),
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
+        textAlign: TextAlign.center,
       ),
     );
   }

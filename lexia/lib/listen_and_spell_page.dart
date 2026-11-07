@@ -302,7 +302,9 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
 
   void _onKeyTap(String letter) {
     if (isLoading || isChecking) return;
-    if (selectedLetters.length >= targetWord.length) return;
+    if (selectedLetters.length >=
+        targetWord.replaceAll(RegExp(r'\s+'), '').length)
+      return;
 
     setState(() {
       selectedLetters.add(letter);
@@ -457,7 +459,9 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
         debugPrint("Failed to save progress: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Could not save your game. Please try again.")),
+            const SnackBar(
+              content: Text("Could not save your game. Please try again."),
+            ),
           );
         }
         return;
@@ -526,18 +530,21 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
     );
   }
 
-  String get currentAnswerDisplay {
-    if (targetWord.isEmpty) return "";
-    List<String> display = [];
-
-    for (int i = 0; i < targetWord.length; i++) {
-      if (i < selectedLetters.length) {
-        display.add(selectedLetters[i].toUpperCase());
-      } else {
-        display.add('_');
+  List<String> get currentAnswerWords {
+    if (targetWord.trim().isEmpty) return [];
+    var selectedIndex = 0;
+    return targetWord.trim().split(RegExp(r'\s+')).map((word) {
+      final letters = <String>[];
+      for (var i = 0; i < word.length; i++) {
+        if (selectedIndex < selectedLetters.length) {
+          letters.add(selectedLetters[selectedIndex].toUpperCase());
+          selectedIndex++;
+        } else {
+          letters.add('_');
+        }
       }
-    }
-    return display.join(' ');
+      return letters.join(' ');
+    }).toList();
   }
 
   @override
@@ -777,16 +784,24 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
         color: primaryPurple.withOpacity(0.06),
         borderRadius: BorderRadius.circular(R.radius(20)),
       ),
-      child: Center(
-        child: Text(
-          currentAnswerDisplay,
-          style: GoogleFonts.fredoka(
-            fontSize: R.text(22),
-            fontWeight: FontWeight.bold,
-            letterSpacing: R.space(2),
-            color: primaryPurple,
-          ),
-        ),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: R.space(24),
+        runSpacing: R.space(12),
+        children: currentAnswerWords
+            .map(
+              (word) => Text(
+                word,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.fredoka(
+                  fontSize: R.text(22),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: R.space(2),
+                  color: primaryPurple,
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }
