@@ -719,7 +719,7 @@ class _ScannerPageState extends State<ScannerPage> {
           message: revokedNames.length == 1
               ? 'Remove “${doc.name}” from ${revokedNames.first}\'s My Book?'
               : 'Remove “${doc.name}” from ${revokedNames.join(", ")}?',
-          confirmText: 'Remove access',
+          confirmText: 'Remove',
           confirmColor: Colors.redAccent,
           icon: Icons.person_remove_alt_1_rounded,
           iconColor: Colors.redAccent,
@@ -852,9 +852,7 @@ class _ScannerPageState extends State<ScannerPage> {
           title: failedActions.isEmpty
               ? 'Access updated!'
               : 'Some changes failed',
-          message: failedActions.isEmpty
-              ? '$successfullySent sent, $successfullyRevoked removed. Your book is still saved in Books.'
-              : '$successfullySent sent, $successfullyRevoked removed. ${failedActions.join(". ")}.',
+          message: failedActions.isEmpty ? '' : failedActions.join(". "),
           emoji: failedActions.isEmpty ? '💌' : '⚠️',
           buttonText: 'Done',
           buttonColor: failedActions.isEmpty ? primaryGreen : Colors.redAccent,

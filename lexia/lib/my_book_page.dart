@@ -587,6 +587,8 @@ class _DocumentReaderPageState extends State<_DocumentReaderPage> {
 
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.only(bottom: R.space(30)),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
