@@ -1570,8 +1570,46 @@ class _ReadingStoryDetails extends StatelessWidget {
     return Map<String, dynamic>.from(storyData['pageResults'] ?? {});
   }
 
+  // The reading assessment stores word counts inside each page result.
+  // Sum the saved pages rather than assuming storyReading has totals.
+  // Fall back to book-level totals for older records with no page counts.
   int _value(String key) {
-    return ((storyData[key] as num?)?.toInt() ?? 0);
+    final savedPages = Map<String, dynamic>.from(
+      storyData['pageResults'] ?? {},
+    );
+    final currentPages = Map<String, dynamic>.from(
+      storyData['currentPageResults'] ?? {},
+    );
+
+    // Completed stories use saved book page results; otherwise use the
+    // current pages. Fall back to whichever map is populated.
+    final completed = storyData['completed'] == true;
+    final pages = completed
+        ? (savedPages.isNotEmpty ? savedPages : currentPages)
+        : (currentPages.isNotEmpty ? currentPages : savedPages);
+
+    var total = 0;
+    var hasPageCounts = false;
+    for (final entry in pages.entries) {
+      if (!RegExp(r'^page_\d+$').hasMatch(entry.key)) continue;
+      if (entry.value is! Map) continue;
+      final page = Map<String, dynamic>.from(entry.value as Map);
+      final raw = page[key];
+      if (raw is num) {
+        total += raw.toInt();
+        hasPageCounts = true;
+      } else if (raw is String) {
+        final parsed = int.tryParse(raw);
+        if (parsed != null) {
+          total += parsed;
+          hasPageCounts = true;
+        }
+      }
+    }
+    if (hasPageCounts) return total;
+    final bookTotal = storyData[key];
+    if (bookTotal is num) return bookTotal.toInt();
+    return int.tryParse(bookTotal?.toString() ?? '') ?? 0;
   }
 
   @override
