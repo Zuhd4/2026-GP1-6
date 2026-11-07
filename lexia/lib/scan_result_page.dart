@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
@@ -46,6 +47,55 @@ class _ScanResultPageState extends State<ScanResultPage> {
   int _analyzedCount = 0;
   int _totalUniqueWords = 0;
   int _failedCount = 0;
+  final FlutterTts _tts = FlutterTts();
+  double _readingFontSize = 15;
+  bool _isSpeaking = false;
+
+  Future<void> _setupTts() async {
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
+    _tts.setCancelHandler(() {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
+    _tts.setErrorHandler((_) {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
+    try {
+      await _tts.setLanguage('en-US');
+      await _tts.setSpeechRate(0.43);
+      await _tts.setPitch(1.0);
+    } catch (_) {
+      // Keep text available if text-to-speech setup fails.
+    }
+  }
+
+  Future<void> _toggleSpeech() async {
+    if (_isSpeaking) {
+      await _tts.stop();
+      if (mounted) setState(() => _isSpeaking = false);
+      return;
+    }
+    final text = widget.extractedText.trim();
+    if (text.isEmpty) return;
+    setState(() => _isSpeaking = true);
+    try {
+      await _tts.speak(text);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSpeaking = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to read text aloud.')),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    super.dispose();
+  }
 
   Map<String, String> _validCachedDifficulties(Map<String, String> cached) {
     final words = _wordPattern
@@ -67,6 +117,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
   @override
   void initState() {
     super.initState();
+    _setupTts();
     _difficultyByWord.addAll(
       _validCachedDifficulties(widget.initialDifficulties),
     );
@@ -77,6 +128,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
   void didUpdateWidget(covariant ScanResultPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.extractedText != widget.extractedText) {
+      _tts.stop();
+      _isSpeaking = false;
       _difficultyByWord
         ..clear()
         ..addAll(_validCachedDifficulties(widget.initialDifficulties));
@@ -180,24 +233,25 @@ class _ScanResultPageState extends State<ScanResultPage> {
             child: Container(
               margin: EdgeInsets.symmetric(
                 horizontal: R.space(2),
-                vertical: R.space(3),
+                vertical: R.space(4),
               ),
               padding: EdgeInsets.symmetric(
-                horizontal: R.space(9),
-                vertical: R.space(6),
+                horizontal: R.space(5),
+                vertical: R.space(3),
               ),
               decoration: BoxDecoration(
                 color: highlight,
-                borderRadius: BorderRadius.circular(R.radius(11)),
+                borderRadius: BorderRadius.circular(R.radius(9)),
               ),
               child: Text(
                 originalWord,
+                textDirection: TextDirection.ltr,
                 style: AppTypography.getStyle(
                   useOpenDyslexic: widget.useOpenDyslexic,
-                  fontSize: R.text(15),
+                  fontSize: R.text(_readingFontSize),
                   fontWeight: FontWeight.w600,
                   color: textDark,
-                  height: 1.25,
+                  height: 1.2,
                 ),
               ),
             ),
@@ -269,11 +323,60 @@ class _ScanResultPageState extends State<ScanResultPage> {
                             ),
                             SizedBox(height: R.space(10)),
                           ],
-                          Row(
+                          Wrap(
+                            spacing: R.space(10),
+                            runSpacing: R.space(8),
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              _legendItem('Medium', mediumHighlight),
-                              SizedBox(width: R.space(16)),
-                              _legendItem('Hard', hardHighlight),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _legendItem('Medium', mediumHighlight),
+                                  SizedBox(width: R.space(16)),
+                                  _legendItem('Hard', hardHighlight),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Decrease text size',
+                                    onPressed: _readingFontSize <= 12
+                                        ? null
+                                        : () => setState(
+                                            () => _readingFontSize -= 1,
+                                          ),
+                                    icon: const Icon(
+                                      Icons.text_decrease_rounded,
+                                    ),
+                                    color: primaryPurple,
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Increase text size',
+                                    onPressed: _readingFontSize >= 23
+                                        ? null
+                                        : () => setState(
+                                            () => _readingFontSize += 1,
+                                          ),
+                                    icon: const Icon(
+                                      Icons.text_increase_rounded,
+                                    ),
+                                    color: primaryPurple,
+                                  ),
+                                  IconButton(
+                                    tooltip: _isSpeaking
+                                        ? 'Stop reading'
+                                        : 'Read text aloud',
+                                    onPressed: _toggleSpeech,
+                                    icon: Icon(
+                                      _isSpeaking
+                                          ? Icons.stop_circle_rounded
+                                          : Icons.volume_up_rounded,
+                                    ),
+                                    color: primaryPurple,
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                           SizedBox(height: R.space(12)),
@@ -295,12 +398,15 @@ class _ScanResultPageState extends State<ScanResultPage> {
                               TextSpan(
                                 style: AppTypography.getStyle(
                                   useOpenDyslexic: widget.useOpenDyslexic,
-                                  fontSize: R.text(15),
-                                  height: 1.6,
+                                  fontSize: R.text(_readingFontSize),
+                                  height: 2.0,
                                   color: textDark,
-                                ),
+                                ).copyWith(wordSpacing: 0),
                                 children: _highlightedSpans(),
                               ),
+                              textAlign: TextAlign.left,
+                              textDirection: TextDirection.ltr,
+                              softWrap: true,
                             ),
                           ),
                         ],
