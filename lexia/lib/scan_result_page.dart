@@ -11,6 +11,7 @@ import 'app_typography.dart';
 class ScanResultPage extends StatefulWidget {
   final String documentName;
   final String extractedText;
+  final Map<String, String> initialDifficulties;
   final bool useOpenDyslexic;
   final ValueChanged<Map<String, String>>? onDifficultiesUpdated;
 
@@ -18,6 +19,7 @@ class ScanResultPage extends StatefulWidget {
     super.key,
     required this.documentName,
     required this.extractedText,
+    this.initialDifficulties = const {},
     this.useOpenDyslexic = false,
     this.onDifficultiesUpdated,
   });
@@ -45,9 +47,29 @@ class _ScanResultPageState extends State<ScanResultPage> {
   int _totalUniqueWords = 0;
   int _failedCount = 0;
 
+  Map<String, String> _validCachedDifficulties(Map<String, String> cached) {
+    final words = _wordPattern
+        .allMatches(widget.extractedText)
+        .map((match) => match.group(0)!.toLowerCase().replaceAll('’', "'"))
+        .toSet();
+    final result = <String, String>{};
+    cached.forEach((word, difficulty) {
+      final key = word.toLowerCase().replaceAll('’', "'");
+      final value = difficulty.toLowerCase();
+      if (words.contains(key) &&
+          (value == 'easy' || value == 'medium' || value == 'hard')) {
+        result[key] = value;
+      }
+    });
+    return result;
+  }
+
   @override
   void initState() {
     super.initState();
+    _difficultyByWord.addAll(
+      _validCachedDifficulties(widget.initialDifficulties),
+    );
     _analyzeExtractedText();
   }
 
@@ -55,7 +77,9 @@ class _ScanResultPageState extends State<ScanResultPage> {
   void didUpdateWidget(covariant ScanResultPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.extractedText != widget.extractedText) {
-      _difficultyByWord.clear();
+      _difficultyByWord
+        ..clear()
+        ..addAll(_validCachedDifficulties(widget.initialDifficulties));
       _analyzeExtractedText();
     }
   }
@@ -66,19 +90,20 @@ class _ScanResultPageState extends State<ScanResultPage> {
         .map((match) => match.group(0)!.toLowerCase().replaceAll('’', "'"))
         .toSet()
         .toList();
-
-    // Keep a local copy so older requests cannot overwrite a newer scan.
+    // Only submit words missing a saved result; never redo successful analyses.
+    final missingWords = words
+        .where((word) => !_difficultyByWord.containsKey(word))
+        .toList();
     final requestedText = widget.extractedText;
     setState(() {
-      _isAnalyzing = words.isNotEmpty;
+      _isAnalyzing = missingWords.isNotEmpty;
       _analyzedCount = 0;
-      _totalUniqueWords = words.length;
+      _totalUniqueWords = missingWords.length;
       _failedCount = 0;
     });
 
-    // Analyze each distinct word only once. Small batches limit load on Cloud Run.
-    for (var start = 0; start < words.length; start += 3) {
-      final batch = words.skip(start).take(3).toList();
+    for (var start = 0; start < missingWords.length; start += 3) {
+      final batch = missingWords.skip(start).take(3).toList();
       final results = await Future.wait(batch.map(_analyzeWord));
       if (!mounted || widget.extractedText != requestedText) return;
       setState(() {
@@ -98,9 +123,11 @@ class _ScanResultPageState extends State<ScanResultPage> {
     }
     if (mounted && widget.extractedText == requestedText) {
       setState(() => _isAnalyzing = false);
-      widget.onDifficultiesUpdated?.call(
-        Map<String, String>.from(_difficultyByWord),
-      );
+      if (missingWords.isNotEmpty) {
+        widget.onDifficultiesUpdated?.call(
+          Map<String, String>.from(_difficultyByWord),
+        );
+      }
     }
   }
 

@@ -393,7 +393,7 @@ class _ScannerPageState extends State<ScannerPage> {
       width: 44,
       height: 44,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) =>
+      errorBuilder: (_, _, _) =>
           const Icon(Icons.person_rounded, color: primaryPurple),
     );
 
@@ -420,7 +420,7 @@ class _ScannerPageState extends State<ScannerPage> {
         width: 44,
         height: 44,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     } else {
       picture = Image.asset(
@@ -428,7 +428,7 @@ class _ScannerPageState extends State<ScannerPage> {
         width: 44,
         height: 44,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     }
 
@@ -849,6 +849,15 @@ class _ScannerPageState extends State<ScannerPage> {
   // DOCUMENT NAMING
   // ============================================================
 
+  Future<String?> _reviewExtractedText(String text) {
+    if (!mounted) return Future.value(null);
+    return Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => _ReviewScannedTextPage(initialText: text),
+      ),
+    );
+  }
+
   Future<_DocumentNameChoice?> _askDocumentName(String suggestedName) {
     if (!mounted) return Future.value(null);
     R.init(context);
@@ -954,6 +963,9 @@ class _ScannerPageState extends State<ScannerPage> {
       // ASK DOCUMENT NAME
       // --------------------------------------------------------
 
+      final correctedText = await _reviewExtractedText(doc.extractedText!);
+      if (!mounted || correctedText == null) return;
+      doc.extractedText = correctedText;
       final choice = await _askDocumentName(doc.name);
 
       if (!mounted || choice == null) return;
@@ -1021,6 +1033,7 @@ class _ScannerPageState extends State<ScannerPage> {
         builder: (_) => ScanResultPage(
           documentName: doc.name,
           extractedText: doc.extractedText ?? '',
+          initialDifficulties: Map<String, String>.from(doc.difficultyByWord),
           useOpenDyslexic: doc.useOpenDyslexic,
           // NEW: Receive difficulty results from Analyzer.
           onDifficultiesUpdated: (results) {
@@ -2095,6 +2108,200 @@ class _DocumentNameDialogState extends State<_DocumentNameDialog> {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// FULL-SCREEN SCANNED TEXT REVIEW (BEFORE ANALYSIS)
+// ============================================================
+class _ReviewScannedTextPage extends StatefulWidget {
+  final String initialText;
+  const _ReviewScannedTextPage({required this.initialText});
+
+  @override
+  State<_ReviewScannedTextPage> createState() => _ReviewScannedTextPageState();
+}
+
+class _ReviewScannedTextPageState extends State<_ReviewScannedTextPage> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _continue() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter some text before continuing.')),
+      );
+      return;
+    }
+    final confirmed = await LexiaPopup.showConfirm(
+      context: context,
+      title: 'Confirm text?',
+      message: 'Have you reviewed and corrected the scanned text? Continue to analyze it?',
+      confirmText: 'Continue',
+      confirmColor: const Color(0xFF6A5ACD),
+      icon: Icons.fact_check_outlined,
+      iconColor: const Color(0xFF6A5ACD),
+    );
+    if (!mounted || !confirmed) return;
+    Navigator.pop(context, text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    R.init(context);
+    const purple = Color(0xFF6A5ACD);
+    const dark = Color(0xFF2D3142);
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFFDFB),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFFDFB),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: dark),
+        title: Text(
+          'Review scanned text',
+          style: GoogleFonts.montserrat(
+            fontSize: R.text(16),
+            fontWeight: FontWeight.w600,
+            color: dark,
+          ),
+        ),
+      ),
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFFDFB),
+              Color(0xFFFFF9F9),
+              Color(0xFFFFFAF5),
+              Colors.white,
+            ],
+            stops: [0.0, 0.4, 0.7, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    R.pagePad,
+                    R.space(18),
+                    R.pagePad,
+                    R.space(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Check the extracted text',
+                        style: GoogleFonts.montserrat(
+                          fontSize: R.text(19),
+                          fontWeight: FontWeight.w600,
+                          color: dark,
+                        ),
+                      ),
+                      SizedBox(height: R.space(8)),
+                      Text(
+                        'Correct any words the scanner missed before analyzing their difficulty.',
+                        style: GoogleFonts.montserrat(
+                          fontSize: R.text(13),
+                          color: Colors.black54,
+                          height: 1.5,
+                        ),
+                      ),
+                      SizedBox(height: R.space(20)),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(R.space(18)),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(R.radius(22)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.025),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _controller,
+                          minLines: 12,
+                          maxLines: null,
+                          keyboardType: TextInputType.multiline,
+                          textCapitalization: TextCapitalization.sentences,
+                          textInputAction: TextInputAction.newline,
+                          style: GoogleFonts.montserrat(
+                            fontSize: R.text(15),
+                            height: 1.6,
+                            color: dark,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Edit the scanned text here...',
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(
+                  R.pagePad,
+                  R.space(12),
+                  R.pagePad,
+                  R.space(12),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: R.buttonH(52),
+                  child: ElevatedButton.icon(
+                    onPressed: _continue,
+                    icon: const Icon(Icons.auto_awesome_rounded),
+                    label: Text(
+                      'Continue to Analyze',
+                      style: GoogleFonts.montserrat(
+                        fontSize: R.text(14),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: purple,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(R.radius(16)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
