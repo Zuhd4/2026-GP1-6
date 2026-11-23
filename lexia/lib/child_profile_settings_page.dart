@@ -256,6 +256,7 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
   bool _hasLoadedLatestProfile = false;
 
   String? _nameError;
+  String? _saveError;
 
   final List<String> _avatars = [
     'assets/lexiaAv.png',
@@ -339,22 +340,35 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
 
     setState(() {
       _nameError = null;
+      _saveError = null;
     });
 
     if (name.isEmpty) {
-      setState(() => _nameError = "Name can't be empty");
+      setState(() => _saveError = "Name can't be empty.");
       return;
     }
 
     if (name.length < 2) {
-      setState(() => _nameError = "Name is too short");
+      setState(() => _saveError = "Name is too short.");
       return;
     }
 
     if (name.length > 12) {
-      setState(() => _nameError = "Max 12 characters");
+      setState(() => _saveError = "Maximum 12 characters allowed.");
       return;
     }
+
+    final confirmed = await LexiaPopup.showConfirm(
+      context: context,
+      title: "Save Changes?",
+      message: "Are you sure you want to save these profile changes?",
+      confirmText: "Save",
+      confirmColor: primaryPurple,
+      icon: Icons.save_outlined,
+      iconColor: primaryPurple,
+      useOpenDyslexic: useOpenDyslexic,
+    );
+    if (!mounted || !confirmed) return;
 
     setState(() => _isSaving = true);
 
@@ -377,23 +391,9 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Oops! Something went wrong. Please try again.",
-              style: AppTypography.getStyle(
-                useOpenDyslexic: useOpenDyslexic,
-                fontSize: 13.sp,
-                color: Colors.white,
-              ),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-          ),
-        );
+        setState(() {
+          _saveError = "Oops! Something went wrong. Please try again.";
+        });
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -636,7 +636,10 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
 
                                 return GestureDetector(
                                   onTap: () {
-                                    setState(() => _selectedAvatar = path);
+                                    setState(() {
+                                      _selectedAvatar = path;
+                                      _saveError = null;
+                                    });
                                   },
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 180),
@@ -690,6 +693,21 @@ class _ChildProfileEditPageState extends State<ChildProfileEditPage> {
                           ),
 
                           SizedBox(height: 32.h),
+
+                          if (_saveError != null) ...[
+                            Center(
+                              child: Text(
+                                _saveError!,
+                                textAlign: TextAlign.center,
+                                style: AppTypography.getStyle(
+                                  useOpenDyslexic: useOpenDyslexic,
+                                  fontSize: 12.sp,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 14.h),
+                          ],
 
                           SizedBox(
                             width: double.infinity,

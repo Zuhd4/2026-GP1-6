@@ -1665,8 +1665,7 @@ class _ScannerPageState extends State<ScannerPage> {
                     ),
                   ),
 
-                  SizedBox(height: R.space(1)),
-
+                  SizedBox(height: R.space(8)),
                   // ==================================================
                   // BOOKS
                   // ==================================================

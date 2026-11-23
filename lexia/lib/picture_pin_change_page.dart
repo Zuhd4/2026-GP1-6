@@ -139,21 +139,9 @@ class _PicturePinChangePageState extends State<PicturePinChangePage> {
       setState(() {
         _oldPin.clear();
         _pinError = isWrongPin
-            ? null
+            ? 'Incorrect Picture PIN. Please try again.'
             : (e.message ?? 'Could not verify your current Picture PIN.');
       });
-      if (isWrongPin) {
-        await LexiaPopup.showMessage(
-          context: context,
-          title: 'Incorrect Picture PIN',
-          message: 'Those pictures do not match. Please try again.',
-          icon: Icons.lock_outline_rounded,
-          iconColor: Colors.redAccent,
-          buttonColor: primaryPurple,
-          buttonText: 'Try Again',
-          useOpenDyslexic: _useOpenDyslexic,
-        );
-      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _pinError = 'Verification failed. Please try again.');
