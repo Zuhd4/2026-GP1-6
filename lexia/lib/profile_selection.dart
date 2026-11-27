@@ -30,6 +30,12 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage>
   static const Color ivoryWhite = Color(0xFFFFFDFB);
   static const Color paleBlush = Color(0xFFFFF9F9);
   static const Color softCream = Color(0xFFFFFAF5);
+  late List<Map<String, dynamic>> _profiles;
+  Future<void>? _initialCacheWrite;
+  bool _refreshingProfiles = false;
+  DateTime? _lastProfileRefresh;
+  DateTime? _profileRefreshBlockedUntil;
+  String? _profileRefreshError;
   bool loading = false;
   String? error;
   String? selected;
@@ -134,15 +140,18 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    for (final profile in widget.profiles) {
+    _profiles = List<Map<String, dynamic>>.of(widget.profiles);
+    for (final profile in _profiles) {
       final id = (profile['childId'] ?? '').toString();
       if (id.isNotEmpty) _restorePinLock(id);
     }
     final code = widget.familyCode;
     if (code != null && code.isNotEmpty) {
-      AuthIdentity.rememberFamilyCode(
-        code,
-      ).then((_) => AuthIdentity.rememberProfiles(widget.profiles));
+      _initialCacheWrite = AuthIdentity.rememberFamilyCode(code)
+          .then((_) => AuthIdentity.rememberProfiles(_profiles))
+          .catchError((Object error) {
+            debugPrint('Could not cache profiles: $error');
+          });
     }
   }
 
@@ -158,6 +167,11 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_refreshProfiles());
+      });
+    }
     if ((state == AppLifecycleState.hidden ||
             state == AppLifecycleState.paused) &&
         _pinDialogOpen &&
@@ -171,7 +185,74 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage>
     }
   }
 
+  Future<void> _refreshProfiles({bool manual = false}) async {
+    if (!mounted ||
+        _refreshingProfiles ||
+        loading ||
+        _pinDialogOpen ||
+        ModalRoute.of(context)?.isCurrent != true)
+      return;
+    final now = DateTime.now();
+    if (_profileRefreshBlockedUntil?.isAfter(now) == true) {
+      if (manual)
+        setState(
+          () => _profileRefreshError =
+              'Too many requests. Please try again later.',
+        );
+      return;
+    }
+    final last = _lastProfileRefresh;
+    if (last != null &&
+        now.difference(last) < Duration(seconds: manual ? 10 : 120))
+      return;
+    final code = widget.familyCode ?? AuthIdentity.familyCode;
+    if (code == null || code.isEmpty) return;
+    _lastProfileRefresh = now;
+    setState(() {
+      _refreshingProfiles = true;
+      _profileRefreshError = null;
+    });
+    try {
+      final profiles = await AuthIdentity.loadFamilyProfiles(code);
+      if (!mounted || AuthIdentity.familyCode != code) return;
+      setState(() => _profiles = profiles);
+      for (final profile in profiles) {
+        final id = (profile['childId'] ?? '').toString();
+        if (id.isNotEmpty) unawaited(_restorePinLock(id));
+      }
+      try {
+        await _initialCacheWrite;
+        if (mounted && AuthIdentity.familyCode == code) {
+          await AuthIdentity.rememberProfiles(profiles);
+        }
+      } catch (e) {
+        debugPrint('Could not cache profiles: $e');
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'resource-exhausted') {
+        _profileRefreshBlockedUntil = DateTime.now().add(
+          const Duration(minutes: 15),
+        );
+      }
+      setState(
+        () => _profileRefreshError = e.code == 'resource-exhausted'
+            ? 'Too many requests. Please try again later.'
+            : 'Could not refresh profiles. Please try again.',
+      );
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => _profileRefreshError =
+              'Could not refresh profiles. Please try again.',
+        );
+    } finally {
+      if (mounted) setState(() => _refreshingProfiles = false);
+    }
+  }
+
   Future<void> _protectedLogout() async {
+    if (_refreshingProfiles) return;
     final code = widget.familyCode ?? AuthIdentity.familyCode;
     if (code == null) return;
     _email.clear();
@@ -553,6 +634,7 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage>
   }
 
   Future<void> _showPicturePin(String childId) async {
+    if (_refreshingProfiles) return;
     // Restore lockout *before* drawing the PIN dialog, without attempting a PIN.
     await _restorePinLock(childId);
     if (!mounted) return;
@@ -900,58 +982,94 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage>
                 child: Image.asset('assets/Lexia.png', width: R.s(85)),
               ),
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Who's learning today?",
-                          style: GoogleFonts.montserrat(
-                            fontSize: R.text(22),
-                            fontWeight: FontWeight.w400,
-                            color: textDark.withOpacity(0.8),
-                          ),
+                child: RefreshIndicator(
+                  color: primaryPurple,
+                  onRefresh: () => _refreshProfiles(manual: true),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
                         ),
-                        SizedBox(height: R.space(10)),
-                        Text(
-                          'choose your profile to continue',
-                          style: GoogleFonts.montserrat(
-                            fontSize: R.text(12),
-                            color: Colors.black45,
-                          ),
-                        ),
-                        SizedBox(height: R.space(40)),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: R.space(30),
-                          ),
-                          child: Wrap(
-                            spacing: R.space(25),
-                            runSpacing: R.space(35),
-                            alignment: WrapAlignment.center,
-                            children: widget.profiles
-                                .map(
-                                  (child) => _buildProfileCard(
-                                    name: (child['name'] ?? 'Child').toString(),
-                                    role: 'Child',
-                                    avatarPath: (child['avatarUrl'] ?? '')
-                                        .toString(),
-                                    onTap: () => _showPicturePin(
-                                      (child['childId'] ?? '').toString(),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                "Who's learning today?",
+                                style: GoogleFonts.montserrat(
+                                  fontSize: R.text(22),
+                                  fontWeight: FontWeight.w400,
+                                  color: textDark.withOpacity(0.8),
+                                ),
+                              ),
+                              SizedBox(height: R.space(10)),
+                              Text(
+                                'choose your profile to continue',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: R.text(12),
+                                  color: Colors.black45,
+                                ),
+                              ),
+                              SizedBox(height: R.space(40)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: R.space(30),
+                                ),
+                                child: Wrap(
+                                  spacing: R.space(25),
+                                  runSpacing: R.space(35),
+                                  alignment: WrapAlignment.center,
+                                  children: _profiles
+                                      .map(
+                                        (child) => _buildProfileCard(
+                                          name: (child['name'] ?? 'Child')
+                                              .toString(),
+                                          role: 'Child',
+                                          avatarPath: (child['avatarUrl'] ?? '')
+                                              .toString(),
+                                          onTap: () => _showPicturePin(
+                                            (child['childId'] ?? '').toString(),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                              ),
+                              if (_profiles.isEmpty)
+                                const Text('No child profiles available.'),
+                              if (_profileRefreshError != null)
+                                Padding(
+                                  padding: EdgeInsets.all(R.space(12)),
+                                  child: Text(
+                                    _profileRefreshError!,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
                                     ),
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              if (_refreshingProfiles)
+                                const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: CircularProgressIndicator(
+                                    color: primaryPurple,
+                                  ),
+                                ),
+                              SizedBox(height: R.space(40)),
+                              TextButton.icon(
+                                onPressed: _refreshingProfiles
+                                    ? null
+                                    : _protectedLogout,
+                                icon: const Icon(Icons.logout_rounded),
+                                label: const Text('Log out'),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: R.space(40)),
-                        TextButton.icon(
-                          onPressed: _protectedLogout,
-                          icon: const Icon(Icons.logout_rounded),
-                          label: const Text('Log out'),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
