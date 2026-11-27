@@ -348,9 +348,7 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
 
     if (userAnswer == correctAnswer) {
       stars++;
-      if (attemptsForCurrentWord == 0) {
-        correctWithoutHelp++;
-      }
+      correctWithoutHelp++;
 
       await _showStarDialog();
       await _goToNextWordOrFinishRound();
@@ -485,8 +483,10 @@ class _ListenAndSpellPageState extends State<ListenAndSpellPage> {
     } else {
       await _showSimpleDialog(
         title: "Try again",
+
         message:
-            "You got $correctWithoutHelp/3 correct without help. You need at least 2/3 to unlock the next level.",
+            "You earned $stars/3 stars. You need at least 2 stars to complete the game.",
+
         icon: Icons.lock_outline_rounded,
         iconColor: primaryPurple,
       );

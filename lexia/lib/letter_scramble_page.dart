@@ -424,8 +424,10 @@ class _LetterScramblePageState extends State<LetterScramblePage> {
     } else {
       await _showSimpleDialog(
         title: "Try again",
+
         message:
-            "You got $correctWithoutHelp/3 correct without help. You need at least 2/3 to unlock the next level.",
+            "You earned $stars/3 stars. You need at least 2 stars to complete this game. Try again!",
+
         icon: Icons.lock_outline_rounded,
         iconColor: primaryPurple,
       );
