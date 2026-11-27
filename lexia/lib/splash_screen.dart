@@ -91,10 +91,8 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final code = await AuthIdentity.storedFamilyCode();
       if (code == null || code.isEmpty) return const OnboardingPage();
-      final cached = await AuthIdentity.storedProfiles(code);
-      final profiles = cached.isNotEmpty
-          ? cached
-          : await AuthIdentity.loadFamilyProfiles(code);
+      final profiles = await AuthIdentity.loadFamilyProfiles(code);
+      await AuthIdentity.rememberProfiles(profiles);
       return ProfileSelectionPage(familyCode: code, profiles: profiles);
     } catch (error) {
       debugPrint('LEXIA AUTH - Could not restore family picker: $error');

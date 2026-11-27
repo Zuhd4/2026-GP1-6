@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'child_family_code_page.dart';
 import 'auth_identity.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'login_screen.dart';
@@ -31,15 +33,69 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   bool _wasBackgrounded = false;
   bool _switchingProfiles = false;
   bool _childSessionHidden = false;
+  bool _sessionRevoked = false;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _childSession;
+  String? _sessionAuthUid;
+
+  void _watchChildSession() {
+    final childId = widget.childId;
+    _sessionAuthUid = FirebaseAuth.instance.currentUser?.uid;
+    if (childId == null || _sessionAuthUid == null) return;
+    _childSession = FirebaseFirestore.instance
+        .collection('users')
+        .doc(AuthIdentity.parentUid)
+        .collection('children')
+        .doc(childId)
+        .snapshots(includeMetadataChanges: true)
+        .listen(
+          (snapshot) {
+            if (!snapshot.metadata.isFromCache && !snapshot.exists) {
+              _revokeChildSession();
+            }
+          },
+          onError: (Object error) {
+            if (error is FirebaseException &&
+                (error.code == 'permission-denied' ||
+                    error.code == 'unauthenticated')) {
+              _revokeChildSession();
+            }
+          },
+        );
+  }
+
+  void _revokeChildSession() {
+    if (!mounted ||
+        _sessionRevoked ||
+        _switchingProfiles ||
+        FirebaseAuth.instance.currentUser?.uid != _sessionAuthUid)
+      return;
+    _sessionRevoked = true;
+    _switchingProfiles = true;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final childId = widget.childId!;
+    // Remove every game, reader, dialog and dashboard route immediately.
+    navigator.pushAndRemoveUntil(
+      PageRouteBuilder<void>(
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        pageBuilder: (_, __, ___) => _DeletedChildLanding(childId: childId),
+      ),
+      (_) => false,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    if (widget.isChildMode) WidgetsBinding.instance.addObserver(this);
+    if (widget.isChildMode) {
+      WidgetsBinding.instance.addObserver(this);
+      _watchChildSession();
+    }
   }
 
   @override
   void dispose() {
+    _childSession?.cancel();
     if (widget.isChildMode) WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -75,10 +131,8 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
         );
         return;
       }
-      final cached = await AuthIdentity.storedProfiles(code);
-      final children = cached.isNotEmpty
-          ? cached
-          : await AuthIdentity.loadFamilyProfiles(code);
+      final children = await AuthIdentity.loadFamilyProfiles(code);
+      await AuthIdentity.rememberProfiles(children);
       await FirebaseAuth.instance.signOut();
       AuthIdentity.clearChild();
       if (!mounted) return;
@@ -415,4 +469,70 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
 
   // Child authentication is independent of the parent session.
   // Never log the child out just because the parent signed out.
+}
+
+// Separate route keeps revoked content inaccessible while the family picker loads.
+class _DeletedChildLanding extends StatefulWidget {
+  final String childId;
+  const _DeletedChildLanding({required this.childId});
+  @override
+  State<_DeletedChildLanding> createState() => _DeletedChildLandingState();
+}
+
+class _DeletedChildLandingState extends State<_DeletedChildLanding> {
+  late final Future<Widget> _destination;
+  @override
+  void initState() {
+    super.initState();
+    _destination = _finishSession();
+  }
+
+  Future<Widget> _finishSession() async {
+    AuthIdentity.clearChild();
+    await FirebaseAuth.instance.signOut();
+    final code = await AuthIdentity.storedFamilyCode();
+    if (code == null || code.isEmpty) return const ChildFamilyCodePage();
+    // Remove the deleted profile from the remembered list even if offline.
+    final cached = await AuthIdentity.storedProfiles(code);
+    final remaining = cached
+        .where((p) => p['childId'] != widget.childId)
+        .toList();
+    await AuthIdentity.rememberProfiles(remaining);
+    try {
+      final profiles = await AuthIdentity.loadFamilyProfiles(
+        code,
+      ).timeout(const Duration(seconds: 10));
+      final available = profiles
+          .where((p) => p['childId'] != widget.childId)
+          .toList();
+      await AuthIdentity.rememberProfiles(available);
+      return ProfileSelectionPage(familyCode: code, profiles: available);
+    } catch (_) {
+      return ProfileSelectionPage(familyCode: code, profiles: remaining);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Widget>(
+    future: _destination,
+    builder: (context, snapshot) {
+      if (snapshot.hasData) return snapshot.data!;
+      return Scaffold(
+        body: Center(
+          child: snapshot.hasError
+              ? const Text(
+                  'Your profile is no longer available. Please reopen Lexia.',
+                )
+              : const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFF6A5ACD)),
+                    SizedBox(height: 16),
+                    Text('Your profile is no longer available.'),
+                  ],
+                ),
+        ),
+      );
+    },
+  );
 }

@@ -770,7 +770,8 @@ class ParentPrivacyPage extends StatelessWidget {
     // A Cloud Function removes the child document AND all subcollections,
     // its uploaded files, and the dedicated child Firebase Auth account.
     // A plain document.delete() leaves orphaned privateAuth documents.
-    showDialog<void>(
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final loadingRoute = DialogRoute<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => PopScope(
@@ -799,6 +800,8 @@ class ParentPrivacyPage extends StatelessWidget {
       ),
     );
 
+    navigator.push(loadingRoute);
+
     String? failure;
     try {
       final signedInUid = FirebaseAuth.instance.currentUser?.uid;
@@ -813,13 +816,16 @@ class ParentPrivacyPage extends StatelessWidget {
     } catch (e) {
       failure = 'Could not delete this child profile. Please try again.';
       debugPrint('DELETE CHILD ERROR: $e');
+    } finally {
+      if (navigator.mounted && loadingRoute.isActive) {
+        navigator.removeRoute(loadingRoute);
+      }
     }
 
-    if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
+    if (!navigator.mounted) return;
     if (failure != null) {
       await LexiaPopup.showMessage(
-        context: context,
+        context: navigator.context,
         title: 'Deletion Not Completed',
         message: failure,
         icon: Icons.error_outline_rounded,
